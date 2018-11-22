@@ -1,0 +1,24 @@
+tosca_definitions_version: ${alien4cloud.dsl.version}
+
+template_name: yorc-kubernetes-types
+template_author: Yorc
+template_version: ${yorc.k8s.types.version}
+
+imports:
+  - org.alien4cloud.kubernetes.api:${alien4cloud.kubernetes.api.version}
+
+artifact_types:
+  tosca.artifacts.Deployment.Image.Container.Docker.Kubernetes:
+    description: Docker Container Image to be deployed by Kubernetes
+    derived_from: tosca.artifacts.Deployment.Image.Container.Docker
+
+  yorc.artifacts.Deployment.Kubernetes:
+    description: Docker deployment descriptor
+    derived_from: tosca.artifacts.Deployment
+
+node_types:
+  yorc.nodes.kubernetes.api.types.DeploymentResource:
+    derived_from: org.alien4cloud.kubernetes.api.types.DeploymentResource
+
+  yorc.nodes.kubernetes.api.types.ServiceResource:
+    derived_from: org.alien4cloud.kubernetes.api.types.ServiceResource

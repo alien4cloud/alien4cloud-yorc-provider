@@ -1,0 +1,17 @@
+id: alien4cloud-yorc-provider
+name: Yorc Orchestrator Provider
+version: ${project.version}
+description: >
+  Plugin for Yorc Orchestrator.
+configuration_class: alien4cloud.paas.yorc.YorcPluginConfiguration
+component_descriptors:
+  - bean_name: yorc-orchestrator-factory
+    name: Yorc Orchestrator
+    description: >
+      Alien Plugin for Yorc
+#  - bean_name: yorc-kubernetes-modifier
+#    name: Yorc Modifier for Kubernetes
+#    description: >
+#      Yorc Modifier for Kubernetes
+dependencies:
+  - alien4cloud-kubernetes-plugin

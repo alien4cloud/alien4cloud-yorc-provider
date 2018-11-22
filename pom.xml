@@ -1,0 +1,107 @@
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>alien4cloud</groupId>
+    <artifactId>alien4cloud-parent</artifactId>
+    <version>2.2.0-SNAPSHOT</version>
+  </parent>
+
+  <artifactId>alien4cloud-yorc-provider</artifactId>
+  <name>Yorc Orchestrator PaaS provider for Alien4Cloud</name>
+  <version>2.2.0-SNAPSHOT</version>
+
+  <properties>
+    <alien4cloud.version>2.2.0-SNAPSHOT</alien4cloud.version>
+    <alien4cloud.dsl.version>alien_dsl_2_0_0</alien4cloud.dsl.version>
+    <tosca.normative.types.version>1.0.0-ALIEN20</tosca.normative.types.version>
+
+    <!-- Embedded TOSCA types versions -->
+    <yorc.types.version>1.0.0</yorc.types.version>
+    <yorc.aws.types.version>1.0.0</yorc.aws.types.version>
+    <yorc.docker.types.version>1.0.0</yorc.docker.types.version>
+    <yorc.google.types.version>1.0.0</yorc.google.types.version>
+    <yorc.hp.types.version>1.0.0</yorc.hp.types.version>
+    <yorc.k8s.types.version>2.0.0-SNAPSHOT</yorc.k8s.types.version>
+    <yorc.os.types.version>1.0.0</yorc.os.types.version>
+    <yorc.slurm.types.version>1.0.0</yorc.slurm.types.version>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>alien4cloud</groupId>
+      <artifactId>alien4cloud-core</artifactId>
+      <version>${alien4cloud.version}</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>alien4cloud</groupId>
+      <artifactId>alien4cloud-rest-api</artifactId>
+      <version>${alien4cloud.version}</version>
+      <scope>provided</scope>
+    </dependency>
+  </dependencies>
+
+  <scm>
+    <connection>scm:git:https://github.com/alien4cloud/alien4cloud-yorc-provider.git</connection>
+  </scm>
+
+  <repositories>
+    <repository>
+      <id>repo.opensource.fastconnect.org</id>
+      <url>http://fastconnect.org/maven/content/repositories/opensource</url>
+    </repository>
+    <repository>
+      <id>repo.opensource.snapshot.fastconnect.org</id>
+      <url>http://fastconnect.org/maven/content/repositories/opensource-snapshot</url>
+    </repository>
+  </repositories>
+
+  <distributionManagement>
+    <repository>
+      <id>repo.opensource.fastconnect.org</id>
+      <url>https://fastconnect.org/maven/content/repositories/opensource</url>
+    </repository>
+    <snapshotRepository>
+      <id>repo.opensource.snapshot.fastconnect.org</id>
+      <url>https://fastconnect.org/maven/content/repositories/opensource-snapshot</url>
+    </snapshotRepository>
+  </distributionManagement>
+
+  <build>
+    <resources>
+      <resource>
+        <directory>src/main/resources</directory>
+        <filtering>true</filtering>
+      </resource>
+    </resources>
+    <plugins>
+      <plugin>
+        <artifactId>maven-assembly-plugin</artifactId>
+        <configuration>
+          <appendAssemblyId>false</appendAssemblyId>
+          <ignoreDirFormatExtensions>true</ignoreDirFormatExtensions>
+          <attach>false</attach>
+        </configuration>
+        <executions>
+          <execution>
+            <id>assembly</id>
+            <phase>package</phase>
+            <goals>
+              <goal>single</goal>
+            </goals>
+            <configuration>
+              <attach>true</attach>
+              <descriptors>
+                <descriptor>src/main/assembly/assembly.xml</descriptor>
+              </descriptors>
+            </configuration>
+          </execution>
+        </executions>
+      </plugin>
+    </plugins>
+
+  </build>
+
+
+</project>
