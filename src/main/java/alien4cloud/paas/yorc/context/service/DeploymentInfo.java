@@ -13,8 +13,11 @@ import org.springframework.stereotype.Component;
 @Scope("prototype")
 public class DeploymentInfo {
 
+    DeploymentInfo() {
+    }
+
     @Getter
-    @Setter(AccessLevel.PACKAGE)
+    @Setter
     private DeploymentStatus status;
 
     @Getter

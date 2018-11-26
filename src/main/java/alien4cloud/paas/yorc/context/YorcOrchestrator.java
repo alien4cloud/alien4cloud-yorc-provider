@@ -9,6 +9,7 @@ import alien4cloud.paas.exception.OperationExecutionException;
 import alien4cloud.paas.exception.PluginConfigurationException;
 import alien4cloud.paas.model.*;
 import alien4cloud.paas.yorc.configuration.ProviderConfiguration;
+import alien4cloud.paas.yorc.context.rest.RestClient;
 import alien4cloud.paas.yorc.location.AbstractLocationConfigurerFactory;
 import alien4cloud.paas.yorc.service.PluginArchiveService;
 import alien4cloud.paas.yorc.context.tasks.DeployTask;
@@ -37,6 +38,11 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
     @Inject
     private AbstractLocationConfigurerFactory yorcLocationConfigurerFactory;
 
+    @Inject
+    private RestClient restClient;
+
+    private ProviderConfiguration configuration;
+
     @Override
     public ILocationConfiguratorPlugin getConfigurator(String locationType) {
         return yorcLocationConfigurerFactory.newInstance(locationType);
@@ -54,7 +60,10 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 
     @Override
     public void setConfiguration(String orchestratorId, ProviderConfiguration configuration) throws PluginConfigurationException {
-        // TODO: implements
+        this.configuration = configuration;
+
+        // Configure the rest Client
+        restClient.setConfiguration(configuration);
     }
 
     @Override

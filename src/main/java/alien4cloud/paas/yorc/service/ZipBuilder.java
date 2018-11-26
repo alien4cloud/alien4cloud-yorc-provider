@@ -73,14 +73,12 @@ public class ZipBuilder {
      * Assumes a file original.yml exists in the current directory
      * @throws IOException
      */
-    public void build(PaaSTopologyDeploymentContext context) throws IOException {
+    public byte[] build(PaaSTopologyDeploymentContext context) throws IOException {
         Location loc = context.getLocations().get("_A4C_ALL");
 
         final int location = getLocation(loc);
 
-        final File zip = new File("topology.zip");
-        final OutputStream bos= new FileOutputStream(zip);
-        //final OutputStream bos = new ByteArrayOutputStream();
+        final ByteArrayOutputStream bos = new ByteArrayOutputStream();
 
         try (ZipOutputStream zos = new ZipOutputStream(bos)) {
             context.getDeploymentTopology().getDependencies().forEach(d -> {
@@ -125,6 +123,8 @@ public class ZipBuilder {
             zos.write(yaml.getBytes(Charset.forName("UTF-8")));
             zos.closeEntry();
         }
+
+        return bos.toByteArray();
     }
 
     private int getLocation(Location loc) {
