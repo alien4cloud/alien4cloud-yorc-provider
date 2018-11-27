@@ -198,13 +198,10 @@ public class ZipBuilder {
         File directory = new File(dirname);
         String relative = csar.getName() + "/" + csar.getVersion() + "/";
         String ret = relative + csar.getYamlFilePath();
-
         // All files under this directory must be put in the zip
         URI base = directory.toURI();
-
         Deque<File> queue = new LinkedList<>();
         queue.push(directory);
-
         while (!queue.isEmpty()) {
             directory = queue.pop();
             for (File kid : directory.listFiles()) {
@@ -223,7 +220,6 @@ public class ZipBuilder {
                         } finally {
                             ToscaContext.set(oldCtx);
                         }
-
                         if (parsingResult.getContext().getParsingErrors().size() > 0) {
                             Boolean hasFatalError = false;
                             for (ParsingError error :
@@ -253,13 +249,12 @@ public class ZipBuilder {
                         }
 
                         zos.write(yaml.getBytes(Charset.forName("UTF-8")));
-                    } else{
+                    } else {
                         copy(file, zos);
                     }
                 }
             }
         }
-
         return ret;
     }
 
@@ -327,8 +322,7 @@ public class ZipBuilder {
                 Path artifactPath = Paths.get(from);
                 try {
                     String filename = artifact.getArtifactRef();
-                    createZipEntries(filename, zout);
-                    copy(artifactPath.toFile(), zout);
+                    recursivelyCopyArtifact(artifactPath, filename, zout);
                 } catch (Exception e) {
                     log.error("Could not copy local artifact " + aname, e);
                 }
@@ -339,8 +333,7 @@ public class ZipBuilder {
                 Path artifactPath = Paths.get(from);
                 try {
                     String filename = artifact.getArtifactRef();
-                    createZipEntries(filename, zout);
-                    copy(artifactPath.toFile(), zout);
+                    recursivelyCopyArtifact(artifactPath, filename, zout);
                 } catch (Exception e) {
                     log.error("Could not copy remote artifact " + aname, e);
                 }
@@ -348,6 +341,20 @@ public class ZipBuilder {
                 // TODO Remove this when a4c bug SUPALIEN-926 is fixed.
                 addRemoteArtifactInTopology(name, da.getKey(), artifact);
             }
+        }
+    }
+
+    private void recursivelyCopyArtifact(Path path, String baseTargetName, ZipOutputStream zos) throws IOException {
+        if (path.toFile().isDirectory()) {
+            String folderName = baseTargetName + "/";
+            createZipEntries(folderName, zos);
+            for (String file : path.toFile().list()) {
+                Path filePath = path.resolve(file);
+                recursivelyCopyArtifact(filePath, folderName + file, zos);
+            }
+        } else {
+            createZipEntries(baseTargetName, zos);
+            copy(path.toFile(), zos);
         }
     }
 
