@@ -1,7 +1,6 @@
 package alien4cloud.paas.yorc.context;
 
 
-import alien4cloud.paas.yorc.context.rest.RestClient;
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
 import lombok.extern.slf4j.Slf4j;
@@ -81,14 +80,6 @@ public class YorcOrchestratorConfiguration {
             }
         });
         return svc;
-    }
-
-    /**
-     * The REST Client
-     */
-    @Bean
-    RestClient restClient() {
-        return new RestClient();
     }
 
     @PreDestroy

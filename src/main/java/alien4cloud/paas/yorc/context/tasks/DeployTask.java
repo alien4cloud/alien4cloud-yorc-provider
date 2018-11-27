@@ -4,7 +4,7 @@ import alien4cloud.paas.IPaaSCallback;
 
 import alien4cloud.paas.model.DeploymentStatus;
 import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
-import alien4cloud.paas.yorc.context.rest.RestClient;
+import alien4cloud.paas.yorc.context.rest.DeploymentClient;
 import alien4cloud.paas.yorc.context.service.DeploymentInfo;
 import alien4cloud.paas.yorc.context.service.DeploymentService;
 import alien4cloud.paas.yorc.service.ZipBuilder;
@@ -27,7 +27,7 @@ public class DeployTask extends AbstractTask {
     private DeploymentService deploymentService;
 
     @Inject
-    RestClient restClient;
+    DeploymentClient deploymentClient;
 
     @Inject
     private ZipBuilder zipBuilder;
@@ -68,7 +68,7 @@ public class DeployTask extends AbstractTask {
             return;
         }
 
-        ListenableFuture<ResponseEntity<String>> f = restClient.sendTopologyToYorc(info.getContext().getDeploymentPaaSId(),bytes);
+        ListenableFuture<ResponseEntity<String>> f = deploymentClient.sendTopologyToYorc(info.getContext().getDeploymentPaaSId(),bytes);
         f.addCallback(this::onDeploymentSucces,this::onDeployementFailure);
     }
 

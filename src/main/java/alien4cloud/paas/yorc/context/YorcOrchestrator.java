@@ -9,7 +9,9 @@ import alien4cloud.paas.exception.OperationExecutionException;
 import alien4cloud.paas.exception.PluginConfigurationException;
 import alien4cloud.paas.model.*;
 import alien4cloud.paas.yorc.configuration.ProviderConfiguration;
-import alien4cloud.paas.yorc.context.rest.RestClient;
+import alien4cloud.paas.yorc.context.rest.AsyncClientHttpRequestFactoryBuilder;
+import alien4cloud.paas.yorc.context.rest.DeploymentClient;
+import alien4cloud.paas.yorc.context.service.EventService;
 import alien4cloud.paas.yorc.location.AbstractLocationConfigurerFactory;
 import alien4cloud.paas.yorc.service.PluginArchiveService;
 import alien4cloud.paas.yorc.context.tasks.DeployTask;
@@ -39,7 +41,13 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
     private AbstractLocationConfigurerFactory yorcLocationConfigurerFactory;
 
     @Inject
-    private RestClient restClient;
+    private DeploymentClient deploymentClient;
+
+    @Inject
+    private AsyncClientHttpRequestFactoryBuilder factoryBuilder;
+
+    @Inject
+    private EventService eventService;
 
     private ProviderConfiguration configuration;
 
@@ -63,12 +71,15 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
         this.configuration = configuration;
 
         // Configure the rest Client
-        restClient.setConfiguration(configuration);
+        factoryBuilder.setConfiguration(configuration);
     }
 
     @Override
     public void init(Map<String, PaaSTopologyDeploymentContext> activeDeployments) {
         // TODO: implements
+
+        // Start services
+        eventService.init();
     }
 
     @Override
