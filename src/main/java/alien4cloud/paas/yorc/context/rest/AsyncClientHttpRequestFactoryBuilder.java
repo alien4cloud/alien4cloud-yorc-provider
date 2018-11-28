@@ -33,7 +33,7 @@ public class AsyncClientHttpRequestFactoryBuilder {
 
     private SslContext sslContext;
 
-    AsyncClientHttpRequestFactory build() {
+    Netty4ClientHttpRequestFactory build() {
         Netty4ClientHttpRequestFactory factory = new Netty4ClientHttpRequestFactory(eventLoopGroup);
 
         // TODO: Sysprop this
