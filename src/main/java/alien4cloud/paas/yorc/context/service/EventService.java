@@ -13,6 +13,7 @@ import org.springframework.util.concurrent.ListenableFuture;
 import javax.inject.Inject;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Consumer;
 
 @Slf4j
 @Service
@@ -29,6 +30,10 @@ public class EventService {
     public void init() {
         // Bootstrap the service on task executor
         executorService.submit(this::queryEvents);
+    }
+
+    public void subscribe(String paasId,Consumer<Event> consumer) {
+
     }
 
     private void queryEvents() {

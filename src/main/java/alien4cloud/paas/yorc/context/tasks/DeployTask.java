@@ -4,6 +4,8 @@ import java.io.IOException;
 
 import javax.inject.Inject;
 
+import alien4cloud.paas.yorc.context.rest.response.Event;
+import alien4cloud.paas.yorc.context.service.EventService;
 import org.springframework.context.annotation.Scope;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
@@ -36,6 +38,9 @@ public class DeployTask extends AbstractTask {
 
     @Inject
     private ZipBuilder zipBuilder;
+
+    @Inject
+    private EventService eventService;
 
     private DeploymentInfo info;
 
@@ -79,18 +84,24 @@ public class DeployTask extends AbstractTask {
         }
 
         ListenableFuture<ResponseEntity<String>> f = deploymentClient.sendTopologyToYorc(info.getContext().getDeploymentPaaSId(),bytes);
-        f.addCallback(this::onDeploymentSuccess,this::onDeploymentFailure);
+        f.addCallback(this::onDeploymentRequestSuccess,this::onDeploymentRequestFailure);
 
         fsmService.sendEvent(new DeploymentEvent(info.getContext().getDeploymentId(), DeploymentMessages.DEPLOYMENT_IN_PROGRESS));
     }
 
-    private void onDeploymentSuccess(ResponseEntity<String> value) {
+    private void onDeploymentRequestSuccess(ResponseEntity<String> value) {
         fsmService.sendEvent(new DeploymentEvent(info.getContext().getDeploymentId(), DeploymentMessages.DEPLOYMENT_SUCCESS));
         log.info("Deployment Request ok",value);
+
+        eventService.subscribe(info.getContext().getDeploymentPaaSId(),this::onEvent);
     }
 
-    private void onDeploymentFailure(Throwable t) {
+    private void onDeploymentRequestFailure(Throwable t) {
         fsmService.sendEvent(new DeploymentEvent(info.getContext().getDeploymentId(), DeploymentMessages.FAILURE));
         log.error("Deployment Failure: {}",t);
+    }
+
+    private void onEvent(Event event) {
+        log.info("Event: {}",event);
     }
 }
