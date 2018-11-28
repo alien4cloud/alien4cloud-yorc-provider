@@ -4,8 +4,6 @@ import java.io.IOException;
 
 import javax.inject.Inject;
 
-import alien4cloud.paas.yorc.context.rest.response.Event;
-import alien4cloud.paas.yorc.context.service.EventService;
 import org.springframework.context.annotation.Scope;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
@@ -14,8 +12,10 @@ import org.springframework.util.concurrent.ListenableFuture;
 import alien4cloud.paas.IPaaSCallback;
 import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
 import alien4cloud.paas.yorc.context.rest.DeploymentClient;
+import alien4cloud.paas.yorc.context.rest.response.Event;
 import alien4cloud.paas.yorc.context.service.DeploymentInfo;
 import alien4cloud.paas.yorc.context.service.DeploymentService;
+import alien4cloud.paas.yorc.context.service.EventService;
 import alien4cloud.paas.yorc.context.service.fsm.DeploymentEvent;
 import alien4cloud.paas.yorc.context.service.fsm.DeploymentMessages;
 import alien4cloud.paas.yorc.context.service.fsm.StateMachineService;
@@ -68,17 +68,18 @@ public class DeployTask extends AbstractTask {
     private void doStart() {
         byte[] bytes;
 
-        log.debug("Deploying " + info.getContext().getDeploymentPaaSId() + " with id : " + info.getContext().getDeploymentId());
+        if (log.isDebugEnabled())
+            log.debug("Deploying " + info.getContext().getDeploymentPaaSId() + " with id : " + info.getContext()
+                    .getDeploymentId());
 
         //TODO Not sure is deploymentId or deploymentPaaSId
         //TODO Should it be done by event bus?
-        fsmService.sendEvent(new DeploymentEvent(info.getContext().getDeploymentId(), DeploymentMessages.DEPLOYMENT_STARTED));
+        updateStatus(DeploymentMessages.DEPLOYMENT_STARTED);
 
         try {
             bytes = zipBuilder.build(info.getContext());
         } catch(IOException e) {
-            fsmService.sendEvent(new DeploymentEvent(info.getContext().getDeploymentId(), DeploymentMessages.FAILURE));
-            //info.setStatus(DeploymentStatus.FAILURE);
+            updateStatus(DeploymentMessages.FAILURE);
             callback.onFailure(e);
             return;
         }
@@ -86,22 +87,30 @@ public class DeployTask extends AbstractTask {
         ListenableFuture<ResponseEntity<String>> f = deploymentClient.sendTopologyToYorc(info.getContext().getDeploymentPaaSId(),bytes);
         f.addCallback(this::onDeploymentRequestSuccess,this::onDeploymentRequestFailure);
 
-        fsmService.sendEvent(new DeploymentEvent(info.getContext().getDeploymentId(), DeploymentMessages.DEPLOYMENT_IN_PROGRESS));
+        updateStatus(DeploymentMessages.DEPLOYMENT_IN_PROGRESS);
     }
 
     private void onDeploymentRequestSuccess(ResponseEntity<String> value) {
-        fsmService.sendEvent(new DeploymentEvent(info.getContext().getDeploymentId(), DeploymentMessages.DEPLOYMENT_SUCCESS));
-        log.info("Deployment Request ok",value);
+        updateStatus(DeploymentMessages.DEPLOYMENT_SUCCESS);
+        if (log.isInfoEnabled()) {
+            log.info("Deployment Request ok",value);
+        }
 
         eventService.subscribe(info.getContext().getDeploymentPaaSId(),this::onEvent);
     }
 
     private void onDeploymentRequestFailure(Throwable t) {
-        fsmService.sendEvent(new DeploymentEvent(info.getContext().getDeploymentId(), DeploymentMessages.FAILURE));
-        log.error("Deployment Failure: {}",t);
+        updateStatus(DeploymentMessages.FAILURE);
+        if (log.isErrorEnabled())
+            log.error("Deployment Failure: {}", t);
     }
 
     private void onEvent(Event event) {
-        log.info("Event: {}",event);
+        if (log.isInfoEnabled())
+            log.info("Event: {}", event);
+    }
+
+    private void updateStatus(DeploymentMessages message) {
+        info.setStatus(fsmService.sendEvent(new DeploymentEvent(info.getContext().getDeploymentId(), message)));
     }
 }

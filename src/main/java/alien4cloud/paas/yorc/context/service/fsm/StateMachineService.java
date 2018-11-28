@@ -2,17 +2,18 @@ package alien4cloud.paas.yorc.context.service.fsm;
 
 import java.util.Map;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.statemachine.StateMachine;
 import org.springframework.stereotype.Component;
+
+import com.google.common.collect.Maps;
 
 import alien4cloud.paas.model.DeploymentStatus;
 
 @Component
 public class StateMachineService {
 
-	@Autowired
-	Map<String, StateMachine<DeploymentStatus, DeploymentMessages>> cache;
+	// TODO Problem of concurrency
+	private Map<String, StateMachine<DeploymentStatus, DeploymentMessages>> cache = Maps.newHashMap();
 
 	/**
 	 * Send an event to the state machine to decide the next state
