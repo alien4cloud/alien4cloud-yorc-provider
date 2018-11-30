@@ -1,14 +1,13 @@
 package alien4cloud.paas.yorc.context.service.fsm;
 
+import java.util.Arrays;
 import java.util.EnumSet;
+import java.util.List;
 
 import org.springframework.statemachine.StateMachine;
 import org.springframework.statemachine.annotation.WithStateMachine;
 import org.springframework.statemachine.config.StateMachineBuilder;
 
-import com.google.common.collect.ImmutableMap;
-
-import alien4cloud.paas.model.DeploymentStatus;
 import lombok.extern.slf4j.Slf4j;
 
 /**
@@ -19,26 +18,26 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class FSM {
 
-	/*
-	 States transition graph
-	 {source -> target -> input event}
-	  */
-	private static final ImmutableMap<DeploymentStatus, ImmutableMap<DeploymentStatus, DeploymentMessages>> graph = ImmutableMap.of(
-			DeploymentStatus.UNDEPLOYED, ImmutableMap.of(DeploymentStatus.INIT_DEPLOYMENT, DeploymentMessages.DEPLOYMENT_STARTED),
-			DeploymentStatus.INIT_DEPLOYMENT, ImmutableMap.of(DeploymentStatus.DEPLOYMENT_IN_PROGRESS, DeploymentMessages.DEPLOYMENT_IN_PROGRESS, DeploymentStatus.FAILURE, DeploymentMessages.FAILURE),
-			DeploymentStatus.DEPLOYMENT_IN_PROGRESS, ImmutableMap.of(DeploymentStatus.DEPLOYED, DeploymentMessages.DEPLOYMENT_SUCCESS, DeploymentStatus.FAILURE, DeploymentMessages.FAILURE),
-			DeploymentStatus.DEPLOYED, ImmutableMap.of(DeploymentStatus.UNDEPLOYMENT_IN_PROGRESS, DeploymentMessages.UNDEPLOYMENT_STARTED),
-			DeploymentStatus.UNDEPLOYMENT_IN_PROGRESS, ImmutableMap.of(DeploymentStatus.UNDEPLOYED, DeploymentMessages.UNDEPLOYMENT_SUCCESS)
-	);
+	/**
+	 * States transition graph
+	 */
+	private static final List<TransitionElement> graph = Arrays.asList(
+			new TransitionElement(DeploymentStates.UNDEPLOYED, DeploymentStates.DEPLOYMENT_INIT, DeploymentMessages.DEPLOYMENT_STARTED, DeploymentActions.buildZip()),
+			new TransitionElement(DeploymentStates.DEPLOYMENT_INIT, DeploymentStates.DEPLOYMENT_SUBMITTED, DeploymentMessages.DEPLOYMENT_SUBMITTED, null),
+			new TransitionElement(DeploymentStates.DEPLOYMENT_SUBMITTED, DeploymentStates.DEPLOYMENT_IN_PROGRESS, DeploymentMessages.DEPLOYMENT_IN_PROGRESS, null),
+			new TransitionElement(DeploymentStates.DEPLOYMENT_IN_PROGRESS, DeploymentStates.DEPLOYED, DeploymentMessages.DEPLOYMENT_SUCCESS, null),
+			new TransitionElement(DeploymentStates.DEPLOYED, DeploymentStates.UNDEPLOYMENT_IN_PROGRESS, DeploymentMessages.UNDEPLOYMENT_STARTED, null),
+			new TransitionElement(DeploymentStates.UNDEPLOYMENT_IN_PROGRESS, DeploymentStates.UNDEPLOYED, DeploymentMessages.UNDEPLOYMENT_SUCCESS, null)
+			);
 
 	/**
 	 * Build a new state machine
 	 * @return New state machine
 	 */
-	protected static StateMachine<DeploymentStatus, DeploymentMessages> buildMachine() {
-		StateMachineBuilder.Builder<DeploymentStatus, DeploymentMessages> builder = StateMachineBuilder.builder();
+	protected static StateMachine<DeploymentStates, DeploymentMessages> buildMachine(DeploymentStates initialStates) {
+		StateMachineBuilder.Builder<DeploymentStates, DeploymentMessages> builder = StateMachineBuilder.builder();
 		try {
-			configureStates(builder, DeploymentStatus.UNDEPLOYED);
+			configureStates(builder, initialStates);
 			configureTransitions(builder);
 			configureConfiguration(builder);
 		} catch (Exception e) {
@@ -49,32 +48,29 @@ public class FSM {
 		return builder.build();
 	}
 
-	private static void configureConfiguration(StateMachineBuilder.Builder<DeploymentStatus, DeploymentMessages> builder)
+	private static void configureConfiguration(StateMachineBuilder.Builder<DeploymentStates, DeploymentMessages> builder)
 			throws Exception {
 		builder.configureConfiguration().withConfiguration().autoStartup(true);
 	}
 
-	private static void configureTransitions(StateMachineBuilder.Builder<DeploymentStatus, DeploymentMessages> builder)
+	private static void configureTransitions(StateMachineBuilder.Builder<DeploymentStates, DeploymentMessages> builder)
 			throws Exception {
-		for (DeploymentStatus start : graph.keySet()) {
-			ImmutableMap<DeploymentStatus, DeploymentMessages> target = graph.get(start);
-			for (DeploymentStatus end : target.keySet()) {
-				DeploymentMessages message = target.get(end);
-				builder.configureTransitions()
-						.withExternal()
-						.source(start).target(end)
-						.event(message)
-						.and();
-			}
+		for (TransitionElement element : graph) {
+			builder.configureTransitions()
+					.withExternal()
+					.source(element.getSource()).target(element.getTarget())
+					.event(element.getInputEvent())
+					.action(element.getAction())
+					.and();
 		}
 	}
 
-	private static void configureStates(StateMachineBuilder.Builder<DeploymentStatus, DeploymentMessages> builder, DeploymentStatus initialState)
+	private static void configureStates(StateMachineBuilder.Builder<DeploymentStates, DeploymentMessages> builder, DeploymentStates initialState)
 			throws Exception {
 		builder.configureStates()
 				.withStates()
 				.initial(initialState)
-				.states(EnumSet.allOf(DeploymentStatus.class));
+				.states(EnumSet.allOf(DeploymentStates.class));
 	}
 
 }

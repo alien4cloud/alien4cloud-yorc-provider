@@ -20,6 +20,7 @@ import alien4cloud.paas.yorc.context.service.fsm.DeploymentEvent;
 import alien4cloud.paas.yorc.context.service.fsm.DeploymentMessages;
 import alien4cloud.paas.yorc.context.service.fsm.StateMachineService;
 import alien4cloud.paas.yorc.service.ZipBuilder;
+import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -42,6 +43,7 @@ public class DeployTask extends AbstractTask {
     @Inject
     private EventService eventService;
 
+    @Getter
     private DeploymentInfo info;
 
     private IPaaSCallback<?> callback;
@@ -59,22 +61,19 @@ public class DeployTask extends AbstractTask {
 
         this.callback = callback;
 
-        getExecutorService().submit(this::doStart);
+        //getExecutorService().submit(this::doStart);
+        updateStatus(DeploymentMessages.DEPLOYMENT_STARTED);
     }
 
     /**
      * Starting the deployment on task pool
      */
-    private void doStart() {
+    public void doStart() {
         byte[] bytes;
 
         if (log.isDebugEnabled())
             log.debug("Deploying " + info.getContext().getDeploymentPaaSId() + " with id : " + info.getContext()
                     .getDeploymentId());
-
-        //TODO Not sure is deploymentId or deploymentPaaSId
-        //TODO Should it be done by event bus?
-        updateStatus(DeploymentMessages.DEPLOYMENT_STARTED);
 
         try {
             bytes = zipBuilder.build(info.getContext());
@@ -87,7 +86,7 @@ public class DeployTask extends AbstractTask {
         ListenableFuture<ResponseEntity<String>> f = deploymentClient.sendTopologyToYorc(info.getContext().getDeploymentPaaSId(),bytes);
         f.addCallback(this::onDeploymentRequestSuccess,this::onDeploymentRequestFailure);
 
-        updateStatus(DeploymentMessages.DEPLOYMENT_IN_PROGRESS);
+        updateStatus(DeploymentMessages.DEPLOYMENT_SUBMITTED);
     }
 
     private void onDeploymentRequestSuccess(ResponseEntity<String> value) {
@@ -111,6 +110,6 @@ public class DeployTask extends AbstractTask {
     }
 
     private void updateStatus(DeploymentMessages message) {
-        info.setStatus(fsmService.sendEvent(new DeploymentEvent(info.getContext().getDeploymentId(), message)));
+        info.setStatus(fsmService.sendEvent(new DeploymentEvent(info.getContext().getDeploymentId(), message, this)));
     }
 }
