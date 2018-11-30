@@ -17,7 +17,7 @@ import alien4cloud.paas.model.DeploymentStatus;
 @WithStateMachine
 public class FSM {
 
-	private FSM() {}
+	public FSM() {}
 
 	// State transition graph
 	private static final ImmutableMap<DeploymentStatus, ImmutableMap<DeploymentStatus, DeploymentMessages>> graph = ImmutableMap.of(

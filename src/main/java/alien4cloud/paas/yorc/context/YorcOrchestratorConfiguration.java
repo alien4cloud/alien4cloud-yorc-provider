@@ -3,6 +3,8 @@ package alien4cloud.paas.yorc.context;
 
 import io.netty.channel.EventLoopGroup;
 import io.netty.channel.nio.NioEventLoopGroup;
+import io.reactivex.Scheduler;
+import io.reactivex.schedulers.Schedulers;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
 import org.springframework.context.annotation.Bean;
@@ -73,13 +75,12 @@ public class YorcOrchestratorConfiguration {
         ScheduledExecutorService svc = Executors.newScheduledThreadPool(4 , taskThreadFactory() );
         // TODO: Use SysProp for pool size
 
-        svc.execute(new Runnable() {
-            @Override
-            public void run() {
-                log.info("RUNNING!");
-            }
-        });
         return svc;
+    }
+
+    @Bean
+    Scheduler scheduler() {
+        return Schedulers.from(executorService());
     }
 
     @PreDestroy

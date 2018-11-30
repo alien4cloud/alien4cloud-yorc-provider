@@ -8,7 +8,17 @@ import lombok.ToString;
 @Getter
 @Setter
 public class Event {
-    // refer to yorc code to check this values: events/struct.go
+
+    /**
+     *  Possible values for Yorc event types
+     *  Check with Yorc code for these values.
+     */
+    public static final String EVT_INSTANCE   = "instance";
+    public static final String EVT_OPERATION  = "custom-command";
+    public static final String EVT_DEPLOYMENT = "deployment";
+    public static final String EVT_SCALING    = "scaling";
+    public static final String EVT_WORKFLOW   = "workflow";
+
     private String timestamp;
     private String node;
     private String instance;

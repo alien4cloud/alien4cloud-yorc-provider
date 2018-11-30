@@ -27,4 +27,8 @@ public class DeploymentService {
 
         return info;
     }
+
+    public DeploymentInfo getDeployment(String paasId) {
+        return map.get(paasId);
+    }
 }
