@@ -85,13 +85,13 @@ public class DeployTask extends AbstractTask {
             .when(Event.EVT_DEPLOYMENT,"deployment_failed",this::onEventFailed)
             .when(Event.EVT_DEPLOYMENT, "deployed",this::onEventDeployed)
             .when(Event.EVT_DEPLOYMENT, "deployment_in_progress",this::onEventInProgess)
-            .withTimeout(10,TimeUnit.SECONDS,this::onTimeout)
+            .withTimeout(24,TimeUnit.HOURS,this::onTimeout)
             .build(info.getEvents());
 
         listener.subscribe();
 
         // Sent our zip
-        ListenableFuture<ResponseEntity<String>> f = deploymentClient.sendTopologyToYorc(info.getContext().getDeploymentPaaSId(),bytes);
+        ListenableFuture<ResponseEntity<String>> f = deploymentClient.sendTopology(info.getContext().getDeploymentPaaSId(),bytes);
         f.addCallback(this::onHttpOk,this::onHttpKo);
 
         //fsmService.sendEvent(new DeploymentEvent(info.getContext().getDeploymentId(), DeploymentMessages.DEPLOYMENT_IN_PROGRESS));

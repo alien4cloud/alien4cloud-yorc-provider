@@ -11,14 +11,20 @@ import alien4cloud.paas.model.*;
 import alien4cloud.paas.yorc.configuration.ProviderConfiguration;
 import alien4cloud.paas.yorc.context.rest.AsyncClientHttpRequestFactoryBuilder;
 import alien4cloud.paas.yorc.context.rest.DeploymentClient;
+import alien4cloud.paas.yorc.context.service.DeploymentInfo;
+import alien4cloud.paas.yorc.context.service.DeploymentService;
 import alien4cloud.paas.yorc.context.service.EventService;
 import alien4cloud.paas.yorc.location.AbstractLocationConfigurerFactory;
 import alien4cloud.paas.yorc.service.PluginArchiveService;
 import alien4cloud.paas.yorc.context.tasks.DeployTask;
+import alien4cloud.paas.yorc.util.FutureUtil;
 import com.google.common.collect.Lists;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationContext;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 
 import javax.inject.Inject;
@@ -48,6 +54,9 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 
     @Inject
     private EventService eventService;
+
+    @Inject
+    private DeploymentService deploymentService;
 
     private ProviderConfiguration configuration;
 
@@ -110,9 +119,17 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 
     @Override
     public void getStatus(PaaSDeploymentContext deploymentContext, IPaaSCallback<DeploymentStatus> callback) {
-        // TODO: implements
-        log.error("TODO: getStatus");
-        callback.onSuccess(DeploymentStatus.UNDEPLOYED);
+        DeploymentStatus status = DeploymentStatus.UNDEPLOYED;
+
+        DeploymentInfo info = deploymentService.getDeployment(deploymentContext.getDeploymentPaaSId());
+        if (info != null) {
+            // TODO: get the info from the info itself
+
+            ListenableFuture<String> f = FutureUtil.unwrap(deploymentClient.getStatus(deploymentContext.getDeploymentPaaSId()));
+            // TODO: ...work in progress...
+        }
+
+        callback.onSuccess(status);
     }
 
     @Override

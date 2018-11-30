@@ -20,7 +20,7 @@ import javax.net.ssl.SSLException;
 @Component
 public class DeploymentClient extends AbstractClient {
 
-    public ListenableFuture<ResponseEntity<String>> sendTopologyToYorc(String deploymentId,byte[] bytes) {
+    public ListenableFuture<ResponseEntity<String>> sendTopology(String deploymentId, byte[] bytes) {
         String url = getYorcUrl() + "/deployments/" + deploymentId;
 
         HttpHeaders headers = new HttpHeaders();
@@ -29,6 +29,17 @@ public class DeploymentClient extends AbstractClient {
         HttpEntity<byte[]> entity = new HttpEntity<>(bytes, headers);
 
         return sendRequest(url,HttpMethod.PUT,String.class,entity);
+    }
+
+    public ListenableFuture<ResponseEntity<String>> scaleTopology(String deploymentId,String nodeName,int delta) {
+        String url = getYorcUrl() + "/deployments/" + deploymentId + "/scale/" + nodeName + "?delta=" + delta;
+
+        return sendRequest(url,HttpMethod.POST,String.class, buildHttpEntityWithDefaultHeader());
+    }
+
+    public ListenableFuture<ResponseEntity<String>> getStatus(String deploymentId) {
+        String url = getYorcUrl() + "/deployments/" + deploymentId;
+        return sendRequest(url,HttpMethod.GET,String.class, buildHttpEntityWithDefaultHeader());
     }
 
 }
