@@ -18,6 +18,7 @@
     <tosca.normative.types.version>1.0.0-ALIEN20</tosca.normative.types.version>
     <alien4cloud.kubernetes.api.version>2.1.0-SNAPSHOT</alien4cloud.kubernetes.api.version>
     <spring.fsm.version>2.0.3.RELEASE</spring.fsm.version>
+    <rxjava.version>2.2.4</rxjava.version>
 
     <!-- Embedded TOSCA types versions -->
     <yorc.types.version>1.0.0</yorc.types.version>
@@ -52,6 +53,7 @@
     <dependency>
       <groupId>io.reactivex.rxjava2</groupId>
       <artifactId>rxjava</artifactId>
+      <version>${rxjava.version}</version>
       <scope>provided</scope>
     </dependency>
     <dependency>

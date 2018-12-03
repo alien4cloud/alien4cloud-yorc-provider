@@ -39,6 +39,7 @@ public class DeployTask extends AbstractTask {
     @Inject
     private ZipBuilder zipBuilder;
 
+    @Getter
     private DeploymentInfo info;
 
     private IPaaSCallback<?> callback;
@@ -64,7 +65,7 @@ public class DeployTask extends AbstractTask {
     /**
      * Starting the deployment on task pool
      */
-    private void doStart() {
+    public void doStart() {
         byte[] bytes;
 
         log.debug("Deploying " + info.getContext().getDeploymentPaaSId() + " with id : " + info.getContext().getDeploymentId());
