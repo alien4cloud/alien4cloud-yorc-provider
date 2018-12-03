@@ -1,9 +1,11 @@
 package alien4cloud.paas.yorc.context.tasks;
 
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
 import javax.inject.Inject;
 
+import alien4cloud.paas.yorc.context.rest.response.Event;
 import org.springframework.context.annotation.Scope;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
@@ -15,9 +17,6 @@ import alien4cloud.paas.yorc.context.rest.DeploymentClient;
 import alien4cloud.paas.yorc.context.rest.response.Event;
 import alien4cloud.paas.yorc.context.service.DeploymentInfo;
 import alien4cloud.paas.yorc.context.service.DeploymentService;
-import alien4cloud.paas.yorc.context.service.EventService;
-import alien4cloud.paas.yorc.context.service.fsm.DeploymentEvent;
-import alien4cloud.paas.yorc.context.service.fsm.DeploymentMessages;
 import alien4cloud.paas.yorc.context.service.fsm.StateMachineService;
 import alien4cloud.paas.yorc.service.ZipBuilder;
 import lombok.Getter;
@@ -40,13 +39,11 @@ public class DeployTask extends AbstractTask {
     @Inject
     private ZipBuilder zipBuilder;
 
-    @Inject
-    private EventService eventService;
-
-    @Getter
     private DeploymentInfo info;
 
     private IPaaSCallback<?> callback;
+
+    private EventListener listener;
 
     /**
      * Start the deploy task.
@@ -61,55 +58,74 @@ public class DeployTask extends AbstractTask {
 
         this.callback = callback;
 
-        //getExecutorService().submit(this::doStart);
-        updateStatus(DeploymentMessages.DEPLOYMENT_STARTED);
+        getExecutorService().submit(this::doStart);
     }
 
     /**
      * Starting the deployment on task pool
      */
-    public void doStart() {
+    private void doStart() {
         byte[] bytes;
 
-        if (log.isDebugEnabled())
-            log.debug("Deploying " + info.getContext().getDeploymentPaaSId() + " with id : " + info.getContext()
-                    .getDeploymentId());
+        log.debug("Deploying " + info.getContext().getDeploymentPaaSId() + " with id : " + info.getContext().getDeploymentId());
+
+        //TODO Not sure is deploymentId or deploymentPaaSId
+        //TODO Should it be done by event bus?
+        //fsmService.sendEvent(new DeploymentEvent(info.getContext().getDeploymentId(), DeploymentMessages.DEPLOYMENT_STARTED));
 
         try {
             bytes = zipBuilder.build(info.getContext());
         } catch(IOException e) {
-            updateStatus(DeploymentMessages.FAILURE);
+            //fsmService.sendEvent(new DeploymentEvent(info.getContext().getDeploymentId(), DeploymentMessages.FAILURE));
+            //info.setStatus(DeploymentStatus.FAILURE);
             callback.onFailure(e);
             return;
         }
 
+        // We start the subscription now because we can receive events before the completion of the http request
+        listener = EventListener.builder()
+            .when(Event.EVT_DEPLOYMENT,"deployment_failed",this::onEventFailed)
+            .when(Event.EVT_DEPLOYMENT, "deployed",this::onEventDeployed)
+            .when(Event.EVT_DEPLOYMENT, "deployment_in_progress",this::onEventInProgess)
+            .withTimeout(10,TimeUnit.SECONDS,this::onTimeout)
+            .build(info.getEvents());
+
+        listener.subscribe();
+
+        // Sent our zip
         ListenableFuture<ResponseEntity<String>> f = deploymentClient.sendTopologyToYorc(info.getContext().getDeploymentPaaSId(),bytes);
-        f.addCallback(this::onDeploymentRequestSuccess,this::onDeploymentRequestFailure);
+        f.addCallback(this::onHttpOk,this::onHttpKo);
 
-        updateStatus(DeploymentMessages.DEPLOYMENT_SUBMITTED);
+        //fsmService.sendEvent(new DeploymentEvent(info.getContext().getDeploymentId(), DeploymentMessages.DEPLOYMENT_IN_PROGRESS));
     }
 
-    private void onDeploymentRequestSuccess(ResponseEntity<String> value) {
-        updateStatus(DeploymentMessages.DEPLOYMENT_SUCCESS);
-        if (log.isInfoEnabled()) {
-            log.info("Deployment Request ok",value);
-        }
-
-        eventService.subscribe(info.getContext().getDeploymentPaaSId(),this::onEvent);
+    private void onHttpOk(ResponseEntity<String> value) {
+        //fsmService.sendEvent(new DeploymentEvent(info.getContext().getDeploymentId(), DeploymentMessages.DEPLOYMENT_SUCCESS));
+        log.info("HTTP Request OK : {}", value);
     }
 
-    private void onDeploymentRequestFailure(Throwable t) {
-        updateStatus(DeploymentMessages.FAILURE);
-        if (log.isErrorEnabled())
-            log.error("Deployment Failure: {}", t);
+    private void onHttpKo(Throwable t) {
+        //fsmService.sendEvent(new DeploymentEvent(info.getContext().getDeploymentId(), DeploymentMessages.FAILURE));
+        log.error("HTTP Request OK : {}", t);
+        listener.cancel();
     }
 
-    private void onEvent(Event event) {
-        if (log.isInfoEnabled())
-            log.info("Event: {}", event);
+    private void onEventFailed(Event event) {
+        log.info("EVENT:Failed");
     }
 
-    private void updateStatus(DeploymentMessages message) {
-        info.setStatus(fsmService.sendEvent(new DeploymentEvent(info.getContext().getDeploymentId(), message, this)));
+    private void onEventDeployed(Event event) {
+        log.info("EVENT:Deployed");
+        listener.cancel();
     }
+
+    private void onEventInProgess(Event event) {
+        log.info("EVENT:InProgress");
+    }
+
+    private void onTimeout(Throwable t) {
+        log.info("TimeOut");
+        listener.cancel();
+    }
+
 }

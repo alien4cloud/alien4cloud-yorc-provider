@@ -13,7 +13,7 @@ import org.springframework.util.concurrent.ListenableFuture;
 import javax.inject.Inject;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.function.Consumer;
+
 
 @Slf4j
 @Service
@@ -25,15 +25,20 @@ public class EventService {
     @Inject
     private EventClient client;
 
+    @Inject
+    private DeploymentService deploymentService;
+
+    /**
+     * Index
+     */
     private int index = 1;
 
+    /**
+     * Initialize the polling
+     */
     public void init() {
         // Bootstrap the service on task executor
         executorService.submit(this::queryEvents);
-    }
-
-    public void subscribe(String paasId,Consumer<Event> consumer) {
-
     }
 
     private void queryEvents() {
@@ -47,7 +52,20 @@ public class EventService {
         EventResponse response = entity.getBody();
 
         for (Event event : response.getEvents()) {
-            log.info("Got Event for {} {}",event.getDeployment_id(),event.getType());
+            switch(event.getType()) {
+                case Event.EVT_INSTANCE:
+                    //log.debug("Instance Event [{}/{}]",event.getType(),event.getDeployment_id());
+                    break;
+                case Event.EVT_DEPLOYMENT:
+                case Event.EVT_OPERATION:
+                case Event.EVT_SCALING:
+                case Event.EVT_WORKFLOW:
+                    log.debug("YORC EVENT [{}/{}]",event.getType(),event.getDeployment_id());
+                    broadcast(event);
+                    break;
+                default:
+                    log.warn ("Unknown Yorc Event [{}/{}]",event.getType(),event.getDeployment_id());
+            }
         }
 
         index = response.getLast_index();
@@ -65,6 +83,13 @@ public class EventService {
             // Something bad happen, we reschedule the polling later
             // to avoid a flood on yorc
             executorService.schedule(this::queryEvents,2, TimeUnit.SECONDS);
+        }
+    }
+
+    private void broadcast(Event event) {
+        DeploymentInfo info = deploymentService.getDeployment(event.getDeployment_id());
+        if (info != null) {
+            info.getEventsAsSubject().onNext(event);
         }
     }
 }

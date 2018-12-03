@@ -50,6 +50,11 @@
       <scope>provided</scope>
     </dependency>
     <dependency>
+      <groupId>io.reactivex.rxjava2</groupId>
+      <artifactId>rxjava</artifactId>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
       <groupId>org.springframework.statemachine</groupId>
       <artifactId>spring-statemachine-core</artifactId>
       <version>${spring.fsm.version}</version>
