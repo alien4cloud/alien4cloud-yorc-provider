@@ -1,11 +1,14 @@
 package alien4cloud.paas.yorc.util;
 
 import com.google.common.base.Function;
+import com.google.common.util.concurrent.FutureCallback;
 import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.ResponseEntity;
+import org.springframework.util.concurrent.FailureCallback;
 import org.springframework.util.concurrent.ListenableFutureCallback;
+import org.springframework.util.concurrent.SuccessCallback;
 
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
@@ -67,5 +70,19 @@ public class FutureUtil {
         return Futures.transform(gf, (Function<ResponseEntity<T>,T>) HttpEntity::getBody);
     }
 
+    public static <T> ListenableFuture<T> addCallback(ListenableFuture<T> future,SuccessCallback<T> successCallback, FailureCallback failureCallback) {
+        Futures.addCallback(future, new FutureCallback<T>() {
+            @Override
+            public void onSuccess(T t) {
+                successCallback.onSuccess(t);
+            }
+
+            @Override
+            public void onFailure(Throwable throwable) {
+                failureCallback.onFailure(throwable);
+            }
+        });
+        return future;
+    }
 
 }

@@ -17,20 +17,20 @@ import alien4cloud.paas.yorc.context.service.EventService;
 import alien4cloud.paas.yorc.location.AbstractLocationConfigurerFactory;
 import alien4cloud.paas.yorc.service.PluginArchiveService;
 import alien4cloud.paas.yorc.context.tasks.DeployTask;
-import alien4cloud.paas.yorc.util.FutureUtil;
 import com.google.common.collect.Lists;
-import com.google.common.util.concurrent.Futures;
 import com.google.common.util.concurrent.ListenableFuture;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationContext;
-import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpClientErrorException;
 
 import javax.inject.Inject;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 
 @Slf4j
 @Component
@@ -85,7 +85,11 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 
     @Override
     public void init(Map<String, PaaSTopologyDeploymentContext> activeDeployments) {
-        // TODO: implements
+        log.info("Init Yorc plugin for " + activeDeployments.size() + " active deployments");
+
+        for (PaaSTopologyDeploymentContext ctx : activeDeployments.values()) {
+            doUpdateDeploymentInfo(ctx);
+        }
 
         // Start services
         eventService.init();
@@ -119,17 +123,29 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 
     @Override
     public void getStatus(PaaSDeploymentContext deploymentContext, IPaaSCallback<DeploymentStatus> callback) {
-        DeploymentStatus status = DeploymentStatus.UNDEPLOYED;
-
         DeploymentInfo info = deploymentService.getDeployment(deploymentContext.getDeploymentPaaSId());
         if (info != null) {
             // TODO: get the info from the info itself
 
-            ListenableFuture<String> f = FutureUtil.unwrap(deploymentClient.getStatus(deploymentContext.getDeploymentPaaSId()));
-            // TODO: ...work in progress...
-        }
+            ListenableFuture<String> f = deploymentClient.getStatus(deploymentContext.getDeploymentPaaSId());
 
-        callback.onSuccess(status);
+            try {
+                DeploymentStatus status = getDeploymentStatusFromString(f.get());
+                callback.onSuccess(status);
+            } catch (InterruptedException e) {
+                callback.onFailure(e);
+            } catch(ExecutionException e) {
+                if (e.getCause() instanceof HttpClientErrorException) {
+                    HttpClientErrorException he = (HttpClientErrorException) e.getCause();
+                    if (he.getStatusCode().equals(HttpStatus.NOT_FOUND)) {
+                        callback.onSuccess(DeploymentStatus.UNDEPLOYED);
+                        return;
+                    }
+                }
+                callback.onFailure(e);
+            }
+        }
+        callback.onSuccess(DeploymentStatus.UNDEPLOYED);
     }
 
     @Override
@@ -159,4 +175,36 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
         // TODO: implements
     }
 
+    /**
+     * Maps Yorc DeploymentStatus in alien4cloud DeploymentStatus.
+     * See yorc/deployments/structs.go to see all possible values
+     * @param state
+     * @return
+     */
+    private static DeploymentStatus getDeploymentStatusFromString(String state) {
+        switch (state) {
+            case "DEPLOYED":
+                return DeploymentStatus.DEPLOYED;
+            case "UNDEPLOYED":
+                return DeploymentStatus.UNDEPLOYED;
+            case "DEPLOYMENT_IN_PROGRESS":
+            case "SCALING_IN_PROGRESS":
+                return DeploymentStatus.DEPLOYMENT_IN_PROGRESS;
+            case "UNDEPLOYMENT_IN_PROGRESS":
+                return DeploymentStatus.UNDEPLOYMENT_IN_PROGRESS;
+            case "INITIAL":
+                return DeploymentStatus.INIT_DEPLOYMENT;
+            case "DEPLOYMENT_FAILED":
+            case "UNDEPLOYMENT_FAILED":
+                return DeploymentStatus.FAILURE;
+            default:
+                return DeploymentStatus.UNKNOWN;
+        }
+    }
+
+    private void doUpdateDeploymentInfo(PaaSTopologyDeploymentContext ctx) {
+        log.info("Active Deployment: {}",ctx.getDeploymentPaaSId());
+
+        // TODO: implement
+    }
 }

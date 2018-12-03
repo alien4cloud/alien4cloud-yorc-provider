@@ -1,25 +1,29 @@
 package alien4cloud.paas.yorc.context.rest;
 
-import alien4cloud.paas.exception.PluginConfigurationException;
-import alien4cloud.paas.yorc.configuration.ProviderConfiguration;
-import io.netty.channel.EventLoopGroup;
-import io.netty.handler.ssl.SslContext;
-import io.netty.handler.ssl.SslContextBuilder;
-import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
+import alien4cloud.paas.yorc.context.rest.response.DeploymentInfoResponse;
+import alien4cloud.paas.yorc.util.FutureUtil;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Function;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
-import org.springframework.http.client.Netty4ClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
-import org.springframework.util.concurrent.ListenableFuture;
-import org.springframework.web.client.AsyncRestTemplate;
 
-import javax.inject.Inject;
-import javax.net.ssl.SSLException;
 
 @Slf4j
 @Component
 public class DeploymentClient extends AbstractClient {
 
+    /**
+     * Send the topology to Yorc
+     *
+     * @param deploymentId
+     * @param bytes zip file as bytes
+     * @return
+     */
     public ListenableFuture<ResponseEntity<String>> sendTopology(String deploymentId, byte[] bytes) {
         String url = getYorcUrl() + "/deployments/" + deploymentId;
 
@@ -28,18 +32,48 @@ public class DeploymentClient extends AbstractClient {
         headers.add(HttpHeaders.CONTENT_TYPE, "application/zip");
         HttpEntity<byte[]> entity = new HttpEntity<>(bytes, headers);
 
-        return sendRequest(url,HttpMethod.PUT,String.class,entity);
+        return FutureUtil.convert(sendRequest(url,HttpMethod.PUT,String.class,entity));
     }
 
+    /**
+     * Scale the topology.
+     *
+     * @param deploymentId
+     * @param nodeName
+     * @param delta
+     * @return
+     */
     public ListenableFuture<ResponseEntity<String>> scaleTopology(String deploymentId,String nodeName,int delta) {
         String url = getYorcUrl() + "/deployments/" + deploymentId + "/scale/" + nodeName + "?delta=" + delta;
 
-        return sendRequest(url,HttpMethod.POST,String.class, buildHttpEntityWithDefaultHeader());
+        return FutureUtil.convert(sendRequest(url,HttpMethod.POST,String.class, buildHttpEntityWithDefaultHeader()));
     }
 
-    public ListenableFuture<ResponseEntity<String>> getStatus(String deploymentId) {
+    /**
+     * Get the status of a topology.
+     *
+     * @param deploymentId
+     * @return
+     */
+    public ListenableFuture<String> getStatus(String deploymentId) {
         String url = getYorcUrl() + "/deployments/" + deploymentId;
-        return sendRequest(url,HttpMethod.GET,String.class, buildHttpEntityWithDefaultHeader());
+
+        ListenableFuture<String> f = FutureUtil.unwrap(sendRequest(url,HttpMethod.GET,String.class, buildHttpEntityWithDefaultHeader()));
+
+        return Futures.transform(f,(Function<String,String>) this::extractStatus);
     }
 
+    public ListenableFuture<DeploymentInfoResponse> getInfos(String deploymentId) {
+        String url = getYorcUrl() + "/deployments/" + deploymentId;
+        return FutureUtil.unwrap(sendRequest(url,HttpMethod.GET,DeploymentInfoResponse.class, buildHttpEntityWithDefaultHeader()));
+    }
+
+    @SneakyThrows
+    private String extractStatus(String json) {
+        ObjectMapper mapper = new ObjectMapper();
+        JsonNode root = mapper.readTree(json);
+        JsonNode node = root.path("status");
+
+        return node.asText();
+    }
 }

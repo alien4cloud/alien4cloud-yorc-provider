@@ -6,10 +6,13 @@ import java.util.concurrent.TimeUnit;
 import javax.inject.Inject;
 
 import alien4cloud.paas.yorc.context.rest.response.Event;
+import alien4cloud.paas.yorc.util.FutureUtil;
+import com.google.common.util.concurrent.FutureCallback;
+import com.google.common.util.concurrent.Futures;
+import com.google.common.util.concurrent.ListenableFuture;
 import org.springframework.context.annotation.Scope;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
-import org.springframework.util.concurrent.ListenableFuture;
 
 import alien4cloud.paas.IPaaSCallback;
 import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
@@ -92,7 +95,7 @@ public class DeployTask extends AbstractTask {
 
         // Sent our zip
         ListenableFuture<ResponseEntity<String>> f = deploymentClient.sendTopology(info.getContext().getDeploymentPaaSId(),bytes);
-        f.addCallback(this::onHttpOk,this::onHttpKo);
+        FutureUtil.addCallback(f,this::onHttpOk,this::onHttpKo);
 
         //fsmService.sendEvent(new DeploymentEvent(info.getContext().getDeploymentId(), DeploymentMessages.DEPLOYMENT_IN_PROGRESS));
     }
@@ -106,15 +109,18 @@ public class DeployTask extends AbstractTask {
         //fsmService.sendEvent(new DeploymentEvent(info.getContext().getDeploymentId(), DeploymentMessages.FAILURE));
         log.error("HTTP Request OK : {}", t);
         listener.cancel();
+        callback.onFailure(t);
     }
 
     private void onEventFailed(Event event) {
         log.info("EVENT:Failed");
+        callback.onFailure(null);
     }
 
     private void onEventDeployed(Event event) {
         log.info("EVENT:Deployed");
         listener.cancel();
+        callback.onSuccess(null);
     }
 
     private void onEventInProgess(Event event) {
@@ -124,6 +130,7 @@ public class DeployTask extends AbstractTask {
     private void onTimeout(Throwable t) {
         log.info("TimeOut");
         listener.cancel();
+        callback.onFailure(t);
     }
 
 }
