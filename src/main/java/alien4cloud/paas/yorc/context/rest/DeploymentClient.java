@@ -68,6 +68,21 @@ public class DeploymentClient extends AbstractClient {
         return FutureUtil.unwrap(sendRequest(url,HttpMethod.GET,DeploymentInfoResponse.class, buildHttpEntityWithDefaultHeader()));
     }
 
+    public ListenableFuture<String> undeploy(String deploymentId) {
+        return undeploy(deploymentId,false);
+    }
+
+    public ListenableFuture<String> undeploy(String deploymentId,boolean purge) {
+        String url = getYorcUrl() + "/deployments/" + deploymentId;
+
+        if (purge == true) {
+            url += "?purge";
+        }
+
+        ListenableFuture<ResponseEntity<String>> f = FutureUtil.convert(sendRequest(url,HttpMethod.DELETE,String.class,buildHttpEntityWithDefaultHeader()));
+        return Futures.transform(f,(Function<ResponseEntity<String>,String>) this::extractLocation);
+    }
+
     @SneakyThrows
     private String extractStatus(String json) {
         ObjectMapper mapper = new ObjectMapper();
@@ -76,4 +91,5 @@ public class DeploymentClient extends AbstractClient {
 
         return node.asText();
     }
+
 }

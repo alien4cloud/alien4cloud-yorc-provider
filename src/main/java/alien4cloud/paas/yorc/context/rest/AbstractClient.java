@@ -77,4 +77,8 @@ public abstract class AbstractClient {
 
         return restTemplate.exchange(url,method,entity,responseType);
     }
+
+    protected final <T> String extractLocation(ResponseEntity<T> entity) {
+        return entity.getHeaders().getFirst("Location");
+    }
 }
