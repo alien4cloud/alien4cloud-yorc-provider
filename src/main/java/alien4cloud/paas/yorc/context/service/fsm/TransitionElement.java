@@ -9,14 +9,14 @@ import lombok.Getter;
 class TransitionElement {
 
 	@Getter
-	private DeploymentStates source;
+	private FsmStates source;
 
 	@Getter
-	private DeploymentStates target;
+	private FsmStates target;
 
 	@Getter
 	private DeploymentMessages inputEvent;
 
 	@Getter
-	private Action<DeploymentStates, DeploymentMessages> action;
+	private Action<FsmStates, DeploymentMessages> action;
 }

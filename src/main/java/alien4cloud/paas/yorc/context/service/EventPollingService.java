@@ -1,23 +1,24 @@
 package alien4cloud.paas.yorc.context.service;
 
-import alien4cloud.paas.yorc.context.rest.EventClient;
-import alien4cloud.paas.yorc.context.rest.response.Event;
-import alien4cloud.paas.yorc.context.rest.response.EventResponse;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
-import io.netty.handler.timeout.ReadTimeoutException;
-import lombok.extern.slf4j.Slf4j;
+import javax.inject.Inject;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.util.concurrent.ListenableFuture;
 
-import javax.inject.Inject;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
+import alien4cloud.paas.yorc.context.rest.EventClient;
+import alien4cloud.paas.yorc.context.rest.response.Event;
+import alien4cloud.paas.yorc.context.rest.response.EventResponse;
+import io.netty.handler.timeout.ReadTimeoutException;
+import lombok.extern.slf4j.Slf4j;
 
 
 @Slf4j
 @Service
-public class EventService {
+public class EventPollingService {
 
     @Inject
     protected ScheduledExecutorService executorService;
@@ -26,7 +27,7 @@ public class EventService {
     private EventClient client;
 
     @Inject
-    private DeploymentService deploymentService;
+    private EventBusService evenBusService;
 
     /**
      * Index
@@ -37,7 +38,7 @@ public class EventService {
      * Initialize the polling
      */
     public void init() {
-        // Bootstrap the service on task executor
+        // Bootstrap the evenBusService on task executor
         executorService.submit(this::queryEvents);
     }
 
@@ -61,7 +62,7 @@ public class EventService {
                 case Event.EVT_SCALING:
                 case Event.EVT_WORKFLOW:
                     log.debug("YORC EVENT [{}/{}]",event.getType(),event.getDeployment_id());
-                    broadcast(event);
+                    evenBusService.publish(event);
                     break;
                 default:
                     log.warn ("Unknown Yorc Event [{}/{}]",event.getType(),event.getDeployment_id());
@@ -83,13 +84,6 @@ public class EventService {
             // Something bad happen, we reschedule the polling later
             // to avoid a flood on yorc
             executorService.schedule(this::queryEvents,2, TimeUnit.SECONDS);
-        }
-    }
-
-    private void broadcast(Event event) {
-        DeploymentInfo info = deploymentService.getDeployment(event.getDeployment_id());
-        if (info != null) {
-            info.getEventsAsSubject().onNext(event);
         }
     }
 }

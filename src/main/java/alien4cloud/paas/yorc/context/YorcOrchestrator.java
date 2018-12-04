@@ -1,5 +1,17 @@
 package alien4cloud.paas.yorc.context;
 
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+
+import javax.inject.Inject;
+
+import org.springframework.context.ApplicationContext;
+import org.springframework.stereotype.Component;
+
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
+
 import alien4cloud.orchestrators.plugin.ILocationConfiguratorPlugin;
 import alien4cloud.orchestrators.plugin.IOrchestratorPlugin;
 import alien4cloud.orchestrators.plugin.model.PluginArchive;
@@ -7,24 +19,23 @@ import alien4cloud.paas.IPaaSCallback;
 import alien4cloud.paas.exception.MaintenanceModeException;
 import alien4cloud.paas.exception.OperationExecutionException;
 import alien4cloud.paas.exception.PluginConfigurationException;
-import alien4cloud.paas.model.*;
+import alien4cloud.paas.model.AbstractMonitorEvent;
+import alien4cloud.paas.model.DeploymentStatus;
+import alien4cloud.paas.model.InstanceInformation;
+import alien4cloud.paas.model.NodeOperationExecRequest;
+import alien4cloud.paas.model.PaaSDeploymentContext;
+import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
 import alien4cloud.paas.yorc.configuration.ProviderConfiguration;
 import alien4cloud.paas.yorc.context.rest.AsyncClientHttpRequestFactoryBuilder;
-import alien4cloud.paas.yorc.context.rest.DeploymentClient;
-import alien4cloud.paas.yorc.context.service.EventService;
+import alien4cloud.paas.yorc.context.service.EventBusService;
+import alien4cloud.paas.yorc.context.service.EventPollingService;
+import alien4cloud.paas.yorc.context.service.fsm.DeploymentMessages;
+import alien4cloud.paas.yorc.context.service.fsm.FsmEvent;
+import alien4cloud.paas.yorc.context.service.fsm.StateMachineService;
 import alien4cloud.paas.yorc.location.AbstractLocationConfigurerFactory;
 import alien4cloud.paas.yorc.service.PluginArchiveService;
-import alien4cloud.paas.yorc.context.tasks.DeployTask;
-import com.google.common.collect.Lists;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationContext;
-import org.springframework.stereotype.Component;
-
-import javax.inject.Inject;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
 
 @Slf4j
 @Component
@@ -41,15 +52,16 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
     private AbstractLocationConfigurerFactory yorcLocationConfigurerFactory;
 
     @Inject
-    private DeploymentClient deploymentClient;
-
-    @Inject
     private AsyncClientHttpRequestFactoryBuilder factoryBuilder;
 
     @Inject
-    private EventService eventService;
+    private EventPollingService eventService;
 
-    private ProviderConfiguration configuration;
+    @Inject
+    private StateMachineService stateMachineService;
+
+	@Inject
+	private EventBusService eventBusService;
 
     @Override
     public ILocationConfiguratorPlugin getConfigurator(String locationType) {
@@ -68,24 +80,23 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 
     @Override
     public void setConfiguration(String orchestratorId, ProviderConfiguration configuration) throws PluginConfigurationException {
-        this.configuration = configuration;
-
         // Configure the rest Client
         factoryBuilder.setConfiguration(configuration);
     }
 
     @Override
     public void init(Map<String, PaaSTopologyDeploymentContext> activeDeployments) {
-        // TODO: implements
-
+		// Create the state machines for each deployment
+		stateMachineService.newStateMachine(activeDeployments.keySet().toArray(new String[0]));
         // Start services
         eventService.init();
     }
 
     @Override
     public void deploy(PaaSTopologyDeploymentContext deploymentContext, IPaaSCallback<?> callback) {
-        DeployTask task = (DeployTask) context.getBean(DeployTask.class);
-        task.start(deploymentContext,callback);
+        stateMachineService.newStateMachine(deploymentContext.getDeploymentPaaSId());
+        eventBusService.publish(new FsmEvent(deploymentContext.getDeploymentPaaSId(), DeploymentMessages.DEPLOYMENT_STARTED,
+				ImmutableMap.of("callback", callback, "deploymentContext", deploymentContext)));
     }
 
     @Override
@@ -111,8 +122,7 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
     @Override
     public void getStatus(PaaSDeploymentContext deploymentContext, IPaaSCallback<DeploymentStatus> callback) {
         // TODO: implements
-        log.error("TODO: getStatus");
-        callback.onSuccess(DeploymentStatus.UNDEPLOYED);
+        callback.onSuccess(stateMachineService.getState(deploymentContext.getDeploymentPaaSId()));
     }
 
     @Override

@@ -1,10 +1,15 @@
 package alien4cloud.paas.yorc.context.service.fsm;
 
-import java.util.Arrays;
 import java.util.EnumSet;
-import java.util.List;
 
+import javax.inject.Inject;
+
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Lazy;
+import org.springframework.context.annotation.Scope;
 import org.springframework.statemachine.StateMachine;
+import org.springframework.statemachine.action.Action;
 import org.springframework.statemachine.annotation.WithStateMachine;
 import org.springframework.statemachine.config.StateMachineBuilder;
 
@@ -18,24 +23,18 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class FSM {
 
-	/**
-	 * States transition graph
-	 */
-	private static final List<TransitionElement> graph = Arrays.asList(
-			new TransitionElement(DeploymentStates.UNDEPLOYED, DeploymentStates.DEPLOYMENT_INIT, DeploymentMessages.DEPLOYMENT_STARTED, DeploymentActions.buildZip()),
-			new TransitionElement(DeploymentStates.DEPLOYMENT_INIT, DeploymentStates.DEPLOYMENT_SUBMITTED, DeploymentMessages.DEPLOYMENT_SUBMITTED, null),
-			new TransitionElement(DeploymentStates.DEPLOYMENT_SUBMITTED, DeploymentStates.DEPLOYMENT_IN_PROGRESS, DeploymentMessages.DEPLOYMENT_IN_PROGRESS, null),
-			new TransitionElement(DeploymentStates.DEPLOYMENT_IN_PROGRESS, DeploymentStates.DEPLOYED, DeploymentMessages.DEPLOYMENT_SUCCESS, null),
-			new TransitionElement(DeploymentStates.DEPLOYED, DeploymentStates.UNDEPLOYMENT_IN_PROGRESS, DeploymentMessages.UNDEPLOYMENT_STARTED, null),
-			new TransitionElement(DeploymentStates.UNDEPLOYMENT_IN_PROGRESS, DeploymentStates.UNDEPLOYED, DeploymentMessages.UNDEPLOYMENT_SUCCESS, null)
-			);
+	@Inject
+	private ApplicationContext context;
 
 	/**
 	 * Build a new state machine
 	 * @return New state machine
 	 */
-	protected static StateMachine<DeploymentStates, DeploymentMessages> buildMachine(DeploymentStates initialStates) {
-		StateMachineBuilder.Builder<DeploymentStates, DeploymentMessages> builder = StateMachineBuilder.builder();
+	@Bean(name = "buildMachine")
+	@Scope("prototype")
+	@Lazy(false)
+	protected StateMachine<FsmStates, DeploymentMessages> buildMachine(FsmStates initialStates) {
+		StateMachineBuilder.Builder<FsmStates, DeploymentMessages> builder = StateMachineBuilder.builder();
 		try {
 			configureStates(builder, initialStates);
 			configureTransitions(builder);
@@ -48,29 +47,52 @@ public class FSM {
 		return builder.build();
 	}
 
-	private static void configureConfiguration(StateMachineBuilder.Builder<DeploymentStates, DeploymentMessages> builder)
+	private void configureConfiguration(StateMachineBuilder.Builder<FsmStates, DeploymentMessages> builder)
 			throws Exception {
 		builder.configureConfiguration().withConfiguration().autoStartup(true);
 	}
 
-	private static void configureTransitions(StateMachineBuilder.Builder<DeploymentStates, DeploymentMessages> builder)
+	/**
+	 * Transition graph
+	 * @param builder state machine builder
+	 * @throws Exception exception
+	 */
+	private void configureTransitions(StateMachineBuilder.Builder<FsmStates, DeploymentMessages> builder)
 			throws Exception {
-		for (TransitionElement element : graph) {
-			builder.configureTransitions()
-					.withExternal()
-					.source(element.getSource()).target(element.getTarget())
-					.event(element.getInputEvent())
-					.action(element.getAction())
-					.and();
-		}
+		builder.configureTransitions()
+				.withExternal()
+				.source(FsmStates.UNDEPLOYED).target(FsmStates.DEPLOYMENT_INIT)
+				.event(DeploymentMessages.DEPLOYMENT_STARTED)
+				.action((Action<FsmStates, DeploymentMessages>) context.getBean("buildAndSendZip"))
+				.and()
+				.withExternal()
+				.source(FsmStates.DEPLOYMENT_INIT).target(FsmStates.DEPLOYMENT_SUBMITTED)
+				.event(DeploymentMessages.DEPLOYMENT_SUBMITTED)
+				.and()
+				.withExternal()
+				.source(FsmStates.DEPLOYMENT_SUBMITTED).target(FsmStates.DEPLOYMENT_IN_PROGRESS)
+				.event(DeploymentMessages.DEPLOYMENT_IN_PROGRESS)
+				.and()
+				.withExternal()
+				.source(FsmStates.DEPLOYMENT_IN_PROGRESS).target(FsmStates.DEPLOYED)
+				.event(DeploymentMessages.DEPLOYMENT_SUCCESS)
+				.and()
+				.withExternal()
+				.source(FsmStates.DEPLOYED).target(FsmStates.UNDEPLOYMENT_IN_PROGRESS)
+				.event(DeploymentMessages.UNDEPLOYMENT_STARTED)
+				.and()
+				.withExternal()
+				.source(FsmStates.UNDEPLOYMENT_IN_PROGRESS).target(FsmStates.UNDEPLOYED)
+				.event(DeploymentMessages.UNDEPLOYMENT_SUCCESS);
+
 	}
 
-	private static void configureStates(StateMachineBuilder.Builder<DeploymentStates, DeploymentMessages> builder, DeploymentStates initialState)
+	private void configureStates(StateMachineBuilder.Builder<FsmStates, DeploymentMessages> builder, FsmStates initialState)
 			throws Exception {
 		builder.configureStates()
 				.withStates()
 				.initial(initialState)
-				.states(EnumSet.allOf(DeploymentStates.class));
+				.states(EnumSet.allOf(FsmStates.class));
 	}
 
 }

@@ -1,19 +1,20 @@
-package alien4cloud.paas.yorc.context.tasks;
-
-import alien4cloud.paas.yorc.context.rest.response.Event;
-import com.google.common.collect.Maps;
-import io.reactivex.Observable;
-import io.reactivex.Scheduler;
-import io.reactivex.disposables.Disposable;
-import lombok.extern.slf4j.Slf4j;
+package alien4cloud.paas.yorc.context.service;
 
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Consumer;
 
+import com.google.common.collect.Maps;
+
+import alien4cloud.paas.yorc.context.rest.response.Event;
+import io.reactivex.Observable;
+import io.reactivex.Scheduler;
+import io.reactivex.disposables.Disposable;
+import lombok.extern.slf4j.Slf4j;
+
 @Slf4j
-public class EventListener {
+class EventListener {
 
     // Event Consumers
     private Map<String,Consumer<Event>> consumers = Maps.newHashMap();
@@ -40,6 +41,11 @@ public class EventListener {
 
         private Builder() {
             instance = new EventListener();
+        }
+
+        public Builder when(String type, Consumer<Event> consumer) {
+            instance.consumers.put(type, consumer);
+            return this;
         }
 
         public Builder when(String type,String status,Consumer<Event> consumer) {
@@ -106,7 +112,8 @@ public class EventListener {
      * @param event
      */
     private void onEvent(Event event) {
-        String key = event.getType() + "/" + event.getStatus();
+        //String key = event.getType() + "/" + event.getStatus();
+        String key = event.getType();
         Consumer<Event> consumer = consumers.get(key);
         if (consumer != null) {
             consumer.accept(event);
