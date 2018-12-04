@@ -77,8 +77,6 @@ public abstract class AbstractClient {
             logRequest(url, method, responseType, entity);
         }
 
-        ListenableFuture<ResponseEntity<T>> future = restTemplate.exchange(url,method,entity,responseType);
-
         return fromFuture(restTemplate.exchange(url,method,entity,responseType))
                 .onErrorResumeNext( throwable -> {
                     if (throwable instanceof ExecutionException) {
