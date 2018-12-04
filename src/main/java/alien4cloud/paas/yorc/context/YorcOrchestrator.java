@@ -17,20 +17,18 @@ import alien4cloud.paas.yorc.context.service.EventService;
 import alien4cloud.paas.yorc.location.AbstractLocationConfigurerFactory;
 import alien4cloud.paas.yorc.service.PluginArchiveService;
 import alien4cloud.paas.yorc.context.tasks.DeployTask;
+import alien4cloud.paas.yorc.util.RestUtil;
 import com.google.common.collect.Lists;
-import com.google.common.util.concurrent.ListenableFuture;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationContext;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.HttpClientErrorException;
 
 import javax.inject.Inject;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
 
 @Slf4j
 @Component
@@ -127,25 +125,21 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
         if (info != null) {
             // TODO: get the info from the info itself
 
-            ListenableFuture<String> f = deploymentClient.getStatus(deploymentContext.getDeploymentPaaSId());
-
-            try {
-                DeploymentStatus status = getDeploymentStatusFromString(f.get());
-                callback.onSuccess(status);
-            } catch (InterruptedException e) {
-                callback.onFailure(e);
-            } catch(ExecutionException e) {
-                if (e.getCause() instanceof HttpClientErrorException) {
-                    HttpClientErrorException he = (HttpClientErrorException) e.getCause();
-                    if (he.getStatusCode().equals(HttpStatus.NOT_FOUND)) {
-                        callback.onSuccess(DeploymentStatus.UNDEPLOYED);
-                        return;
-                    }
-                }
-                callback.onFailure(e);
-            }
+            deploymentClient.getStatus(deploymentContext.getDeploymentPaaSId())
+                .map(YorcOrchestrator::getDeploymentStatusFromString)
+                .subscribe(
+                       status ->  callback.onSuccess(status),
+                       throwable -> {
+                            if (RestUtil.isHttpError(throwable,HttpStatus.NOT_FOUND)) {
+                                callback.onSuccess(DeploymentStatus.UNDEPLOYED);
+                            } else {
+                                callback.onFailure(throwable);
+                            }
+                       }
+                );
+        } else {
+            callback.onSuccess(DeploymentStatus.UNDEPLOYED);
         }
-        callback.onSuccess(DeploymentStatus.UNDEPLOYED);
     }
 
     @Override

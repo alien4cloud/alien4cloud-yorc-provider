@@ -4,11 +4,11 @@ import alien4cloud.paas.yorc.context.rest.EventClient;
 import alien4cloud.paas.yorc.context.rest.response.Event;
 import alien4cloud.paas.yorc.context.rest.response.EventResponse;
 
+import alien4cloud.paas.yorc.observer.CallbackObserver;
 import io.netty.handler.timeout.ReadTimeoutException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.util.concurrent.ListenableFuture;
 
 import javax.inject.Inject;
 import java.util.concurrent.ScheduledExecutorService;
@@ -44,8 +44,9 @@ public class EventService {
     private void queryEvents() {
         log.debug("get events - index={}",index);
 
-        ListenableFuture<ResponseEntity<EventResponse>> f = client.getLogFromYorc(index);
-        f.addCallback(this::processEvents,this::processFailure);
+        client.getLogFromYorc(index).subscribe(
+                new CallbackObserver<>(this::processEvents,this::processFailure)
+        );
     }
 
     private void processEvents(ResponseEntity<EventResponse> entity) {

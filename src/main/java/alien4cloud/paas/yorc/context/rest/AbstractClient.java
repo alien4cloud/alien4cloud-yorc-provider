@@ -1,16 +1,18 @@
 package alien4cloud.paas.yorc.context.rest;
 
 import alien4cloud.paas.yorc.event.ConfigurationUpdatedEvent;
+import io.reactivex.Single;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.http.*;
-import org.springframework.http.client.AsyncClientHttpRequestFactory;
 import org.springframework.http.client.Netty4ClientHttpRequestFactory;
 import org.springframework.util.concurrent.ListenableFuture;
+import org.springframework.util.concurrent.ListenableFutureCallback;
 import org.springframework.web.client.AsyncRestTemplate;
 
 import javax.inject.Inject;
+import java.util.concurrent.ExecutionException;
 
 @Slf4j
 public abstract class AbstractClient {
@@ -70,15 +72,38 @@ public abstract class AbstractClient {
         return new HttpEntity<>(headers);
     }
 
-    public <T> ListenableFuture<ResponseEntity<T>> sendRequest(String url, HttpMethod method, Class<T> responseType, HttpEntity entity) {
+    public <T> Single<ResponseEntity<T>> sendRequest(String url, HttpMethod method, Class<T> responseType, HttpEntity entity) {
         if (log.isDebugEnabled()) {
             logRequest(url, method, responseType, entity);
         }
 
-        return restTemplate.exchange(url,method,entity,responseType);
+        ListenableFuture<ResponseEntity<T>> future = restTemplate.exchange(url,method,entity,responseType);
+
+        return fromFuture(restTemplate.exchange(url,method,entity,responseType))
+                .onErrorResumeNext( throwable -> {
+                    if (throwable instanceof ExecutionException) {
+                        // Unwrap exception
+                        throwable = throwable.getCause();
+                    }
+                    return Single.error(throwable);
+                });
     }
 
-    protected final <T> String extractLocation(ResponseEntity<T> entity) {
-        return entity.getHeaders().getFirst("Location");
+    protected final <T> Single<T> fromFuture(ListenableFuture<T> future) {
+        return Single.defer(() ->
+            Single.create(source -> {
+                future.addCallback(new ListenableFutureCallback<T>() {
+                    @Override
+                    public void onFailure(Throwable throwable) {
+                        source.onError(throwable);
+                    }
+
+                    @Override
+                    public void onSuccess(T t) {
+                        source.onSuccess(t);
+                    }
+                });
+            })
+        );
     }
 }

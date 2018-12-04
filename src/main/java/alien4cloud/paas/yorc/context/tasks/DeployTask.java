@@ -6,10 +6,8 @@ import java.util.concurrent.TimeUnit;
 import javax.inject.Inject;
 
 import alien4cloud.paas.yorc.context.rest.response.Event;
-import alien4cloud.paas.yorc.util.FutureUtil;
-import com.google.common.util.concurrent.FutureCallback;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
+
+import io.reactivex.Single;
 import org.springframework.context.annotation.Scope;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
@@ -85,6 +83,7 @@ public class DeployTask extends AbstractTask {
 
         // We start the subscription now because we can receive events before the completion of the http request
         listener = EventListener.builder()
+            .observeOn(scheduler)
             .when(Event.EVT_DEPLOYMENT,"deployment_failed",this::onEventFailed)
             .when(Event.EVT_DEPLOYMENT, "deployed",this::onEventDeployed)
             .when(Event.EVT_DEPLOYMENT, "deployment_in_progress",this::onEventInProgess)
@@ -94,8 +93,8 @@ public class DeployTask extends AbstractTask {
         listener.subscribe();
 
         // Sent our zip
-        ListenableFuture<ResponseEntity<String>> f = deploymentClient.sendTopology(info.getContext().getDeploymentPaaSId(),bytes);
-        FutureUtil.addCallback(f,this::onHttpOk,this::onHttpKo);
+        Single<ResponseEntity<String>> s = deploymentClient.sendTopology(info.getContext().getDeploymentPaaSId(),bytes);
+        subscribe(s,this::onHttpOk,this::onHttpKo);
 
         //fsmService.sendEvent(new DeploymentEvent(info.getContext().getDeploymentId(), DeploymentMessages.DEPLOYMENT_IN_PROGRESS));
     }

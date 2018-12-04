@@ -1,13 +1,8 @@
 package alien4cloud.paas.yorc.context.rest;
 
 import alien4cloud.paas.yorc.context.rest.response.DeploymentInfoResponse;
-import alien4cloud.paas.yorc.util.FutureUtil;
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.base.Function;
-import com.google.common.util.concurrent.Futures;
-import com.google.common.util.concurrent.ListenableFuture;
-import lombok.SneakyThrows;
+import alien4cloud.paas.yorc.util.RestUtil;
+import io.reactivex.Single;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
@@ -24,7 +19,7 @@ public class DeploymentClient extends AbstractClient {
      * @param bytes zip file as bytes
      * @return
      */
-    public ListenableFuture<ResponseEntity<String>> sendTopology(String deploymentId, byte[] bytes) {
+    public Single<ResponseEntity<String>> sendTopology(String deploymentId, byte[] bytes) {
         String url = getYorcUrl() + "/deployments/" + deploymentId;
 
         HttpHeaders headers = new HttpHeaders();
@@ -32,7 +27,7 @@ public class DeploymentClient extends AbstractClient {
         headers.add(HttpHeaders.CONTENT_TYPE, "application/zip");
         HttpEntity<byte[]> entity = new HttpEntity<>(bytes, headers);
 
-        return FutureUtil.convert(sendRequest(url,HttpMethod.PUT,String.class,entity));
+        return sendRequest(url,HttpMethod.PUT,String.class,entity);
     }
 
     /**
@@ -43,10 +38,10 @@ public class DeploymentClient extends AbstractClient {
      * @param delta
      * @return
      */
-    public ListenableFuture<ResponseEntity<String>> scaleTopology(String deploymentId,String nodeName,int delta) {
+    public Single<ResponseEntity<String>> scaleTopology(String deploymentId,String nodeName,int delta) {
         String url = getYorcUrl() + "/deployments/" + deploymentId + "/scale/" + nodeName + "?delta=" + delta;
 
-        return FutureUtil.convert(sendRequest(url,HttpMethod.POST,String.class, buildHttpEntityWithDefaultHeader()));
+        return sendRequest(url,HttpMethod.POST,String.class, buildHttpEntityWithDefaultHeader());
     }
 
     /**
@@ -55,41 +50,39 @@ public class DeploymentClient extends AbstractClient {
      * @param deploymentId
      * @return
      */
-    public ListenableFuture<String> getStatus(String deploymentId) {
+    public Single<String> getStatus(String deploymentId) {
         String url = getYorcUrl() + "/deployments/" + deploymentId;
 
-        ListenableFuture<String> f = FutureUtil.unwrap(sendRequest(url,HttpMethod.GET,String.class, buildHttpEntityWithDefaultHeader()));
-
-        return Futures.transform(f,(Function<String,String>) this::extractStatus);
+        return sendRequest(url,HttpMethod.GET,String.class, buildHttpEntityWithDefaultHeader())
+                .map(HttpEntity::getBody)
+                .map(RestUtil.toJson())
+                .map(RestUtil.jsonAsText("status"));
     }
 
-    public ListenableFuture<DeploymentInfoResponse> getInfos(String deploymentId) {
+    public Single<DeploymentInfoResponse> getInfos(String deploymentId) {
         String url = getYorcUrl() + "/deployments/" + deploymentId;
-        return FutureUtil.unwrap(sendRequest(url,HttpMethod.GET,DeploymentInfoResponse.class, buildHttpEntityWithDefaultHeader()));
+        return sendRequest(url,HttpMethod.GET,DeploymentInfoResponse.class, buildHttpEntityWithDefaultHeader()).map(HttpEntity::getBody);
     }
 
-    public ListenableFuture<String> undeploy(String deploymentId) {
+    public Single<String> undeploy(String deploymentId) {
         return undeploy(deploymentId,false);
     }
 
-    public ListenableFuture<String> undeploy(String deploymentId,boolean purge) {
+    public Single<String> undeploy(String deploymentId,boolean purge) {
         String url = getYorcUrl() + "/deployments/" + deploymentId;
 
         if (purge == true) {
             url += "?purge";
         }
 
-        ListenableFuture<ResponseEntity<String>> f = FutureUtil.convert(sendRequest(url,HttpMethod.DELETE,String.class,buildHttpEntityWithDefaultHeader()));
-        return Futures.transform(f,(Function<ResponseEntity<String>,String>) this::extractLocation);
+        return sendRequest(url,HttpMethod.DELETE,String.class,buildHttpEntityWithDefaultHeader())
+            .map(RestUtil.extractHeader("Location"));
     }
 
-    @SneakyThrows
-    private String extractStatus(String json) {
-        ObjectMapper mapper = new ObjectMapper();
-        JsonNode root = mapper.readTree(json);
-        JsonNode node = root.path("status");
+    public Single<String> stopTask(String taskUrl) {
+        String url = getYorcUrl() + taskUrl;
 
-        return node.asText();
+        return sendRequest(url,HttpMethod.DELETE,String.class,buildHttpEntityWithDefaultHeader())
+            .map(RestUtil.extractHeader("Location"));
     }
-
 }
