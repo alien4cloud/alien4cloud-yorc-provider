@@ -17,9 +17,7 @@ public class FsmEventsConsumer implements Consumer<Event> {
 	private StateMachineService service;
 
 	private void handle(FsmEvent event) {
-		if (log.isDebugEnabled()) {
-			log.debug(String.format("Received an event of %s", event));
-		}
+		log.error(String.format("Received an event of %s", event));
 		service.talk(event);
 	}
 

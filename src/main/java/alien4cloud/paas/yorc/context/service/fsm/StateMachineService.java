@@ -4,10 +4,12 @@ import java.util.Map;
 
 import javax.inject.Inject;
 
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.statemachine.StateMachine;
+import org.springframework.statemachine.config.StateMachineFactory;
 import org.springframework.stereotype.Component;
 
 import com.google.common.collect.ImmutableMap;
@@ -21,6 +23,10 @@ import lombok.extern.slf4j.Slf4j;
 @Component
 @Slf4j
 public class StateMachineService {
+
+	@Autowired
+	private StateMachineFactory<FsmStates, DeploymentMessages> fsmFactory;
+
 
 	// TODO Problem of concurrency
 	private Map<String, StateMachine<FsmStates, DeploymentMessages>> cache = Maps.newHashMap();
@@ -46,13 +52,20 @@ public class StateMachineService {
 
 	public void newStateMachine(String ...ids) {
 		for (String id : ids) {
-			StateMachine<FsmStates, DeploymentMessages> fsm = (StateMachine<FsmStates, DeploymentMessages>) context.getBean("buildMachine", FsmStates.UNDEPLOYED);
-			cache.put(id, fsm);
+			// Create a new state machine
+			cache.put(id, createFsm(id));
 			// Create a new event bus to this deployment
 			eventBusService.createEventBus(id);
 			// Subscribe the state machine to event bus of message type "deployment"
 			eventBusService.subscribe(id, Event.EVT_DEPLOYMENT, consumer);
 		}
+	}
+
+	private StateMachine<FsmStates, DeploymentMessages> createFsm(String id) {
+		StateMachine<FsmStates, DeploymentMessages> fsm = fsmFactory.getStateMachine(id);
+		fsm.addStateListener(new FsmListener(id));
+		log.error(String.format("State machine '%s' is created.", id));
+		return fsm;
 	}
 
 	/**

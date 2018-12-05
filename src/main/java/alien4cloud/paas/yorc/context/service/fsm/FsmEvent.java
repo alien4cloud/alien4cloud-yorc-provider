@@ -14,7 +14,7 @@ import lombok.ToString;
 @Scope("prototype")
 @ToString
 /**
- * The events specific to FSM
+ * The events specific to FsmConfiguration
  */
 public class FsmEvent extends Event {
 

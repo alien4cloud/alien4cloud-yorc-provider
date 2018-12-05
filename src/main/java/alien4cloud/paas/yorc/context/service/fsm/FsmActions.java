@@ -6,7 +6,6 @@ import javax.inject.Inject;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.http.ResponseEntity;
-import org.springframework.messaging.MessageHeaders;
 import org.springframework.statemachine.StateContext;
 import org.springframework.statemachine.action.Action;
 import org.springframework.stereotype.Service;
@@ -34,23 +33,21 @@ public class FsmActions {
 	@Inject
 	private EventBusService eventBusService;
 
-	@Bean(name = "buildAndSendZip")
-	public Action<FsmStates, DeploymentMessages> buildAndSendZip() {
+	@Bean
+	protected Action<FsmStates, DeploymentMessages> buildAndSendZip() {
 		return new Action<FsmStates, DeploymentMessages>() {
 
 			private PaaSTopologyDeploymentContext context;
 			private IPaaSCallback<?> callback;
 
 			private void onHttpOk(ResponseEntity<String> value) {
-				eventBusService.publish(new FsmEvent(context.getDeploymentId(), DeploymentMessages.DEPLOYMENT_SUCCESS, new MessageHeaders(
-						ImmutableMap.of())));
+				eventBusService.publish(new FsmEvent(context.getDeploymentPaaSId(), DeploymentMessages.DEPLOYMENT_SUBMITTED, ImmutableMap.of()));
 				log.info("HTTP Request OK : {}", value);
 			}
 
 			private void onHttpKo(Throwable t) {
-				eventBusService.publish(new FsmEvent(context.getDeploymentId(), DeploymentMessages.FAILURE, new MessageHeaders(
-						ImmutableMap.of())));
-				log.error("HTTP Request OK : {}", t);
+				eventBusService.publish(new FsmEvent(context.getDeploymentPaaSId(), DeploymentMessages.FAILURE, ImmutableMap.of()));
+				log.error("HTTP Request OK : {}", t.getMessage());
 			}
 
 			@Override
