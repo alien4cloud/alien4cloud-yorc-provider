@@ -26,6 +26,9 @@ public class FsmEventsConsumer implements Consumer<Event> {
 		if (event instanceof FsmEvent) {
 			// Take action if the event is of the type specific to state machine
 			handle((FsmEvent) event);
+		} else if (Event.EVT_DEPLOYMENT.equals(event.getType())) {
+			handle(new FsmEvent(event.getDeployment_id(), event.getStatus()));
 		}
 	}
+
 }

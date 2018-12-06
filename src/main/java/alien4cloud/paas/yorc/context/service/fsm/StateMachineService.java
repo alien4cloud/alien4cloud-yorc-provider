@@ -25,11 +25,11 @@ import lombok.extern.slf4j.Slf4j;
 public class StateMachineService {
 
 	@Autowired
-	private StateMachineFactory<FsmStates, DeploymentMessages> fsmFactory;
+	private StateMachineFactory<FsmStates, FsmEvent.DeploymentMessages> fsmFactory;
 
 
 	// TODO Problem of concurrency
-	private Map<String, StateMachine<FsmStates, DeploymentMessages>> cache = Maps.newHashMap();
+	private Map<String, StateMachine<FsmStates, FsmEvent.DeploymentMessages>> cache = Maps.newHashMap();
 
 	private static final Map<FsmStates, DeploymentStatus> statesMapping = ImmutableMap.<FsmStates, DeploymentStatus>builder()
 			.put(FsmStates.UNDEPLOYED, DeploymentStatus.UNDEPLOYED)
@@ -61,8 +61,8 @@ public class StateMachineService {
 		}
 	}
 
-	private StateMachine<FsmStates, DeploymentMessages> createFsm(String id) {
-		StateMachine<FsmStates, DeploymentMessages> fsm = fsmFactory.getStateMachine(id);
+	private StateMachine<FsmStates, FsmEvent.DeploymentMessages> createFsm(String id) {
+		StateMachine<FsmStates, FsmEvent.DeploymentMessages> fsm = fsmFactory.getStateMachine(id);
 		fsm.addStateListener(new FsmListener(id));
 		log.error(String.format("State machine '%s' is created.", id));
 		return fsm;
@@ -77,13 +77,13 @@ public class StateMachineService {
 		if (!cache.containsKey(event.getDeployment_id())) {
 			throw new RuntimeException(String.format("The state machine of %s does not exist.", event.getDeployment_id()));
 		}
-		MessageBuilder<DeploymentMessages> builder = MessageBuilder
+		MessageBuilder<FsmEvent.DeploymentMessages> builder = MessageBuilder
 				.withPayload(event.getMessage());
 		for (String key : event.getHeaders().keySet()) {
 			builder.setHeader(key, event.getHeaders().get(key));
 		}
-		Message<DeploymentMessages> message = builder.build();
-		StateMachine<FsmStates, DeploymentMessages> fsm = cache.get(event.getDeployment_id());
+		Message<FsmEvent.DeploymentMessages> message = builder.build();
+		StateMachine<FsmStates, FsmEvent.DeploymentMessages> fsm = cache.get(event.getDeployment_id());
 		fsm.sendEvent(message);
 		return cache.get(event.getDeployment_id()).getState().getId();
 	}

@@ -29,7 +29,6 @@ import alien4cloud.paas.yorc.configuration.ProviderConfiguration;
 import alien4cloud.paas.yorc.context.rest.AsyncClientHttpRequestFactoryBuilder;
 import alien4cloud.paas.yorc.context.service.EventBusService;
 import alien4cloud.paas.yorc.context.service.EventPollingService;
-import alien4cloud.paas.yorc.context.service.fsm.DeploymentMessages;
 import alien4cloud.paas.yorc.context.service.fsm.FsmEvent;
 import alien4cloud.paas.yorc.context.service.fsm.StateMachineService;
 import alien4cloud.paas.yorc.location.AbstractLocationConfigurerFactory;
@@ -95,7 +94,7 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
     @Override
     public void deploy(PaaSTopologyDeploymentContext deploymentContext, IPaaSCallback<?> callback) {
         stateMachineService.newStateMachine(deploymentContext.getDeploymentPaaSId());
-        eventBusService.publish(new FsmEvent(deploymentContext.getDeploymentPaaSId(), DeploymentMessages.DEPLOYMENT_STARTED,
+        eventBusService.publish(new FsmEvent(deploymentContext.getDeploymentPaaSId(), FsmEvent.DeploymentMessages.DEPLOYMENT_STARTED,
 				ImmutableMap.of("callback", callback, "deploymentContext", deploymentContext)));
     }
 

@@ -34,24 +34,24 @@ public class FsmActions {
 	private EventBusService eventBusService;
 
 	@Bean
-	protected Action<FsmStates, DeploymentMessages> buildAndSendZip() {
-		return new Action<FsmStates, DeploymentMessages>() {
+	protected Action<FsmStates, FsmEvent.DeploymentMessages> buildAndSendZip() {
+		return new Action<FsmStates, FsmEvent.DeploymentMessages>() {
 
 			private PaaSTopologyDeploymentContext context;
 			private IPaaSCallback<?> callback;
 
 			private void onHttpOk(ResponseEntity<String> value) {
-				eventBusService.publish(new FsmEvent(context.getDeploymentPaaSId(), DeploymentMessages.DEPLOYMENT_SUBMITTED, ImmutableMap.of()));
+				eventBusService.publish(new FsmEvent(context.getDeploymentPaaSId(), FsmEvent.DeploymentMessages.DEPLOYMENT_SUBMITTED, ImmutableMap.of()));
 				log.info("HTTP Request OK : {}", value);
 			}
 
 			private void onHttpKo(Throwable t) {
-				eventBusService.publish(new FsmEvent(context.getDeploymentPaaSId(), DeploymentMessages.FAILURE, ImmutableMap.of()));
+				eventBusService.publish(new FsmEvent(context.getDeploymentPaaSId(), FsmEvent.DeploymentMessages.FAILURE, ImmutableMap.of()));
 				log.error("HTTP Request OK : {}", t.getMessage());
 			}
 
 			@Override
-			public void execute(StateContext<FsmStates, DeploymentMessages> stateContext) {
+			public void execute(StateContext<FsmStates, FsmEvent.DeploymentMessages> stateContext) {
 				byte[] bytes;
 				context = (PaaSTopologyDeploymentContext) stateContext.getMessageHeaders().get("deploymentContext");
 				callback = (IPaaSCallback<?>) stateContext.getMessageHeaders().get("callback");

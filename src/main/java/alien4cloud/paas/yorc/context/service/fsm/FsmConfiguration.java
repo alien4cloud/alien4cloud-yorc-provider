@@ -15,7 +15,7 @@ import org.springframework.statemachine.config.builders.StateMachineTransitionCo
  * This class consists of the transition graph and a builder
  */
 @EnableStateMachineFactory
-public class FsmConfiguration extends EnumStateMachineConfigurerAdapter<FsmStates, DeploymentMessages> {
+public class FsmConfiguration extends EnumStateMachineConfigurerAdapter<FsmStates, FsmEvent.DeploymentMessages> {
 
 	private static final FsmStates initialState = FsmStates.UNDEPLOYED;
 
@@ -23,52 +23,52 @@ public class FsmConfiguration extends EnumStateMachineConfigurerAdapter<FsmState
 	private FsmActions actions;
 
 	@Override
-	public void configure(StateMachineStateConfigurer<FsmStates, DeploymentMessages> states) throws Exception {
+	public void configure(StateMachineStateConfigurer<FsmStates, FsmEvent.DeploymentMessages> states) throws Exception {
 		states.withStates()
 			.initial(initialState)
 			.states(EnumSet.allOf(FsmStates.class));
 	}
 
 	@Override
-	public void configure(StateMachineTransitionConfigurer<FsmStates, DeploymentMessages> transitions)
+	public void configure(StateMachineTransitionConfigurer<FsmStates, FsmEvent.DeploymentMessages> transitions)
 			throws Exception {
 		transitions
 			.withExternal()
 			.source(FsmStates.UNDEPLOYED).target(FsmStates.DEPLOYMENT_INIT)
-			.event(DeploymentMessages.DEPLOYMENT_STARTED)
+			.event(FsmEvent.DeploymentMessages.DEPLOYMENT_STARTED)
 			.action(actions.buildAndSendZip())
 			.and()
 			.withExternal()
 			.source(FsmStates.DEPLOYMENT_INIT).target(FsmStates.DEPLOYMENT_SUBMITTED)
-			.event(DeploymentMessages.DEPLOYMENT_SUBMITTED)
+			.event(FsmEvent.DeploymentMessages.DEPLOYMENT_SUBMITTED)
 			.and()
 			.withExternal()
 			.source(FsmStates.DEPLOYMENT_INIT).target(FsmStates.FAILED)
-			.event(DeploymentMessages.FAILURE)
+			.event(FsmEvent.DeploymentMessages.FAILURE)
 			.and()
 			.withExternal()
 			.source(FsmStates.DEPLOYMENT_SUBMITTED).target(FsmStates.DEPLOYMENT_IN_PROGRESS)
-			.event(DeploymentMessages.DEPLOYMENT_IN_PROGRESS)
+			.event(FsmEvent.DeploymentMessages.DEPLOYMENT_IN_PROGRESS)
 			.and()
 			.withExternal()
 			.source(FsmStates.DEPLOYMENT_SUBMITTED).target(FsmStates.FAILED)
-			.event(DeploymentMessages.FAILURE)
+			.event(FsmEvent.DeploymentMessages.FAILURE)
 			.and()
 			.withExternal()
 			.source(FsmStates.DEPLOYMENT_IN_PROGRESS).target(FsmStates.DEPLOYED)
-			.event(DeploymentMessages.DEPLOYMENT_SUCCESS)
+			.event(FsmEvent.DeploymentMessages.DEPLOYMENT_SUCCESS)
 			.and()
 			.withExternal()
 			.source(FsmStates.DEPLOYED).target(FsmStates.UNDEPLOYMENT_IN_PROGRESS)
-			.event(DeploymentMessages.UNDEPLOYMENT_STARTED)
+			.event(FsmEvent.DeploymentMessages.UNDEPLOYMENT_STARTED)
 			.and()
 			.withExternal()
 			.source(FsmStates.UNDEPLOYMENT_IN_PROGRESS).target(FsmStates.UNDEPLOYED)
-			.event(DeploymentMessages.UNDEPLOYMENT_SUCCESS);
+			.event(FsmEvent.DeploymentMessages.UNDEPLOYMENT_SUCCESS);
 	}
 
 	@Override
-	public void configure(StateMachineConfigurationConfigurer<FsmStates, DeploymentMessages> config) throws Exception {
+	public void configure(StateMachineConfigurationConfigurer<FsmStates, FsmEvent.DeploymentMessages> config) throws Exception {
 		config.withConfiguration().autoStartup(true);
 	}
 }
