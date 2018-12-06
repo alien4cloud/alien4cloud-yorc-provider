@@ -5,7 +5,6 @@ import java.util.Map;
 import javax.inject.Inject;
 
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.ApplicationContext;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.statemachine.StateMachine;
@@ -42,14 +41,15 @@ public class StateMachineService {
 			.build();
 
 	@Inject
-	private ApplicationContext context;
-
-	@Inject
 	private EventBusService eventBusService;
 
 	@Inject
 	private FsmEventsConsumer consumer;
 
+	/**
+	 * Create new state machines
+	 * @param ids ids of deployments
+	 */
 	public void newStateMachine(String ...ids) {
 		for (String id : ids) {
 			// Create a new state machine
