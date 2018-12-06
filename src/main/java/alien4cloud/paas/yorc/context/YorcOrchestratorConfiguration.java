@@ -1,12 +1,14 @@
 package alien4cloud.paas.yorc.context;
 
-
-import io.netty.channel.EventLoopGroup;
-import io.netty.channel.nio.NioEventLoopGroup;
 import io.reactivex.Scheduler;
 import io.reactivex.schedulers.Schedulers;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.concurrent.BasicThreadFactory;
+import org.apache.http.impl.nio.reactor.DefaultConnectingIOReactor;
+import org.apache.http.impl.nio.reactor.IOReactorConfig;
+import org.apache.http.nio.reactor.ConnectingIOReactor;
+import org.apache.http.nio.reactor.IOReactorException;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
@@ -24,6 +26,16 @@ import java.util.concurrent.atomic.AtomicInteger;
         "alien4cloud.paas.yorc.tasks"
 })
 public class YorcOrchestratorConfiguration {
+
+    /**
+     * Connection time out
+     */
+    private static final int CONNECTION_TIMEOUT = 10000;
+
+    /**
+     * Socket timeout (15 min because of long polling)
+     */
+    private static final int SOCKET_TIMEOUT = 900000;
 
     /**
      * Sequence Number
@@ -58,13 +70,16 @@ public class YorcOrchestratorConfiguration {
         return builder.namingPattern(contextName() + "-http-%d").build();
     }
 
-    /**
-     * The NIO event looop
-     */
     @Bean
-    EventLoopGroup eventLoop() {
-        // TODO: Use SysProp for pool size
-        return new NioEventLoopGroup(4,httpThreadFactory());
+    @SneakyThrows(IOReactorException.class)
+    ConnectingIOReactor ioReactor() {
+        IOReactorConfig config = IOReactorConfig.custom()
+                .setConnectTimeout(CONNECTION_TIMEOUT)
+                .setSoTimeout(SOCKET_TIMEOUT)
+                .setIoThreadCount(Runtime.getRuntime().availableProcessors())
+                .build();
+
+        return new DefaultConnectingIOReactor(config,httpThreadFactory());
     }
 
     /**

@@ -7,7 +7,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
 import org.springframework.stereotype.Component;
 
-
 @Slf4j
 @Component
 public class DeploymentClient extends AbstractClient {
@@ -85,4 +84,5 @@ public class DeploymentClient extends AbstractClient {
         return sendRequest(url,HttpMethod.DELETE,String.class,buildHttpEntityWithDefaultHeader())
             .map(RestUtil.extractHeader("Location"));
     }
+
 }

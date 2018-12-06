@@ -113,7 +113,8 @@ public class DeployTask extends AbstractTask {
 
     private void onEventFailed(Event event) {
         log.info("EVENT:Failed");
-        callback.onFailure(null);
+        listener.cancel();
+        callback.onFailure(new Exception("Deployment Failure"));
     }
 
     private void onEventDeployed(Event event) {

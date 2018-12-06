@@ -9,8 +9,8 @@ import alien4cloud.paas.exception.OperationExecutionException;
 import alien4cloud.paas.exception.PluginConfigurationException;
 import alien4cloud.paas.model.*;
 import alien4cloud.paas.yorc.configuration.ProviderConfiguration;
-import alien4cloud.paas.yorc.context.rest.AsyncClientHttpRequestFactoryBuilder;
 import alien4cloud.paas.yorc.context.rest.DeploymentClient;
+import alien4cloud.paas.yorc.context.rest.TemplateManager;
 import alien4cloud.paas.yorc.context.service.DeploymentInfo;
 import alien4cloud.paas.yorc.context.service.DeploymentService;
 import alien4cloud.paas.yorc.context.service.EventService;
@@ -19,6 +19,7 @@ import alien4cloud.paas.yorc.service.PluginArchiveService;
 import alien4cloud.paas.yorc.context.tasks.DeployTask;
 import alien4cloud.paas.yorc.util.RestUtil;
 import com.google.common.collect.Lists;
+import io.reactivex.Observable;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationContext;
@@ -48,7 +49,7 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
     private DeploymentClient deploymentClient;
 
     @Inject
-    private AsyncClientHttpRequestFactoryBuilder factoryBuilder;
+    private TemplateManager templateManager;
 
     @Inject
     private EventService eventService;
@@ -57,6 +58,13 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
     private DeploymentService deploymentService;
 
     private ProviderConfiguration configuration;
+
+    /**
+     * TODO: Provisoire
+     *  Pour faciliter la mise en oeuvre
+     */
+    //private Map<String,PaaSTopologyDeploymentContext> trickActiveDeployments;
+
 
     @Override
     public ILocationConfiguratorPlugin getConfigurator(String locationType) {
@@ -75,19 +83,19 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 
     @Override
     public void setConfiguration(String orchestratorId, ProviderConfiguration configuration) throws PluginConfigurationException {
-        this.configuration = configuration;
-
-        // Configure the rest Client
-        factoryBuilder.setConfiguration(configuration);
+        // Configure Rest Clients
+        templateManager.configure(configuration);
     }
 
     @Override
     public void init(Map<String, PaaSTopologyDeploymentContext> activeDeployments) {
         log.info("Init Yorc plugin for " + activeDeployments.size() + " active deployments");
 
-        for (PaaSTopologyDeploymentContext ctx : activeDeployments.values()) {
-            doUpdateDeploymentInfo(ctx);
-        }
+        //trickActiveDeployments = activeDeployments;
+
+        Observable.fromIterable(activeDeployments.values())
+                .map( ctx -> deploymentService.createDeployment(ctx,DeploymentStatus.UNKNOWN))
+                .subscribe(x -> log.info("FLOW: {}",x.getContext().getDeploymentPaaSId()));
 
         // Start services
         eventService.init();
@@ -124,6 +132,13 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
         DeploymentInfo info = deploymentService.getDeployment(deploymentContext.getDeploymentPaaSId());
         if (info != null) {
             // TODO: get the info from the info itself
+
+            /*
+            Experiment
+            Observable.fromIterable(trickActiveDeployments.values())
+                    .map( ctx -> deploymentService.getDeployment(ctx.getDeploymentPaaSId()))
+                    .subscribe(x -> log.info("FLOW: {}",x.getContext().getDeploymentPaaSId()));
+            */
 
             deploymentClient.getStatus(deploymentContext.getDeploymentPaaSId())
                 .map(YorcOrchestrator::getDeploymentStatusFromString)

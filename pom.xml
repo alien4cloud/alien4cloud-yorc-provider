@@ -13,7 +13,6 @@
 
   <properties>
     <alien4cloud.version>2.2.0-SNAPSHOT</alien4cloud.version>
-    <netty.version>4.1.6.Final</netty.version>
     <alien4cloud.dsl.version>alien_dsl_2_0_0</alien4cloud.dsl.version>
     <tosca.normative.types.version>1.0.0-ALIEN20</tosca.normative.types.version>
     <alien4cloud.kubernetes.api.version>2.1.0-SNAPSHOT</alien4cloud.kubernetes.api.version>
@@ -44,14 +43,13 @@
       <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>io.netty</groupId>
-      <artifactId>netty-all</artifactId>
-      <version>${netty.version}</version>
+      <groupId>io.reactivex.rxjava2</groupId>
+      <artifactId>rxjava</artifactId>
       <scope>provided</scope>
     </dependency>
     <dependency>
-      <groupId>io.reactivex.rxjava2</groupId>
-      <artifactId>rxjava</artifactId>
+      <groupId>org.apache.httpcomponents</groupId>
+      <artifactId>httpasyncclient</artifactId>
       <scope>provided</scope>
     </dependency>
     <dependency>

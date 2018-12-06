@@ -18,10 +18,14 @@ public class DeploymentService {
     private final Map<String,DeploymentInfo> map = Maps.newConcurrentMap();
 
     public DeploymentInfo createDeployment(PaaSTopologyDeploymentContext deploymentContext) {
+        return createDeployment(deploymentContext,DeploymentStatus.INIT_DEPLOYMENT);
+    }
+
+    public DeploymentInfo createDeployment(PaaSTopologyDeploymentContext deploymentContext,DeploymentStatus initialStatus) {
         DeploymentInfo info = (DeploymentInfo) context.getBean(DeploymentInfo.class);
 
         info.setContext(deploymentContext);
-        info.setStatus(DeploymentStatus.INIT_DEPLOYMENT);
+        info.setStatus(initialStatus);
 
         map.put(deploymentContext.getDeploymentPaaSId(),info);
 

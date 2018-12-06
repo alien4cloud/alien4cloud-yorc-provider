@@ -5,7 +5,6 @@ import alien4cloud.paas.yorc.context.rest.response.Event;
 import alien4cloud.paas.yorc.context.rest.response.EventResponse;
 
 import alien4cloud.paas.yorc.observer.CallbackObserver;
-import io.netty.handler.timeout.ReadTimeoutException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -61,7 +60,6 @@ public class EventService {
                 case Event.EVT_OPERATION:
                 case Event.EVT_SCALING:
                 case Event.EVT_WORKFLOW:
-                    log.debug("YORC EVENT [{}/{}]",event.getType(),event.getDeployment_id());
                     broadcast(event);
                     break;
                 default:
@@ -75,19 +73,15 @@ public class EventService {
     }
 
     private void processFailure(Throwable t) {
-        if (t instanceof ReadTimeoutException) {
-            // Reach long polling timeout , let's restart
-            executorService.submit(this::queryEvents);
-        } else {
-            log.error("listening events fails: {}",t);
+        log.error("listening events fails: {}",t);
 
-            // Something bad happen, we reschedule the polling later
-            // to avoid a flood on yorc
-            executorService.schedule(this::queryEvents,2, TimeUnit.SECONDS);
-        }
+        // Something bad happen, we reschedule the polling later
+        // to avoid a flood on yorc
+        executorService.schedule(this::queryEvents,2, TimeUnit.SECONDS);
     }
 
     private void broadcast(Event event) {
+        log.debug("YORC EVT: {}",event);
         DeploymentInfo info = deploymentService.getDeployment(event.getDeployment_id());
         if (info != null) {
             info.getEventsAsSubject().onNext(event);
