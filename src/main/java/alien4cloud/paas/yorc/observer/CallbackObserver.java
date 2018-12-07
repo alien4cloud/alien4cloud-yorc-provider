@@ -3,10 +3,12 @@ package alien4cloud.paas.yorc.observer;
 import io.reactivex.Observer;
 import io.reactivex.SingleObserver;
 import io.reactivex.disposables.Disposable;
+import org.reactivestreams.Subscriber;
+import org.reactivestreams.Subscription;
 
 import java.util.function.Consumer;
 
-public class CallbackObserver<T> implements SingleObserver<T>, Observer<T> {
+public class CallbackObserver<T> implements SingleObserver<T>, Observer<T>{
 
     private final Consumer<T> dataConsumer;
 

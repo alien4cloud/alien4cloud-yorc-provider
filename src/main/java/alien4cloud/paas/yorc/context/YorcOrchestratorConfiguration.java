@@ -14,6 +14,7 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 
 import javax.annotation.PreDestroy;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ThreadFactory;
@@ -54,7 +55,7 @@ public class YorcOrchestratorConfiguration {
      * Thread factory for task threads
      * @return
      */
-    @Bean
+    @Bean("task-thread-factory")
     ThreadFactory taskThreadFactory() {
         BasicThreadFactory.Builder builder = new BasicThreadFactory.Builder();
         return builder.namingPattern(contextName() + "-task-%d").build();
@@ -64,7 +65,7 @@ public class YorcOrchestratorConfiguration {
      * Thread factory for io threads
      * @return
      */
-    @Bean
+    @Bean("http-thread-factory")
     ThreadFactory httpThreadFactory() {
         BasicThreadFactory.Builder builder = new BasicThreadFactory.Builder();
         return builder.namingPattern(contextName() + "-http-%d").build();
@@ -86,8 +87,8 @@ public class YorcOrchestratorConfiguration {
      * @return the executor service for our Runnable
      */
     @Bean
-    ScheduledExecutorService executorService() {
-        ScheduledExecutorService svc = Executors.newScheduledThreadPool(4 , taskThreadFactory() );
+    ExecutorService executorService() {
+        ExecutorService svc = Executors.newFixedThreadPool(4 , taskThreadFactory() );
         // TODO: Use SysProp for pool size
 
         return svc;

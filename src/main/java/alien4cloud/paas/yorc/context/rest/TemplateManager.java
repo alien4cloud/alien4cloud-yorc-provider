@@ -25,9 +25,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.AsyncRestTemplate;
 
 
+import javax.annotation.Resource;
 import javax.inject.Inject;
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLContext;
+import java.util.concurrent.ThreadFactory;
 
 @Slf4j
 @Service
@@ -35,6 +37,9 @@ public class TemplateManager {
 
     @Inject
     private ConnectingIOReactor reactor;
+
+    @Resource(name = "http-thread-factory")
+    private ThreadFactory threadFactory;
 
     // Template
     private AsyncRestTemplate template;
@@ -67,6 +72,7 @@ public class TemplateManager {
 
         CloseableHttpAsyncClient httpClient = HttpAsyncClients.custom()
                 .setConnectionManager(manager)
+                .setThreadFactory(threadFactory)
                 .build();
 
         factory =  new HttpComponentsAsyncClientHttpRequestFactory(httpClient);
