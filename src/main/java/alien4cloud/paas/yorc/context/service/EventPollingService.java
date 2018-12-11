@@ -66,11 +66,11 @@ public class EventPollingService {
                 case Event.EVT_OPERATION:
                 case Event.EVT_SCALING:
                 case Event.EVT_WORKFLOW:
-                    log.debug("YORC EVENT [{}/{}]",event.getType(),event.getDeployment_id());
+                    log.error(String.format("Event received from Yorc %s", event));
                     evenBusService.publish(event);
                     break;
                 default:
-                    log.warn ("Unknown Yorc Event [{}/{}]",event.getType(),event.getDeployment_id());
+                    log.error ("Unknown Yorc Event [{}/{}]",event.getType(),event.getDeployment_id());
             }
         }
 
