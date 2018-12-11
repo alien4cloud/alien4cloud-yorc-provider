@@ -3,21 +3,18 @@ package alien4cloud.paas.yorc.context.service;
 import alien4cloud.paas.yorc.context.rest.EventClient;
 import alien4cloud.paas.yorc.context.rest.response.Event;
 import alien4cloud.paas.yorc.context.rest.response.EventDTO;
-
 import io.reactivex.Scheduler;
 import io.reactivex.Single;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
-
 import javax.inject.Inject;
 import java.util.concurrent.TimeUnit;
 
-
 @Slf4j
 @Service
-public class EventService {
+public class EventPollingService {
 
     @Inject
     protected Scheduler scheduler;
@@ -26,7 +23,7 @@ public class EventService {
     private EventClient client;
 
     @Inject
-    private DeploymentService deploymentService;
+    private EventBusService evenBusService;
 
     /**
      * Index
@@ -69,7 +66,8 @@ public class EventService {
                 case Event.EVT_OPERATION:
                 case Event.EVT_SCALING:
                 case Event.EVT_WORKFLOW:
-                    broadcast(event);
+                    log.debug("YORC EVENT [{}/{}]",event.getType(),event.getDeployment_id());
+                    evenBusService.publish(event);
                     break;
                 default:
                     log.warn ("Unknown Yorc Event [{}/{}]",event.getType(),event.getDeployment_id());
@@ -80,17 +78,6 @@ public class EventService {
 
         if (!stopped) {
             doQuery();
-        }
-    }
-
-    /**
-     * Broadcast event
-     */
-    private void broadcast(Event event) {
-        log.debug("YORC EVT: {}",event);
-        DeploymentInfo info = deploymentService.getDeployment(event.getDeployment_id());
-        if (info != null) {
-            info.getEventsAsSubject().onNext(event);
         }
     }
 
@@ -106,4 +93,5 @@ public class EventService {
     public void term() {
         stopped = true;
     }
+
 }
