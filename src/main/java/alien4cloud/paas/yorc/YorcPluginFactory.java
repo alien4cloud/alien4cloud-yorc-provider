@@ -65,7 +65,10 @@ public class YorcPluginFactory implements IOrchestratorPluginFactory<YorcOrchest
 
     @Override
     public void destroy(YorcOrchestrator instance) {
-        // Close the associated spring context
+        // Terminate the instance
+        instance.term();
+
+        // Then close the associated spring context
         AnnotationConfigApplicationContext context = (AnnotationConfigApplicationContext) instance.getContext();
         context.close();
     }

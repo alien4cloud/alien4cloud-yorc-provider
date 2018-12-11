@@ -29,6 +29,7 @@ import javax.annotation.Resource;
 import javax.inject.Inject;
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLContext;
+import java.io.IOException;
 import java.util.concurrent.ThreadFactory;
 
 @Slf4j

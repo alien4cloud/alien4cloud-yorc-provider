@@ -11,6 +11,8 @@ import alien4cloud.paas.model.*;
 import alien4cloud.paas.yorc.configuration.ProviderConfiguration;
 import alien4cloud.paas.yorc.context.rest.DeploymentClient;
 import alien4cloud.paas.yorc.context.rest.TemplateManager;
+import alien4cloud.paas.yorc.context.rest.browser.Browser;
+import alien4cloud.paas.yorc.context.rest.response.*;
 import alien4cloud.paas.yorc.context.service.DeploymentInfo;
 import alien4cloud.paas.yorc.context.service.DeploymentService;
 import alien4cloud.paas.yorc.context.service.EventService;
@@ -30,6 +32,7 @@ import javax.inject.Inject;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Slf4j
 @Component
@@ -63,7 +66,7 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
      * TODO: Provisoire
      *  Pour faciliter la mise en oeuvre
      */
-    //private Map<String,PaaSTopologyDeploymentContext> trickActiveDeployments;
+    private Map<String,PaaSTopologyDeploymentContext> trickActiveDeployments;
 
 
     @Override
@@ -91,14 +94,19 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
     public void init(Map<String, PaaSTopologyDeploymentContext> activeDeployments) {
         log.info("Init Yorc plugin for " + activeDeployments.size() + " active deployments");
 
-        //trickActiveDeployments = activeDeployments;
+        // Initialize déployments
+        for (PaaSTopologyDeploymentContext ctx : activeDeployments.values()) {
+            deploymentService.createDeployment(ctx,DeploymentStatus.UNKNOWN);
+        }
 
-        Observable.fromIterable(activeDeployments.values())
-                .map( ctx -> deploymentService.createDeployment(ctx,DeploymentStatus.UNKNOWN))
-                .subscribe(x -> log.info("FLOW: {}",x.getContext().getDeploymentPaaSId()));
+        doUpdateDeploymentInfo();
 
         // Start services
         eventService.init();
+    }
+
+    public void term() {
+        eventService.term();
     }
 
     @Override
@@ -132,14 +140,6 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
         DeploymentInfo info = deploymentService.getDeployment(deploymentContext.getDeploymentPaaSId());
         if (info != null) {
             // TODO: get the info from the info itself
-
-            /*
-            Experiment
-            Observable.fromIterable(trickActiveDeployments.values())
-                    .map( ctx -> deploymentService.getDeployment(ctx.getDeploymentPaaSId()))
-                    .subscribe(x -> log.info("FLOW: {}",x.getContext().getDeploymentPaaSId()));
-            */
-
             deploymentClient.getStatus(deploymentContext.getDeploymentPaaSId())
                 .map(YorcOrchestrator::getDeploymentStatusFromString)
                 .subscribe(
@@ -211,9 +211,28 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
         }
     }
 
-    private void doUpdateDeploymentInfo(PaaSTopologyDeploymentContext ctx) {
-        log.info("Active Deployment: {}",ctx.getDeploymentPaaSId());
+    /**
+     * Blocking call that update deployment infos
+     */
+    private void doUpdateDeploymentInfo() {
+        Set<String> deploymentIds = deploymentService.getDeployementIds();
 
-        // TODO: implement
+        Observable<String> links = Observable.fromIterable(deploymentService.getDeployementIds())
+                .map(url -> "/deployments/" + url);
+
+        Browser.browserFor( links, url -> deploymentClient.queryUrl(url,DeploymentDTO.class),2)
+                .flatMap( agg -> agg.follow("node", url -> deploymentClient.queryUrl(url,NodeDTO.class),2))
+                .flatMap( agg -> agg.follow("instance", url -> deploymentClient.queryUrl(url,InstanceDTO.class),2))
+                .flatMap( agg -> agg.follow("attribute", url -> deploymentClient.queryUrl(url,AttributeDTO.class),2))
+                .blockingSubscribe( ctx -> {
+                    DeploymentDTO deployment = (DeploymentDTO) ctx.get(0);
+                    NodeDTO node = (NodeDTO) ctx.get(1);
+                    InstanceDTO instance = (InstanceDTO) ctx.get(2);
+                    AttributeDTO attribute = (AttributeDTO) ctx.get(3);
+
+                    log.info("ATTRIBUTE: {}/{}/{}/{}={}",deployment.getId(),node.getName(),instance.getId(),attribute.getName(),attribute.getValue());
+                });
+
+        log.info("----------------");
     }
 }

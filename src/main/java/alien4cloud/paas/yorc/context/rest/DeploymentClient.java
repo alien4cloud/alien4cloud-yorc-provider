@@ -1,7 +1,8 @@
 package alien4cloud.paas.yorc.context.rest;
 
-import alien4cloud.paas.yorc.context.rest.response.DeploymentInfoResponse;
+import alien4cloud.paas.yorc.context.rest.response.DeploymentDTO;
 import alien4cloud.paas.yorc.util.RestUtil;
+import io.reactivex.Observable;
 import io.reactivex.Single;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
@@ -58,9 +59,9 @@ public class DeploymentClient extends AbstractClient {
                 .map(RestUtil.jsonAsText("status"));
     }
 
-    public Single<DeploymentInfoResponse> getInfos(String deploymentId) {
+    public Single<DeploymentDTO> getInfos(String deploymentId) {
         String url = getYorcUrl() + "/deployments/" + deploymentId;
-        return sendRequest(url,HttpMethod.GET,DeploymentInfoResponse.class, buildHttpEntityWithDefaultHeader()).map(HttpEntity::getBody);
+        return sendRequest(url,HttpMethod.GET,DeploymentDTO.class, buildHttpEntityWithDefaultHeader()).map(HttpEntity::getBody);
     }
 
     public Single<String> undeploy(String deploymentId) {
@@ -83,6 +84,12 @@ public class DeploymentClient extends AbstractClient {
 
         return sendRequest(url,HttpMethod.DELETE,String.class,buildHttpEntityWithDefaultHeader())
             .map(RestUtil.extractHeader("Location"));
+    }
+
+    public <T> Observable<T> queryUrl(String url,Class<T> clazz) {
+        return sendRequest(getYorcUrl() + url, HttpMethod.GET, clazz,buildHttpEntityWithDefaultHeader())
+                .map(HttpEntity::getBody)
+                .toObservable();
     }
 
 }

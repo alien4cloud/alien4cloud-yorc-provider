@@ -7,14 +7,14 @@ import lombok.AccessLevel;
 import lombok.Getter;
 
 import javax.inject.Inject;
-import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ExecutorService;
 import java.util.function.Consumer;
 
 public abstract class AbstractTask {
 
     @Inject
     @Getter(AccessLevel.PROTECTED)
-    protected ScheduledExecutorService executorService;
+    protected ExecutorService executorService;
 
     @Inject
     protected Scheduler scheduler;

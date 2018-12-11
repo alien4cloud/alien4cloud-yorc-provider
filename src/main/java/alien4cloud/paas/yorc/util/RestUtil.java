@@ -1,7 +1,9 @@
 package alien4cloud.paas.yorc.util;
 
+import alien4cloud.paas.yorc.context.rest.browser.BrowseableDTO;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.reactivex.Observable;
 import io.reactivex.functions.Function;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -37,5 +39,9 @@ public class RestUtil {
 
     public static <T> Function<ResponseEntity<T>,String> extractHeader(String name) {
         return (entity) -> entity.getHeaders().getFirst(name);
+    }
+
+    public static <T extends BrowseableDTO> Function<T,Observable<String>> linksFor(String type) {
+        return x -> Observable.fromIterable(x.getLinks()).filter(y -> y.getRel().equals(type)).map(z -> z.getHref());
     }
 }
