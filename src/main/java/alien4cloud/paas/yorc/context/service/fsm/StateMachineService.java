@@ -4,11 +4,9 @@ import java.util.Map;
 
 import javax.inject.Inject;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.statemachine.StateMachine;
-import org.springframework.statemachine.config.StateMachineFactory;
 import org.springframework.stereotype.Component;
 
 import com.google.common.collect.ImmutableMap;
@@ -23,8 +21,8 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class StateMachineService {
 
-	@Autowired
-	private StateMachineFactory<FsmStates, FsmEvent.DeploymentMessages> fsmFactory;
+	@Inject
+	private FsmBuilder builder;
 
 
 	// TODO Problem of concurrency
@@ -47,13 +45,15 @@ public class StateMachineService {
 	private FsmEventsConsumer consumer;
 
 	/**
-	 * Create new state machines
-	 * @param ids ids of deployments
+	 * Create new state machines with initial state
+	 * @param input A map containing deployment id and initial state
 	 */
-	public void newStateMachine(String ...ids) {
-		for (String id : ids) {
+	public void newStateMachine(Map<String, FsmStates> input) {
+		for (Map.Entry<String, FsmStates> entry : input.entrySet()) {
+			String id = entry.getKey();
+			FsmStates initialState = entry.getValue();
 			// Create a new state machine
-			cache.put(id, createFsm(id));
+			cache.put(id, createFsm(id, initialState));
 			// Create a new event bus to this deployment
 			eventBusService.createEventBus(id);
 			// Subscribe the state machine to event bus of message type "deployment"
@@ -61,10 +61,30 @@ public class StateMachineService {
 		}
 	}
 
-	private StateMachine<FsmStates, FsmEvent.DeploymentMessages> createFsm(String id) {
-		StateMachine<FsmStates, FsmEvent.DeploymentMessages> fsm = fsmFactory.getStateMachine(id);
-		fsm.addStateListener(new FsmListener(id));
-		log.error(String.format("State machine '%s' is created.", id));
+	/**
+	 * Create new state machines (default initial state: Undeployed)
+	 * @param ids ids of deployments
+	 */
+	public void newStateMachine(String ...ids) {
+		for (String id : ids) {
+			// Create a new state machine
+			cache.put(id, createFsm(id, FsmStates.UNDEPLOYED));
+			// Create a new event bus to this deployment
+			eventBusService.createEventBus(id);
+			// Subscribe the state machine to event bus of message type "deployment"
+			eventBusService.subscribe(id, Event.EVT_DEPLOYMENT, consumer);
+		}
+	}
+
+	private StateMachine<FsmStates, FsmEvent.DeploymentMessages> createFsm(String id, FsmStates initialState) {
+		StateMachine<FsmStates, FsmEvent.DeploymentMessages> fsm = null;
+		try {
+			fsm = builder.createFsm(id, initialState);
+			fsm.addStateListener(new FsmListener(id));
+			log.error(String.format("State machine '%s' is created.", id));
+		} catch (Exception e) {
+			log.error(String.format("Error when creating fsm-%s: %s", id, e.getMessage()));
+		}
 		return fsm;
 	}
 

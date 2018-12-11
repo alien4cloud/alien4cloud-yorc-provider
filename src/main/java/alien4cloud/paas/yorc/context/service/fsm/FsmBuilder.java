@@ -4,33 +4,39 @@ import java.util.EnumSet;
 
 import javax.inject.Inject;
 
-import org.springframework.statemachine.config.EnableStateMachineFactory;
-import org.springframework.statemachine.config.EnumStateMachineConfigurerAdapter;
+import org.springframework.statemachine.StateMachine;
+import org.springframework.statemachine.config.StateMachineBuilder;
 import org.springframework.statemachine.config.builders.StateMachineConfigurationConfigurer;
 import org.springframework.statemachine.config.builders.StateMachineStateConfigurer;
 import org.springframework.statemachine.config.builders.StateMachineTransitionConfigurer;
+import org.springframework.stereotype.Service;
 
 /**
- * Finite State Machine
+ * Finite State Machine builder
  * This class consists of the transition graph and a builder
  */
-@EnableStateMachineFactory
-public class FsmConfiguration extends EnumStateMachineConfigurerAdapter<FsmStates, FsmEvent.DeploymentMessages> {
-
-	private static final FsmStates initialState = FsmStates.UNDEPLOYED;
+@Service
+public class FsmBuilder {
 
 	@Inject
 	private FsmActions actions;
 
-	@Override
-	public void configure(StateMachineStateConfigurer<FsmStates, FsmEvent.DeploymentMessages> states) throws Exception {
+	protected StateMachine<FsmStates, FsmEvent.DeploymentMessages> createFsm(String id, FsmStates initialState) throws Exception {
+		StateMachineBuilder.Builder<FsmStates, FsmEvent.DeploymentMessages> builder = StateMachineBuilder.builder();
+		configure(builder.configureStates(), initialState);
+		configure(builder.configureTransitions());
+		configure(builder.configureConfiguration(), id);
+		return builder.build();
+	}
+
+	private void configure(StateMachineStateConfigurer<FsmStates, FsmEvent.DeploymentMessages> states,
+			FsmStates initialState) throws Exception {
 		states.withStates()
 			.initial(initialState)
 			.states(EnumSet.allOf(FsmStates.class));
 	}
 
-	@Override
-	public void configure(StateMachineTransitionConfigurer<FsmStates, FsmEvent.DeploymentMessages> transitions)
+	private void configure(StateMachineTransitionConfigurer<FsmStates, FsmEvent.DeploymentMessages> transitions)
 			throws Exception {
 		transitions
 			.withExternal()
@@ -67,8 +73,7 @@ public class FsmConfiguration extends EnumStateMachineConfigurerAdapter<FsmState
 			.event(FsmEvent.DeploymentMessages.UNDEPLOYMENT_SUCCESS);
 	}
 
-	@Override
-	public void configure(StateMachineConfigurationConfigurer<FsmStates, FsmEvent.DeploymentMessages> config) throws Exception {
-		config.withConfiguration().autoStartup(true);
+	private void configure(StateMachineConfigurationConfigurer<FsmStates, FsmEvent.DeploymentMessages> config, String id) throws Exception {
+		config.withConfiguration().machineId(id).autoStartup(true);
 	}
 }
