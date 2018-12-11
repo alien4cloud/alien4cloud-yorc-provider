@@ -40,7 +40,7 @@ public class FsmEvent extends Event {
 	 * @return
 	 */
 	private static DeploymentMessages getDeploymentMessages(String status) {
-		switch (status) {
+		switch (status.toUpperCase()) {
 		case "DEPLOYED":
 			return DeploymentMessages.DEPLOYMENT_SUCCESS;
 		case "UNDEPLOYED":
