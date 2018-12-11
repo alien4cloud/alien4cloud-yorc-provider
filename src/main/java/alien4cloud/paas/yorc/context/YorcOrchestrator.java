@@ -1,5 +1,17 @@
 package alien4cloud.paas.yorc.context;
 
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
+
+import javax.inject.Inject;
+
+import org.springframework.context.ApplicationContext;
+import org.springframework.stereotype.Component;
+
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Lists;
+
 import alien4cloud.orchestrators.plugin.ILocationConfiguratorPlugin;
 import alien4cloud.orchestrators.plugin.IOrchestratorPlugin;
 import alien4cloud.orchestrators.plugin.model.PluginArchive;
@@ -7,34 +19,23 @@ import alien4cloud.paas.IPaaSCallback;
 import alien4cloud.paas.exception.MaintenanceModeException;
 import alien4cloud.paas.exception.OperationExecutionException;
 import alien4cloud.paas.exception.PluginConfigurationException;
-import alien4cloud.paas.model.*;
+import alien4cloud.paas.model.AbstractMonitorEvent;
+import alien4cloud.paas.model.DeploymentStatus;
+import alien4cloud.paas.model.InstanceInformation;
+import alien4cloud.paas.model.NodeOperationExecRequest;
+import alien4cloud.paas.model.PaaSDeploymentContext;
+import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
 import alien4cloud.paas.yorc.configuration.ProviderConfiguration;
 import alien4cloud.paas.yorc.context.rest.DeploymentClient;
 import alien4cloud.paas.yorc.context.rest.TemplateManager;
-import alien4cloud.paas.yorc.context.rest.browser.Browser;
-import alien4cloud.paas.yorc.context.rest.response.AttributeDTO;
-import alien4cloud.paas.yorc.context.rest.response.DeploymentDTO;
-import alien4cloud.paas.yorc.context.rest.response.InstanceDTO;
-import alien4cloud.paas.yorc.context.rest.response.NodeDTO;
 import alien4cloud.paas.yorc.context.service.EventBusService;
 import alien4cloud.paas.yorc.context.service.EventPollingService;
 import alien4cloud.paas.yorc.context.service.fsm.FsmEvent;
 import alien4cloud.paas.yorc.context.service.fsm.StateMachineService;
 import alien4cloud.paas.yorc.location.AbstractLocationConfigurerFactory;
 import alien4cloud.paas.yorc.service.PluginArchiveService;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Lists;
-import io.reactivex.Observable;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationContext;
-import org.springframework.stereotype.Component;
-
-import javax.inject.Inject;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 
 @Slf4j
 @Component
