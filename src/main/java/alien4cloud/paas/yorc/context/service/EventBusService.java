@@ -3,6 +3,7 @@ package alien4cloud.paas.yorc.context.service;
 import java.util.Map;
 import java.util.function.Consumer;
 
+import io.reactivex.Scheduler;
 import org.springframework.stereotype.Service;
 
 import com.google.common.collect.Maps;
@@ -11,9 +12,14 @@ import alien4cloud.paas.yorc.context.rest.response.Event;
 import io.reactivex.subjects.PublishSubject;
 import lombok.extern.slf4j.Slf4j;
 
+import javax.inject.Inject;
+
 @Slf4j
 @Service
 public class EventBusService {
+
+    @Inject
+    private Scheduler scheduler;
 
     //TODO Concurrency?
     private Map<String, PublishSubject<Event>> eventBuses = Maps.newHashMap();
@@ -25,7 +31,11 @@ public class EventBusService {
     }
 
     public void subscribe(String deploymentId, String topic, Consumer<Event> callback) {
-        EventListener.builder().when(topic, callback).build(eventBuses.get(deploymentId)).subscribe();
+        EventListener.builder()
+                .when(topic, callback)
+                .observeOn(scheduler)
+                .build(eventBuses.get(deploymentId))
+                .subscribe();
     }
 
     public void publish(Event event) {

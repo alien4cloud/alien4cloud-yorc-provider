@@ -22,12 +22,14 @@ import alien4cloud.paas.yorc.context.service.fsm.FsmEvent;
 import alien4cloud.paas.yorc.context.service.fsm.StateMachineService;
 import alien4cloud.paas.yorc.location.AbstractLocationConfigurerFactory;
 import alien4cloud.paas.yorc.service.PluginArchiveService;
+import alien4cloud.paas.yorc.util.RestUtil;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 import io.reactivex.Observable;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationContext;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 
 import javax.inject.Inject;
@@ -61,8 +63,6 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 
     @Inject
     private DeploymentClient deploymentClient;
-
-    private ProviderConfiguration configuration;
 
 	@Inject
 	private EventBusService eventBusService;
@@ -143,24 +143,19 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 
     @Override
     public void getStatus(PaaSDeploymentContext deploymentContext, IPaaSCallback<DeploymentStatus> callback) {
-        /*DeploymentInfo info = deploymentService.getDeployment(deploymentContext.getDeploymentPaaSId());
-        if (info != null) {
-            // TODO: get the info from the info itself
-            deploymentClient.getStatus(deploymentContext.getDeploymentPaaSId())
-                .map(YorcOrchestrator::getDeploymentStatusFromString)
-                .subscribe(
-                       status ->  callback.onSuccess(status),
-                       throwable -> {
-                            if (RestUtil.isHttpError(throwable,HttpStatus.NOT_FOUND)) {
-                                callback.onSuccess(DeploymentStatus.UNDEPLOYED);
-                            } else {
-                                callback.onFailure(throwable);
-                            }
-                       }
+        // TODO: Get status from statemachine. We use a direct rest query until we can undeploy with the plugin
+        deploymentClient.getStatus(deploymentContext.getDeploymentPaaSId())
+            .map(YorcOrchestrator::getDeploymentStatusFromString)
+            .subscribe(
+                status ->  callback.onSuccess(status),
+                    throwable -> {
+                        if (RestUtil.isHttpError(throwable,HttpStatus.NOT_FOUND)) {
+                            callback.onSuccess(DeploymentStatus.UNDEPLOYED);
+                        } else {
+                            callback.onFailure(throwable);
+                        }
+                    }
                 );
-        } else {
-            callback.onSuccess(DeploymentStatus.UNDEPLOYED);
-        }*/
     }
 
     @Override
