@@ -122,7 +122,7 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 
         Message<FsmEvents> message = MessageBuilder.withPayload(FsmEvents.DEPLOYMENT_STARTED)
                 .setHeader("callback", callback)
-                .setHeader("deploymentContext",deploymentContext)
+                .setHeader("deploymentContext", deploymentContext)
                 .setHeader("deploymentId", deploymentContext.getDeploymentPaaSId())
                 .build();
 

@@ -4,15 +4,12 @@ import java.io.IOException;
 
 import javax.inject.Inject;
 
-import org.springframework.context.annotation.Bean;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.statemachine.StateContext;
 import org.springframework.statemachine.action.Action;
 import org.springframework.stereotype.Service;
-
-import com.google.common.collect.ImmutableMap;
 
 import alien4cloud.paas.IPaaSCallback;
 import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
@@ -34,7 +31,6 @@ public class FsmActions {
 	@Inject
 	private BusService busService;
 
-	@Bean
 	protected Action<FsmStates, FsmEvents> buildAndSendZip() {
 		return new Action<FsmStates, FsmEvents>() {
 

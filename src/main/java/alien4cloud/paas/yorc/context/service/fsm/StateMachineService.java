@@ -52,7 +52,7 @@ public class StateMachineService {
 			// Create a new event bus to this deployment
 			busService.createEventBuses(id);
 			// Subscribe the state machine to event bus of message type "deployment"
-			busService.subscribe(id,this::talk);
+			busService.subscribe(id, this::talk);
 		}
 	}
 

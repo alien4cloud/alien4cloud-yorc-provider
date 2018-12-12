@@ -1,8 +1,9 @@
 package alien4cloud.paas.yorc.context.service.fsm;
 
-import alien4cloud.paas.yorc.context.rest.response.Event;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
+
+import alien4cloud.paas.yorc.context.rest.response.Event;
 
 public class FsmMapper {
 
@@ -31,7 +32,7 @@ public class FsmMapper {
 
         return MessageBuilder
             .withPayload(payload)
-            .setHeader("event",event)
+            .setHeader("deploymentId", event.getDeployment_id())
             .build();
     }
 
@@ -40,7 +41,7 @@ public class FsmMapper {
      * @param status
      * @return
      */
-    private static FsmEvents fromYorcToFsmState(String status) {
+    private static FsmEvents fromYorcToFsmState(String status) throws Exception {
         switch (status.toUpperCase()) {
             case "DEPLOYED":
                 return FsmEvents.DEPLOYMENT_SUCCESS;
@@ -51,13 +52,11 @@ public class FsmMapper {
                 return FsmEvents.DEPLOYMENT_IN_PROGRESS;
             case "UNDEPLOYMENT_IN_PROGRESS":
                 return FsmEvents.UNDEPLOYMENT_STARTED;
-//		case "INITIAL":
-//			return DEPLOYMENT_STARTED;
             case "DEPLOYMENT_FAILED":
             case "UNDEPLOYMENT_FAILED":
                 return FsmEvents.FAILURE;
             default:
-                return FsmEvents.FAILURE; //TODO should add an unknown state
+                throw new Exception(String.format("Unknown status from Yorc: %s", status));
         }
     }
 }
