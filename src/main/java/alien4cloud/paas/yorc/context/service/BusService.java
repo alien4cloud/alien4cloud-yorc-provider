@@ -2,11 +2,13 @@ package alien4cloud.paas.yorc.context.service;
 
 import java.util.Map;
 
+import alien4cloud.paas.yorc.context.YorcOrchestrator;
 import alien4cloud.paas.yorc.context.rest.response.LogEvent;
 import alien4cloud.paas.yorc.context.service.fsm.FsmEvents;
 import alien4cloud.paas.yorc.context.service.fsm.FsmMapper;
 import io.reactivex.Scheduler;
 import io.reactivex.functions.Consumer;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.Message;
 import org.springframework.stereotype.Service;
 
@@ -44,7 +46,7 @@ public class BusService {
             b.events.subscribe(x -> log.info("EVT YORC: {}",x));
 
             //  - For now we log, coming on http pool
-            b.events.subscribe(x -> log.info("LOG YORC: {}",x));
+            b.logs.subscribe(x -> log.info("LOG YORC: {}",x));
 
             //  - We also filter the event stream and link it to the messages stream
             //    It is subscribed on the task pool

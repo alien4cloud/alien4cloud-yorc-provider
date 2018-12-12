@@ -1,12 +1,19 @@
 package alien4cloud.paas.yorc.context;
 
+import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
 import javax.inject.Inject;
 
+import alien4cloud.paas.yorc.context.rest.browser.Browser;
+import alien4cloud.paas.yorc.context.rest.response.AttributeDTO;
+import alien4cloud.paas.yorc.context.rest.response.DeploymentDTO;
+import alien4cloud.paas.yorc.context.rest.response.InstanceDTO;
+import alien4cloud.paas.yorc.context.rest.response.NodeDTO;
 import alien4cloud.paas.yorc.context.service.fsm.FsmEvents;
+import io.reactivex.Observable;
 import org.springframework.context.ApplicationContext;
 import org.springframework.http.HttpStatus;
 import org.springframework.messaging.Message;
@@ -58,7 +65,7 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
     private TemplateManager templateManager;
 
     @Inject
-    private EventPollingService eventService;
+    private EventPollingService eventPollingService;
 
     @Inject
     private StateMachineService stateMachineService;
@@ -69,6 +76,7 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 	@Inject
 	private BusService busService;
 
+    private String orchestratorId;
 
     /**
      * TODO: Provisoire
@@ -94,6 +102,9 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 
     @Override
     public void setConfiguration(String orchestratorId, ProviderConfiguration configuration) throws PluginConfigurationException {
+        // Store orchestrator Id
+        this.orchestratorId = orchestratorId;
+
         // Configure Rest Clients
         templateManager.configure(configuration);
     }
@@ -102,18 +113,17 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
     public void init(Map<String, PaaSTopologyDeploymentContext> activeDeployments) {
         log.info("Init Yorc plugin for " + activeDeployments.size() + " active deployments");
 
-
-        //doUpdateDeploymentInfo();
-
 		// Create the state machines for each deployment
 		stateMachineService.newStateMachine(activeDeployments.keySet().toArray(new String[0]));
 
+        doUpdateDeploymentInfo(activeDeployments.values());
+
         // Start services
-        eventService.init();
+        eventPollingService.init(orchestratorId);
     }
 
     public void term() {
-        eventService.term();
+        eventPollingService.term();
     }
 
     @Override
@@ -223,12 +233,9 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
     /**
      * Blocking call that update deployment infos
      */
-    private void doUpdateDeploymentInfo() {
-        /*
-        Set<String> deploymentIds = deploymentService.getDeployementIds();
-
-        Observable<String> links = Observable.fromIterable(deploymentService.getDeployementIds())
-                .map(url -> "/deployments/" + url);
+    private void doUpdateDeploymentInfo(Collection<PaaSTopologyDeploymentContext> contexts) {
+        Observable<String> links = Observable.fromIterable(contexts)
+                .map(ctx -> "/deployments/" + ctx.getDeploymentPaaSId());
 
         Browser.browserFor( links, url -> deploymentClient.queryUrl(url,DeploymentDTO.class),2)
                 .flatMap( agg -> agg.follow("node", url -> deploymentClient.queryUrl(url,NodeDTO.class),2))
@@ -242,8 +249,5 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 
                     log.info("ATTRIBUTE: {}/{}/{}/{}={}",deployment.getId(),node.getName(),instance.getId(),attribute.getName(),attribute.getValue());
                 });
-
-        log.info("----------------");
-        */
     }
 }

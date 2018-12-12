@@ -3,6 +3,8 @@ package alien4cloud.paas.yorc.context.service;
 import alien4cloud.paas.yorc.context.rest.EventClient;
 import alien4cloud.paas.yorc.context.rest.response.Event;
 import alien4cloud.paas.yorc.context.rest.response.EventDTO;
+import alien4cloud.paas.yorc.dao.YorcESDao;
+import alien4cloud.paas.yorc.model.EventIndex;
 import io.reactivex.Scheduler;
 import io.reactivex.Single;
 import lombok.extern.slf4j.Slf4j;
@@ -25,6 +27,11 @@ public class EventPollingService {
     @Inject
     private BusService evenBusService;
 
+    @Inject
+    private YorcESDao dao;
+
+    private String orchestratorId;
+
     /**
      * Index
      */
@@ -38,7 +45,13 @@ public class EventPollingService {
     /**
      * Initialize the polling
      */
-    public void init() {
+    public void init(String orchestratorId) {
+        this.orchestratorId = orchestratorId;
+
+        // Ensure ES Index exists
+        initIndex();
+
+        // Bootstrap the polling
         doQuery();
     }
 
@@ -47,7 +60,7 @@ public class EventPollingService {
      * @return
      */
     private void doQuery() {
-        log.info("Querying Events with index {}", index);
+        log.info("Events Query - index={}", index);
         client.getLogFromYorc(index).subscribe(this::processEvents,this::processErrors);
     }
 
@@ -73,6 +86,9 @@ public class EventPollingService {
 
         index = response.getLast_index();
 
+        // store it in ES
+        saveIndex();
+
         if (!stopped) {
             doQuery();
         }
@@ -91,4 +107,22 @@ public class EventPollingService {
         stopped = true;
     }
 
+    private void initIndex() {
+        EventIndex data = dao.findById(EventIndex.class,orchestratorId);
+        if (data == null) {
+            // This is our first run, initialize the index from Yorc
+            Integer lastIndex = client.getLastIndex().blockingGet();
+
+            data = new EventIndex();
+            data.setId(orchestratorId);
+            data.setIndex(lastIndex);
+            dao.save(data);
+        }
+
+        index = data.getIndex();
+    }
+
+    private void saveIndex() {
+        dao.save(new EventIndex(orchestratorId,index));
+    }
 }
