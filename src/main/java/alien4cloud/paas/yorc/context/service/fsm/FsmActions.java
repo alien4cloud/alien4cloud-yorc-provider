@@ -38,11 +38,6 @@ public class FsmActions {
 			private IPaaSCallback<?> callback;
 
 			private void onHttpOk(ResponseEntity<String> value) {
-				Message<FsmEvents> message = MessageBuilder.withPayload(FsmEvents.DEPLOYMENT_SUBMITTED)
-						.setHeader("deploymentId", context.getDeploymentPaaSId())
-						.build();
-
-				busService.publish(message);
 				log.info("HTTP Request OK : {}", value);
 			}
 

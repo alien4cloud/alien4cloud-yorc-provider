@@ -29,7 +29,6 @@ public class StateMachineService {
 	private static final Map<FsmStates, DeploymentStatus> statesMapping = ImmutableMap.<FsmStates, DeploymentStatus>builder()
 			.put(FsmStates.UNDEPLOYED, DeploymentStatus.UNDEPLOYED)
 			.put(FsmStates.DEPLOYMENT_INIT, DeploymentStatus.INIT_DEPLOYMENT)
-			.put(FsmStates.DEPLOYMENT_SUBMITTED, DeploymentStatus.INIT_DEPLOYMENT)
 			.put(FsmStates.DEPLOYMENT_IN_PROGRESS, DeploymentStatus.DEPLOYMENT_IN_PROGRESS)
 			.put(FsmStates.DEPLOYED, DeploymentStatus.DEPLOYED)
 			.put(FsmStates.UNDEPLOYMENT_IN_PROGRESS, DeploymentStatus.DEPLOYMENT_IN_PROGRESS)
