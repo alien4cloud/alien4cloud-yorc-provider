@@ -7,7 +7,7 @@ import org.springframework.statemachine.state.State;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
-public class FsmListener extends StateMachineListenerAdapter<FsmStates, FsmEvent.DeploymentMessages> {
+public class FsmListener extends StateMachineListenerAdapter<FsmStates, FsmEvents> {
 
 	private String id;
 
@@ -16,12 +16,12 @@ public class FsmListener extends StateMachineListenerAdapter<FsmStates, FsmEvent
 	}
 
 	@Override
-	public void stateChanged(State<FsmStates, FsmEvent.DeploymentMessages> from, State<FsmStates, FsmEvent.DeploymentMessages> to) {
+	public void stateChanged(State<FsmStates, FsmEvents> from, State<FsmStates, FsmEvents> to) {
 		log.error(String.format("FSM %s changed stage from %s to %s.", id, from.getId(), to.getId()));
 	}
 
 	@Override
-	public void stateMachineStarted(StateMachine<FsmStates, FsmEvent.DeploymentMessages> stateMachine) {
+	public void stateMachineStarted(StateMachine<FsmStates, FsmEvents> stateMachine) {
 		log.error(String.format("FSM %s started.", id));
 	}
 }

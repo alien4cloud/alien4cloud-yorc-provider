@@ -5,7 +5,6 @@ import java.util.Map;
 import javax.inject.Inject;
 
 import org.springframework.messaging.Message;
-import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.statemachine.StateMachine;
 import org.springframework.stereotype.Component;
 
@@ -13,8 +12,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 
 import alien4cloud.paas.model.DeploymentStatus;
-import alien4cloud.paas.yorc.context.rest.response.Event;
-import alien4cloud.paas.yorc.context.service.EventBusService;
+import alien4cloud.paas.yorc.context.service.BusService;
 import lombok.extern.slf4j.Slf4j;
 
 @Component
@@ -26,7 +24,7 @@ public class StateMachineService {
 
 
 	// TODO Problem of concurrency
-	private Map<String, StateMachine<FsmStates, FsmEvent.DeploymentMessages>> cache = Maps.newHashMap();
+	private Map<String, StateMachine<FsmStates, FsmEvents>> cache = Maps.newHashMap();
 
 	private static final Map<FsmStates, DeploymentStatus> statesMapping = ImmutableMap.<FsmStates, DeploymentStatus>builder()
 			.put(FsmStates.UNDEPLOYED, DeploymentStatus.UNDEPLOYED)
@@ -39,10 +37,7 @@ public class StateMachineService {
 			.build();
 
 	@Inject
-	private EventBusService eventBusService;
-
-	@Inject
-	private FsmEventsConsumer consumer;
+	private BusService busService;
 
 	/**
 	 * Create new state machines with initial state
@@ -55,9 +50,9 @@ public class StateMachineService {
 			// Create a new state machine
 			cache.put(id, createFsm(id, initialState));
 			// Create a new event bus to this deployment
-			eventBusService.createEventBus(id);
+			busService.createEventBuses(id);
 			// Subscribe the state machine to event bus of message type "deployment"
-			eventBusService.subscribe(id, Event.EVT_DEPLOYMENT, consumer);
+			busService.subscribe(id,this::talk);
 		}
 	}
 
@@ -70,14 +65,14 @@ public class StateMachineService {
 			// Create a new state machine
 			cache.put(id, createFsm(id, FsmStates.UNDEPLOYED));
 			// Create a new event bus to this deployment
-			eventBusService.createEventBus(id);
+			busService.createEventBuses(id);
 			// Subscribe the state machine to event bus of message type "deployment"
-			eventBusService.subscribe(id, Event.EVT_DEPLOYMENT, consumer);
+			busService.subscribe(id, this::talk);
 		}
 	}
 
-	private StateMachine<FsmStates, FsmEvent.DeploymentMessages> createFsm(String id, FsmStates initialState) {
-		StateMachine<FsmStates, FsmEvent.DeploymentMessages> fsm = null;
+	private StateMachine<FsmStates, FsmEvents> createFsm(String id, FsmStates initialState) {
+		StateMachine<FsmStates, FsmEvents> fsm = null;
 		try {
 			fsm = builder.createFsm(id, initialState);
 			fsm.addStateListener(new FsmListener(id));
@@ -88,24 +83,12 @@ public class StateMachineService {
 		return fsm;
 	}
 
-	/**
-	 * Send an event to the state machine to decide the next state
-	 * @param event Input event
-	 * @return Next state
-	 */
-	public FsmStates talk(FsmEvent event) {
-		if (!cache.containsKey(event.getDeployment_id())) {
-			throw new RuntimeException(String.format("The state machine of %s does not exist.", event.getDeployment_id()));
+	private void talk(Message<FsmEvents> message) {
+		String deploymentId = (String) message.getHeaders().get("deploymentId");
+		StateMachine<FsmStates, FsmEvents> fsm = cache.get(deploymentId);
+		if (fsm != null) {
+			fsm.sendEvent(message);
 		}
-		MessageBuilder<FsmEvent.DeploymentMessages> builder = MessageBuilder
-				.withPayload(event.getMessage());
-		for (String key : event.getHeaders().keySet()) {
-			builder.setHeader(key, event.getHeaders().get(key));
-		}
-		Message<FsmEvent.DeploymentMessages> message = builder.build();
-		StateMachine<FsmStates, FsmEvent.DeploymentMessages> fsm = cache.get(event.getDeployment_id());
-		fsm.sendEvent(message);
-		return cache.get(event.getDeployment_id()).getState().getId();
 	}
 
 	/**

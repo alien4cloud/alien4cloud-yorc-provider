@@ -21,59 +21,59 @@ public class FsmBuilder {
 	@Inject
 	private FsmActions actions;
 
-	protected StateMachine<FsmStates, FsmEvent.DeploymentMessages> createFsm(String id, FsmStates initialState) throws Exception {
-		StateMachineBuilder.Builder<FsmStates, FsmEvent.DeploymentMessages> builder = StateMachineBuilder.builder();
+	protected StateMachine<FsmStates, FsmEvents> createFsm(String id, FsmStates initialState) throws Exception {
+		StateMachineBuilder.Builder<FsmStates, FsmEvents> builder = StateMachineBuilder.builder();
 		configure(builder.configureStates(), initialState);
 		configure(builder.configureTransitions());
 		configure(builder.configureConfiguration(), id);
 		return builder.build();
 	}
 
-	private void configure(StateMachineStateConfigurer<FsmStates, FsmEvent.DeploymentMessages> states,
+	private void configure(StateMachineStateConfigurer<FsmStates, FsmEvents> states,
 			FsmStates initialState) throws Exception {
 		states.withStates()
 			.initial(initialState)
 			.states(EnumSet.allOf(FsmStates.class));
 	}
 
-	private void configure(StateMachineTransitionConfigurer<FsmStates, FsmEvent.DeploymentMessages> transitions)
+	private void configure(StateMachineTransitionConfigurer<FsmStates, FsmEvents> transitions)
 			throws Exception {
 		transitions
 			.withExternal()
 			.source(FsmStates.UNDEPLOYED).target(FsmStates.DEPLOYMENT_INIT)
-			.event(FsmEvent.DeploymentMessages.DEPLOYMENT_STARTED)
+			.event(FsmEvents.DEPLOYMENT_STARTED)
 			.action(actions.buildAndSendZip())
 			.and()
 			.withExternal()
 			.source(FsmStates.DEPLOYMENT_INIT).target(FsmStates.DEPLOYMENT_SUBMITTED)
-			.event(FsmEvent.DeploymentMessages.DEPLOYMENT_SUBMITTED)
+			.event(FsmEvents.DEPLOYMENT_SUBMITTED)
 			.and()
 			.withExternal()
 			.source(FsmStates.DEPLOYMENT_INIT).target(FsmStates.FAILED)
-			.event(FsmEvent.DeploymentMessages.FAILURE)
+			.event(FsmEvents.FAILURE)
 			.and()
 			.withExternal()
 			.source(FsmStates.DEPLOYMENT_SUBMITTED).target(FsmStates.DEPLOYMENT_IN_PROGRESS)
-			.event(FsmEvent.DeploymentMessages.DEPLOYMENT_IN_PROGRESS)
+			.event(FsmEvents.DEPLOYMENT_IN_PROGRESS)
 			.and()
 			.withExternal()
 			.source(FsmStates.DEPLOYMENT_SUBMITTED).target(FsmStates.FAILED)
-			.event(FsmEvent.DeploymentMessages.FAILURE)
+			.event(FsmEvents.FAILURE)
 			.and()
 			.withExternal()
 			.source(FsmStates.DEPLOYMENT_IN_PROGRESS).target(FsmStates.DEPLOYED)
-			.event(FsmEvent.DeploymentMessages.DEPLOYMENT_SUCCESS)
+			.event(FsmEvents.DEPLOYMENT_SUCCESS)
 			.and()
 			.withExternal()
 			.source(FsmStates.DEPLOYED).target(FsmStates.UNDEPLOYMENT_IN_PROGRESS)
-			.event(FsmEvent.DeploymentMessages.UNDEPLOYMENT_STARTED)
+			.event(FsmEvents.UNDEPLOYMENT_STARTED)
 			.and()
 			.withExternal()
 			.source(FsmStates.UNDEPLOYMENT_IN_PROGRESS).target(FsmStates.UNDEPLOYED)
-			.event(FsmEvent.DeploymentMessages.UNDEPLOYMENT_SUCCESS);
+			.event(FsmEvents.UNDEPLOYMENT_SUCCESS);
 	}
 
-	private void configure(StateMachineConfigurationConfigurer<FsmStates, FsmEvent.DeploymentMessages> config, String id) throws Exception {
+	private void configure(StateMachineConfigurationConfigurer<FsmStates, FsmEvents> config, String id) throws Exception {
 		config.withConfiguration().machineId(id).autoStartup(true);
 	}
 }

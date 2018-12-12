@@ -6,11 +6,13 @@ import java.util.Map;
 
 import javax.inject.Inject;
 
+import alien4cloud.paas.yorc.context.service.fsm.FsmEvents;
 import org.springframework.context.ApplicationContext;
 import org.springframework.http.HttpStatus;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.stereotype.Component;
 
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Lists;
 
 import alien4cloud.orchestrators.plugin.ILocationConfiguratorPlugin;
@@ -29,9 +31,8 @@ import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
 import alien4cloud.paas.yorc.configuration.ProviderConfiguration;
 import alien4cloud.paas.yorc.context.rest.DeploymentClient;
 import alien4cloud.paas.yorc.context.rest.TemplateManager;
-import alien4cloud.paas.yorc.context.service.EventBusService;
+import alien4cloud.paas.yorc.context.service.BusService;
 import alien4cloud.paas.yorc.context.service.EventPollingService;
-import alien4cloud.paas.yorc.context.service.fsm.FsmEvent;
 import alien4cloud.paas.yorc.context.service.fsm.StateMachineService;
 import alien4cloud.paas.yorc.location.AbstractLocationConfigurerFactory;
 import alien4cloud.paas.yorc.service.PluginArchiveService;
@@ -66,7 +67,7 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
     private DeploymentClient deploymentClient;
 
 	@Inject
-	private EventBusService eventBusService;
+	private BusService busService;
 
 
     /**
@@ -118,8 +119,14 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
     @Override
     public void deploy(PaaSTopologyDeploymentContext deploymentContext, IPaaSCallback<?> callback) {
         stateMachineService.newStateMachine(deploymentContext.getDeploymentPaaSId());
-        eventBusService.publish(new FsmEvent(deploymentContext.getDeploymentPaaSId(), FsmEvent.DeploymentMessages.DEPLOYMENT_STARTED,
-				ImmutableMap.of("callback", callback, "deploymentContext", deploymentContext)));
+
+        Message<FsmEvents> message = MessageBuilder.withPayload(FsmEvents.DEPLOYMENT_STARTED)
+                .setHeader("callback", callback)
+                .setHeader("deploymentContext",deploymentContext)
+                .setHeader("deploymentId", deploymentContext.getDeploymentPaaSId())
+                .build();
+
+        busService.publish(message);
     }
 
     @Override

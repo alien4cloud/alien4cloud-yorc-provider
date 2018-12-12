@@ -6,17 +6,18 @@ import javax.inject.Inject;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.Message;
+import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.statemachine.StateContext;
 import org.springframework.statemachine.action.Action;
 import org.springframework.stereotype.Service;
-import org.springframework.util.concurrent.ListenableFuture;
 
 import com.google.common.collect.ImmutableMap;
 
 import alien4cloud.paas.IPaaSCallback;
 import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
 import alien4cloud.paas.yorc.context.rest.DeploymentClient;
-import alien4cloud.paas.yorc.context.service.EventBusService;
+import alien4cloud.paas.yorc.context.service.BusService;
 import alien4cloud.paas.yorc.service.ZipBuilder;
 import lombok.extern.slf4j.Slf4j;
 
@@ -31,27 +32,35 @@ public class FsmActions {
 	private ZipBuilder zipBuilder;
 
 	@Inject
-	private EventBusService eventBusService;
+	private BusService busService;
 
 	@Bean
-	protected Action<FsmStates, FsmEvent.DeploymentMessages> buildAndSendZip() {
-		return new Action<FsmStates, FsmEvent.DeploymentMessages>() {
+	protected Action<FsmStates, FsmEvents> buildAndSendZip() {
+		return new Action<FsmStates, FsmEvents>() {
 
 			private PaaSTopologyDeploymentContext context;
 			private IPaaSCallback<?> callback;
 
 			private void onHttpOk(ResponseEntity<String> value) {
-				eventBusService.publish(new FsmEvent(context.getDeploymentPaaSId(), FsmEvent.DeploymentMessages.DEPLOYMENT_SUBMITTED, ImmutableMap.of()));
+				Message<FsmEvents> message = MessageBuilder.withPayload(FsmEvents.DEPLOYMENT_SUBMITTED)
+						.setHeader("deploymentId", context.getDeploymentPaaSId())
+						.build();
+
+				busService.publish(message);
 				log.info("HTTP Request OK : {}", value);
 			}
 
 			private void onHttpKo(Throwable t) {
-				eventBusService.publish(new FsmEvent(context.getDeploymentPaaSId(), FsmEvent.DeploymentMessages.FAILURE, ImmutableMap.of()));
+				Message<FsmEvents> message = MessageBuilder.withPayload(FsmEvents.FAILURE)
+						.setHeader("deploymentId", context.getDeploymentPaaSId())
+						.build();
+
+				busService.publish(message);
 				log.error("HTTP Request OK : {}", t.getMessage());
 			}
 
 			@Override
-			public void execute(StateContext<FsmStates, FsmEvent.DeploymentMessages> stateContext) {
+			public void execute(StateContext<FsmStates, FsmEvents> stateContext) {
 				byte[] bytes;
 				context = (PaaSTopologyDeploymentContext) stateContext.getMessageHeaders().get("deploymentContext");
 				callback = (IPaaSCallback<?>) stateContext.getMessageHeaders().get("callback");

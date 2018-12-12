@@ -23,7 +23,7 @@ public class EventPollingService {
     private EventClient client;
 
     @Inject
-    private EventBusService evenBusService;
+    private BusService evenBusService;
 
     /**
      * Index
@@ -60,17 +60,14 @@ public class EventPollingService {
         for (Event event : response.getEvents()) {
             switch(event.getType()) {
                 case Event.EVT_INSTANCE:
-                    //log.debug("Instance Event [{}/{}]",event.getType(),event.getDeployment_id());
-                    break;
                 case Event.EVT_DEPLOYMENT:
                 case Event.EVT_OPERATION:
                 case Event.EVT_SCALING:
                 case Event.EVT_WORKFLOW:
-                    log.error(String.format("Event received from Yorc %s", event));
                     evenBusService.publish(event);
                     break;
                 default:
-                    log.error ("Unknown Yorc Event [{}/{}]",event.getType(),event.getDeployment_id());
+                    log.warn ("Unknown Yorc Event [{}/{}]",event.getType(),event.getDeployment_id());
             }
         }
 
@@ -83,7 +80,7 @@ public class EventPollingService {
 
     private void processErrors(Throwable t) {
         if (!stopped) {
-            log.error("Event polling Exception: {}", t);
+            log.error("Event polling Exception: {}", t.getMessage());
             Single.timer(2,TimeUnit.SECONDS,scheduler)
                 .flatMap(x -> client.getLogFromYorc(index))
                 .subscribe(this::processEvents,this::processErrors);
