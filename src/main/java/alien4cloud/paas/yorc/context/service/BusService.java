@@ -65,6 +65,12 @@ public class BusService {
         }
     }
 
+    public void publish(LogEvent logEvent) {
+        if (eventBuses.containsKey(logEvent.getDeploymentId())) {
+            eventBuses.get(logEvent.getDeploymentId()).logs.onNext(logEvent);
+        }
+    }
+
     public void publish(Message<FsmEvents> message) {
         String deploymentId = (String) message.getHeaders().get("deploymentId");
 

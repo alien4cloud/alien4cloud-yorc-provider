@@ -12,7 +12,7 @@ import org.springframework.stereotype.Component;
 @Component
 public class EventClient extends AbstractClient {
 
-    public Single<ResponseEntity<EventDTO>> getLogFromYorc(int index) {
+    public Single<ResponseEntity<EventDTO>> get(int index) {
         String url = getYorcUrl() + "/events?index=" + index;
         return sendRequest(url, HttpMethod.GET, EventDTO.class, buildHttpEntityWithDefaultHeader());
     }

@@ -9,6 +9,7 @@ import alien4cloud.paas.yorc.context.rest.response.AttributeDTO;
 import alien4cloud.paas.yorc.context.rest.response.DeploymentDTO;
 import alien4cloud.paas.yorc.context.rest.response.InstanceDTO;
 import alien4cloud.paas.yorc.context.rest.response.NodeDTO;
+import alien4cloud.paas.yorc.context.service.LogEventPollingService;
 import alien4cloud.paas.yorc.context.service.fsm.FsmEvents;
 import alien4cloud.paas.yorc.context.service.fsm.FsmMapper;
 import alien4cloud.paas.yorc.context.service.fsm.FsmStates;
@@ -65,6 +66,9 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 
     @Inject
     private EventPollingService eventPollingService;
+
+    @Inject
+    private LogEventPollingService logEventPollingService;
 
     @Inject
     private StateMachineService stateMachineService;
@@ -128,12 +132,15 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
         // TODO: Do it lazily
         //doUpdateDeploymentInfo(activeDeployments.values());
 
-        // Start services
+        // Start Pollers
         eventPollingService.init();
+        logEventPollingService.init();
     }
 
     public void term() {
+        // Notify Pollers that they have to stop
         eventPollingService.term();
+        logEventPollingService.term();
     }
 
     @Override

@@ -1,11 +1,14 @@
 package alien4cloud.paas.yorc.context.service;
 
 import alien4cloud.paas.yorc.context.YorcOrchestrator;
-import alien4cloud.paas.yorc.context.rest.EventClient;
+import alien4cloud.paas.yorc.context.rest.LogEventClient;
 import alien4cloud.paas.yorc.context.rest.response.Event;
 import alien4cloud.paas.yorc.context.rest.response.EventDTO;
+import alien4cloud.paas.yorc.context.rest.response.LogEvent;
+import alien4cloud.paas.yorc.context.rest.response.LogEventDTO;
 import alien4cloud.paas.yorc.dao.YorcESDao;
 import alien4cloud.paas.yorc.model.EventIndex;
+import alien4cloud.paas.yorc.model.LogEventIndex;
 import io.reactivex.Scheduler;
 import io.reactivex.Single;
 import lombok.extern.slf4j.Slf4j;
@@ -17,22 +20,22 @@ import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
-public class EventPollingService {
+public class LogEventPollingService {
 
     @Inject
-    protected Scheduler scheduler;
-
-    @Inject
-    private EventClient client;
-
-    @Inject
-    private BusService bus;
+    private Scheduler scheduler;
 
     @Inject
     private YorcESDao dao;
 
     @Inject
     private YorcOrchestrator orchestrator;
+
+    @Inject
+    private LogEventClient client;
+
+    @Inject
+    private BusService bus;
 
     /**
      * Index
@@ -66,23 +69,13 @@ public class EventPollingService {
     }
 
     /*
-     * Process the event
+     * Process the Log event
      */
-    private void processEvents(ResponseEntity<EventDTO> entity) {
-        EventDTO response = entity.getBody();
+    private void processEvents(ResponseEntity<LogEventDTO> entity) {
+        LogEventDTO response = entity.getBody();
 
-        for (Event event : response.getEvents()) {
-            switch(event.getType()) {
-                case Event.EVT_INSTANCE:
-                case Event.EVT_DEPLOYMENT:
-                case Event.EVT_OPERATION:
-                case Event.EVT_SCALING:
-                case Event.EVT_WORKFLOW:
-                    bus.publish(event);
-                    break;
-                default:
-                    log.warn ("Unknown Yorc Event [{}/{}]",event.getType(),event.getDeployment_id());
-            }
+        for (LogEvent logEvent : response.getLogs()) {
+            bus.publish(logEvent);
         }
 
         index = response.getLast_index();
@@ -93,14 +86,15 @@ public class EventPollingService {
         if (!stopped) {
             doQuery();
         }
+
     }
 
     private void processErrors(Throwable t) {
         if (!stopped) {
             log.error("Event polling Exception: {}", t.getMessage());
             Single.timer(2,TimeUnit.SECONDS,scheduler)
-                .flatMap(x -> client.get(index))
-                .subscribe(this::processEvents,this::processErrors);
+                    .flatMap(x -> client.get(index))
+                    .subscribe(this::processEvents,this::processErrors);
         }
     }
 
@@ -109,12 +103,12 @@ public class EventPollingService {
     }
 
     private void initIndex() {
-        EventIndex data = dao.findById(EventIndex.class,orchestrator.getOrchestratorId());
+        LogEventIndex data = dao.findById(LogEventIndex.class,orchestrator.getOrchestratorId());
         if (data == null) {
             // This is our first run, initialize the index from Yorc
             Integer lastIndex = client.getLastIndex().blockingGet();
 
-            data = new EventIndex();
+            data = new LogEventIndex();
             data.setId(orchestrator.getOrchestratorId());
             data.setIndex(lastIndex);
             dao.save(data);
@@ -124,6 +118,6 @@ public class EventPollingService {
     }
 
     private void saveIndex() {
-        dao.save(new EventIndex(orchestrator.getOrchestratorId(),index));
+        dao.save(new LogEventIndex(orchestrator.getOrchestratorId(),index));
     }
 }
