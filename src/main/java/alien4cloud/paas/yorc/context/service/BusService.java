@@ -2,13 +2,12 @@ package alien4cloud.paas.yorc.context.service;
 
 import java.util.Map;
 
-import alien4cloud.paas.yorc.context.YorcOrchestrator;
 import alien4cloud.paas.yorc.context.rest.response.LogEvent;
 import alien4cloud.paas.yorc.context.service.fsm.FsmEvents;
 import alien4cloud.paas.yorc.context.service.fsm.FsmMapper;
 import io.reactivex.Scheduler;
 import io.reactivex.functions.Consumer;
-import org.springframework.beans.factory.annotation.Autowired;
+import io.reactivex.subjects.Subject;
 import org.springframework.messaging.Message;
 import org.springframework.stereotype.Service;
 
@@ -28,9 +27,11 @@ public class BusService {
     private Scheduler scheduler;
 
     private static class Buses {
-        private final PublishSubject<Event> events = PublishSubject.create();
-        private final PublishSubject<LogEvent> logs = PublishSubject.create();
-        private final PublishSubject<Message<FsmEvents>> messages = PublishSubject.create();
+        private final Subject<Event> events = PublishSubject.create();
+        private final Subject<LogEvent> logs = PublishSubject.create();
+
+        // Synchronize this one because onNext can be called by multiple threads
+        private final Subject<Message<FsmEvents>> messages = PublishSubject.<Message<FsmEvents>>create().toSerialized();
     }
 
     //TODO Concurrency?
