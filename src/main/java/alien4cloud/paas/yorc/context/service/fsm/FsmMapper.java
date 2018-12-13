@@ -23,7 +23,7 @@ public class FsmMapper {
 
         switch(event.getType()) {
             case Event.EVT_DEPLOYMENT:
-                payload = fromYorcToFsmState(event.getStatus());
+                payload = fromYorcToFsmEvent(event.getStatus());
                 break;
             default:
                 throw new Exception("Event Mapping Not handled");
@@ -40,7 +40,7 @@ public class FsmMapper {
      * @param status
      * @return
      */
-    private static FsmEvents fromYorcToFsmState(String status) {
+    public static FsmEvents fromYorcToFsmEvent(String status) {
         switch (status.toUpperCase()) {
             case "DEPLOYED":
                 return FsmEvents.DEPLOYMENT_SUCCESS;
@@ -58,6 +58,23 @@ public class FsmMapper {
                 return FsmEvents.FAILURE;
             default:
                 return FsmEvents.FAILURE; //TODO should add an unknown state
+        }
+    }
+
+    public static FsmStates fromYorcToFsmState(String status) {
+        switch(status) {
+            case "DEPLOYED":
+                return FsmStates.DEPLOYED;
+            case "UNDEPLOYED":
+                return FsmStates.UNDEPLOYED;
+            case "INIT_DEPLOYMENT":
+                return FsmStates.DEPLOYMENT_INIT;
+            case "DEPLOYMENT_IN_PROGRESS":
+                return FsmStates.DEPLOYMENT_IN_PROGRESS;
+            default:
+            case "FAILURE":
+                return FsmStates.FAILED;
+
         }
     }
 }

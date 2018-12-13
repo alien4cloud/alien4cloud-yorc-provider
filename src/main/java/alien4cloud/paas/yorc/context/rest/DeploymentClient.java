@@ -1,5 +1,6 @@
 package alien4cloud.paas.yorc.context.rest;
 
+import alien4cloud.paas.yorc.context.rest.response.AllDeploymentsDTO;
 import alien4cloud.paas.yorc.context.rest.response.DeploymentDTO;
 import alien4cloud.paas.yorc.util.RestUtil;
 import io.reactivex.Observable;
@@ -59,9 +60,17 @@ public class DeploymentClient extends AbstractClient {
                 .map(RestUtil.jsonAsText("status"));
     }
 
-    public Single<DeploymentDTO> getInfos(String deploymentId) {
+    public Single<DeploymentDTO> get(String deploymentId) {
         String url = getYorcUrl() + "/deployments/" + deploymentId;
         return sendRequest(url,HttpMethod.GET,DeploymentDTO.class, buildHttpEntityWithDefaultHeader()).map(HttpEntity::getBody);
+    }
+
+    public Observable<DeploymentDTO> get() {
+        String url = getYorcUrl() + "/deployments";
+        return sendRequest(url,HttpMethod.GET,AllDeploymentsDTO.class, buildHttpEntityWithDefaultHeader())
+                .map(HttpEntity::getBody)
+                .toObservable()
+                .flatMapIterable(AllDeploymentsDTO::getDeployments);
     }
 
     public Single<String> undeploy(String deploymentId) {

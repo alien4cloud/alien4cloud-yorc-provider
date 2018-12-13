@@ -1,7 +1,5 @@
 package alien4cloud.paas.yorc.context.service.fsm;
 
-import java.util.Map;
-
 import javax.inject.Inject;
 
 import org.springframework.messaging.Message;
@@ -14,6 +12,8 @@ import com.google.common.collect.Maps;
 import alien4cloud.paas.model.DeploymentStatus;
 import alien4cloud.paas.yorc.context.service.BusService;
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.Map;
 
 @Component
 @Slf4j
@@ -43,7 +43,7 @@ public class StateMachineService {
 	 * Create new state machines with initial state
 	 * @param input A map containing deployment id and initial state
 	 */
-	public void newStateMachine(Map<String, FsmStates> input) {
+	public void newStateMachine(Map<String,FsmStates> input) {
 		for (Map.Entry<String, FsmStates> entry : input.entrySet()) {
 			String id = entry.getKey();
 			FsmStates initialState = entry.getValue();

@@ -1,5 +1,6 @@
 package alien4cloud.paas.yorc.context.service;
 
+import alien4cloud.paas.yorc.context.YorcOrchestrator;
 import alien4cloud.paas.yorc.context.rest.EventClient;
 import alien4cloud.paas.yorc.context.rest.response.Event;
 import alien4cloud.paas.yorc.context.rest.response.EventDTO;
@@ -30,7 +31,8 @@ public class EventPollingService {
     @Inject
     private YorcESDao dao;
 
-    private String orchestratorId;
+    @Inject
+    private YorcOrchestrator orchestrator;
 
     /**
      * Index
@@ -45,8 +47,7 @@ public class EventPollingService {
     /**
      * Initialize the polling
      */
-    public void init(String orchestratorId) {
-        this.orchestratorId = orchestratorId;
+    public void init() {
 
         // Ensure ES Index exists
         initIndex();
@@ -108,13 +109,13 @@ public class EventPollingService {
     }
 
     private void initIndex() {
-        EventIndex data = dao.findById(EventIndex.class,orchestratorId);
+        EventIndex data = dao.findById(EventIndex.class,orchestrator.getOrchestratorId());
         if (data == null) {
             // This is our first run, initialize the index from Yorc
             Integer lastIndex = client.getLastIndex().blockingGet();
 
             data = new EventIndex();
-            data.setId(orchestratorId);
+            data.setId(orchestrator.getOrchestratorId());
             data.setIndex(lastIndex);
             dao.save(data);
         }
@@ -123,6 +124,6 @@ public class EventPollingService {
     }
 
     private void saveIndex() {
-        dao.save(new EventIndex(orchestratorId,index));
+        dao.save(new EventIndex(orchestrator.getOrchestratorId(),index));
     }
 }

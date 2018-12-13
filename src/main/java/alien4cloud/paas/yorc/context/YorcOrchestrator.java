@@ -1,9 +1,6 @@
 package alien4cloud.paas.yorc.context;
 
-import java.util.Collection;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import javax.inject.Inject;
 
@@ -13,6 +10,8 @@ import alien4cloud.paas.yorc.context.rest.response.DeploymentDTO;
 import alien4cloud.paas.yorc.context.rest.response.InstanceDTO;
 import alien4cloud.paas.yorc.context.rest.response.NodeDTO;
 import alien4cloud.paas.yorc.context.service.fsm.FsmEvents;
+import alien4cloud.paas.yorc.context.service.fsm.FsmMapper;
+import alien4cloud.paas.yorc.context.service.fsm.FsmStates;
 import io.reactivex.Observable;
 import org.springframework.context.ApplicationContext;
 import org.springframework.http.HttpStatus;
@@ -76,6 +75,7 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 	@Inject
 	private BusService busService;
 
+	@Getter
     private String orchestratorId;
 
     /**
@@ -113,13 +113,23 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
     public void init(Map<String, PaaSTopologyDeploymentContext> activeDeployments) {
         log.info("Init Yorc plugin for " + activeDeployments.size() + " active deployments");
 
-		// Create the state machines for each deployment
-		stateMachineService.newStateMachine(activeDeployments.keySet().toArray(new String[0]));
+        // Blocking REST call to build map
+        // - Query all deployments
+        // - Keep only known deployments
+        // - Build a Map deploymentId -> FsmStates
+        Map<String,FsmStates> map = deploymentClient.get()
+            .filter(deployment -> activeDeployments.containsKey(deployment.getId()))
+            .toMap(DeploymentDTO::getId,deployment -> FsmMapper.fromYorcToFsmState(deployment.getStatus()))
+            .blockingGet();
 
-        doUpdateDeploymentInfo(activeDeployments.values());
+		// Create the state machines for each deployment
+        stateMachineService.newStateMachine(map);
+
+        // TODO: Do it lazily
+        //doUpdateDeploymentInfo(activeDeployments.values());
 
         // Start services
-        eventPollingService.init(orchestratorId);
+        eventPollingService.init();
     }
 
     public void term() {
@@ -234,6 +244,7 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
      * Blocking call that update deployment infos
      */
     private void doUpdateDeploymentInfo(Collection<PaaSTopologyDeploymentContext> contexts) {
+        // TODO: Background loading
         Observable<String> links = Observable.fromIterable(contexts)
                 .map(ctx -> "/deployments/" + ctx.getDeploymentPaaSId());
 
