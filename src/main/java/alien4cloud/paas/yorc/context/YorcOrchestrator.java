@@ -9,6 +9,7 @@ import alien4cloud.paas.yorc.context.rest.response.AttributeDTO;
 import alien4cloud.paas.yorc.context.rest.response.DeploymentDTO;
 import alien4cloud.paas.yorc.context.rest.response.InstanceDTO;
 import alien4cloud.paas.yorc.context.rest.response.NodeDTO;
+import alien4cloud.paas.yorc.context.service.InstanceInformationService;
 import alien4cloud.paas.yorc.context.service.LogEventPollingService;
 import alien4cloud.paas.yorc.context.service.fsm.FsmEvents;
 import alien4cloud.paas.yorc.context.service.fsm.FsmMapper;
@@ -79,6 +80,9 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 	@Inject
 	private BusService busService;
 
+	@Inject
+	private InstanceInformationService instanceInformationService;
+
 	@Getter
     private String orchestratorId;
 
@@ -125,6 +129,9 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
             .filter(deployment -> activeDeployments.containsKey(deployment.getId()))
             .toMap(DeploymentDTO::getId,deployment -> FsmMapper.fromYorcToFsmState(deployment.getStatus()))
             .blockingGet();
+
+        // Initialize InstanceInformationService
+        instanceInformationService.init(map.keySet());
 
 		// Create the state machines for each deployment
         stateMachineService.newStateMachine(map);
@@ -195,8 +202,7 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 
     @Override
     public void getInstancesInformation(PaaSTopologyDeploymentContext deploymentContext, IPaaSCallback<Map<String, Map<String, InstanceInformation>>> callback) {
-        // TODO: implements
-        log.error("TODO: getInstancesInformation");
+        instanceInformationService.getInformation(deploymentContext.getDeploymentPaaSId(),callback);
     }
 
     @Override
