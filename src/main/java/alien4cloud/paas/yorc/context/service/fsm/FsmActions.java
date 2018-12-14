@@ -38,7 +38,8 @@ public class FsmActions {
 			private IPaaSCallback<?> callback;
 
 			private void onHttpOk(ResponseEntity<String> value) {
-				log.info("HTTP Request OK : {}", value);
+				if (log.isInfoEnabled())
+					log.info("HTTP Request OK : {}", value);
 			}
 
 			private void onHttpKo(Throwable t) {
@@ -47,7 +48,8 @@ public class FsmActions {
 						.build();
 
 				busService.publish(message);
-				log.error("HTTP Request OK : {}", t.getMessage());
+				if (log.isErrorEnabled())
+					log.error("HTTP Request OK : {}", t.getMessage());
 			}
 
 			@Override
@@ -56,7 +58,8 @@ public class FsmActions {
 				context = (PaaSTopologyDeploymentContext) stateContext.getMessageHeaders().get("deploymentContext");
 				callback = (IPaaSCallback<?>) stateContext.getMessageHeaders().get("callback");
 
-				log.debug("Deploying " + context.getDeploymentPaaSId() + " with id : " + context.getDeploymentId());
+				if (log.isInfoEnabled())
+					log.info("Deploying " + context.getDeploymentPaaSId() + " with id : " + context.getDeploymentId());
 
 				try {
 					bytes = zipBuilder.build(context);

@@ -100,7 +100,8 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 
     @Override
     public void init(Map<String, PaaSTopologyDeploymentContext> activeDeployments) {
-        log.info("Init Yorc plugin for " + activeDeployments.size() + " active deployments");
+        if (log.isInfoEnabled())
+            log.info("Init Yorc plugin for " + activeDeployments.size() + " active deployments");
 
 
         //doUpdateDeploymentInfo();

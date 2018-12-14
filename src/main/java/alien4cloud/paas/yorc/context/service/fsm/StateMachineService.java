@@ -75,9 +75,11 @@ public class StateMachineService {
 		try {
 			fsm = builder.createFsm(id, initialState);
 			fsm.addStateListener(new FsmListener(id));
-			log.error(String.format("State machine '%s' is created.", id));
+			if (log.isInfoEnabled())
+				log.info(String.format("State machine '%s' is created.", id));
 		} catch (Exception e) {
-			log.error(String.format("Error when creating fsm-%s: %s", id, e.getMessage()));
+			if (log.isInfoEnabled())
+				log.info(String.format("Error when creating fsm-%s: %s", id, e.getMessage()));
 		}
 		return fsm;
 	}
@@ -87,6 +89,10 @@ public class StateMachineService {
 		StateMachine<FsmStates, FsmEvents> fsm = cache.get(deploymentId);
 		if (fsm != null) {
 			fsm.sendEvent(message);
+		} else {
+			if (log.isErrorEnabled()) {
+				log.error(String.format("No state machine found for deployment %s", deploymentId));
+			}
 		}
 	}
 

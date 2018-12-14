@@ -27,7 +27,7 @@ public class FsmMapper {
                 payload = fromYorcToFsmState(event.getStatus());
                 break;
             default:
-                throw new Exception("Event Mapping Not handled");
+                throw new Exception("Event mapping not handled");
         }
 
         return MessageBuilder
