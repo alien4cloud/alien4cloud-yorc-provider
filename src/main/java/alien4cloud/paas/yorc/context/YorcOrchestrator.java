@@ -4,17 +4,12 @@ import java.util.*;
 
 import javax.inject.Inject;
 
-import alien4cloud.paas.yorc.context.rest.browser.Browser;
-import alien4cloud.paas.yorc.context.rest.response.AttributeDTO;
 import alien4cloud.paas.yorc.context.rest.response.DeploymentDTO;
-import alien4cloud.paas.yorc.context.rest.response.InstanceDTO;
-import alien4cloud.paas.yorc.context.rest.response.NodeDTO;
 import alien4cloud.paas.yorc.context.service.InstanceInformationService;
 import alien4cloud.paas.yorc.context.service.LogEventPollingService;
 import alien4cloud.paas.yorc.context.service.fsm.FsmEvents;
 import alien4cloud.paas.yorc.context.service.fsm.FsmMapper;
 import alien4cloud.paas.yorc.context.service.fsm.FsmStates;
-import io.reactivex.Observable;
 import org.springframework.context.ApplicationContext;
 import org.springframework.http.HttpStatus;
 import org.springframework.messaging.Message;
@@ -86,13 +81,6 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 	@Getter
     private String orchestratorId;
 
-    /**
-     * TODO: Provisoire
-     *  Pour faciliter la mise en oeuvre
-     */
-    private Map<String,PaaSTopologyDeploymentContext> trickActiveDeployments;
-
-
     @Override
     public ILocationConfiguratorPlugin getConfigurator(String locationType) {
         return yorcLocationConfigurerFactory.newInstance(locationType);
@@ -135,9 +123,6 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 
 		// Create the state machines for each deployment
         stateMachineService.newStateMachine(map);
-
-        // TODO: Do it lazily
-        //doUpdateDeploymentInfo(activeDeployments.values());
 
         // Start Pollers
         eventPollingService.init();
@@ -186,6 +171,7 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
     @Override
     public void getStatus(PaaSDeploymentContext deploymentContext, IPaaSCallback<DeploymentStatus> callback) {
         // TODO: Get status from statemachine. We use a direct rest query until we can undeploy with the plugin
+
         deploymentClient.getStatus(deploymentContext.getDeploymentPaaSId())
             .map(YorcOrchestrator::getDeploymentStatusFromString)
             .subscribe(
@@ -253,25 +239,4 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
         }
     }
 
-    /**
-     * Blocking call that update deployment infos
-     */
-    private void doUpdateDeploymentInfo(Collection<PaaSTopologyDeploymentContext> contexts) {
-        // TODO: Background loading
-        Observable<String> links = Observable.fromIterable(contexts)
-                .map(ctx -> "/deployments/" + ctx.getDeploymentPaaSId());
-
-        Browser.browserFor( links, url -> deploymentClient.queryUrl(url,DeploymentDTO.class),2)
-                .flatMap( agg -> agg.follow("node", url -> deploymentClient.queryUrl(url,NodeDTO.class),2))
-                .flatMap( agg -> agg.follow("instance", url -> deploymentClient.queryUrl(url,InstanceDTO.class),2))
-                .flatMap( agg -> agg.follow("attribute", url -> deploymentClient.queryUrl(url,AttributeDTO.class),2))
-                .blockingSubscribe( ctx -> {
-                    DeploymentDTO deployment = (DeploymentDTO) ctx.get(0);
-                    NodeDTO node = (NodeDTO) ctx.get(1);
-                    InstanceDTO instance = (InstanceDTO) ctx.get(2);
-                    AttributeDTO attribute = (AttributeDTO) ctx.get(3);
-
-                    log.info("ATTRIBUTE: {}/{}/{}/{}={}",deployment.getId(),node.getName(),instance.getId(),attribute.getName(),attribute.getValue());
-                });
-    }
 }

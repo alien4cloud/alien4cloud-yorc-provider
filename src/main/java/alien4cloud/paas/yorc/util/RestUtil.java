@@ -9,6 +9,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.HttpClientErrorException;
 
+import java.util.function.Supplier;
+
 public class RestUtil {
 
     private RestUtil() {
@@ -43,5 +45,15 @@ public class RestUtil {
 
     public static <T extends BrowseableDTO> Function<T,Observable<String>> linksFor(String type) {
         return x -> Observable.fromIterable(x.getLinks()).filter(y -> y.getRel().equals(type)).map(z -> z.getHref());
+    }
+
+    public static <T> Function<ResponseEntity<T>,T> extractBodyWithDefault(Supplier<T> supplier) {
+        return response -> {
+            if (response.getStatusCode() == HttpStatus.NO_CONTENT) {
+                return supplier.get();
+            } else {
+                return response.getBody();
+            }
+        };
     }
 }

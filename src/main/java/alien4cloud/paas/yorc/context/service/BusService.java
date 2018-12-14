@@ -26,6 +26,9 @@ public class BusService {
     @Inject
     private Scheduler scheduler;
 
+    @Inject
+    private InstanceInformationService instanceInformationService;
+
     private static class Buses {
         private final Subject<Event> events = PublishSubject.create();
         private final Subject<LogEvent> logs = PublishSubject.create();
@@ -42,10 +45,6 @@ public class BusService {
             Buses b = new Buses();
             eventBuses.put(id, b);
 
-            // Connect our buses
-            //  - For now we log, coming on http pool
-            b.events.subscribe(x -> log.info("EVT YORC: {}",x));
-
             //  - For now we log, coming on http pool
             b.logs.subscribe(x -> log.info("LOG YORC: {}",x));
 
@@ -57,6 +56,14 @@ public class BusService {
 
     public void subscribe(String deploymentId, Consumer<Message<FsmEvents>> callback) {
         eventBuses.get(deploymentId).messages.observeOn(scheduler).subscribe(callback);
+    }
+
+    public void subscribeEvents(String deploymentId, Consumer<Event> callback) {
+        eventBuses.get(deploymentId).events.subscribe(callback);
+    }
+
+    public void subscribeLogs(String deploymentId, Consumer<LogEvent> callback) {
+        eventBuses.get(deploymentId).logs.subscribe(callback);
     }
 
     public void publish(Event event) {

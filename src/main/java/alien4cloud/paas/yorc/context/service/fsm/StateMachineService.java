@@ -2,6 +2,7 @@ package alien4cloud.paas.yorc.context.service.fsm;
 
 import javax.inject.Inject;
 
+import alien4cloud.paas.yorc.context.service.InstanceInformationService;
 import org.springframework.messaging.Message;
 import org.springframework.statemachine.StateMachine;
 import org.springframework.stereotype.Component;
@@ -39,6 +40,9 @@ public class StateMachineService {
 	@Inject
 	private BusService busService;
 
+	@Inject
+	private InstanceInformationService instanceInformationService;
+
 	/**
 	 * Create new state machines with initial state
 	 * @param input A map containing deployment id and initial state
@@ -51,8 +55,12 @@ public class StateMachineService {
 			cache.put(id, createFsm(id, initialState));
 			// Create a new event bus to this deployment
 			busService.createEventBuses(id);
+
 			// Subscribe the state machine to event bus of message type "deployment"
 			busService.subscribe(id,this::talk);
+
+			// Subscribe events on the InstanceInformationService
+			busService.subscribeEvents(id,instanceInformationService::onEvent);
 		}
 	}
 
@@ -68,6 +76,9 @@ public class StateMachineService {
 			busService.createEventBuses(id);
 			// Subscribe the state machine to event bus of message type "deployment"
 			busService.subscribe(id, this::talk);
+
+            // Subscribe events on the InstanceInformationService
+            busService.subscribeEvents(id,instanceInformationService::onEvent);
 		}
 	}
 

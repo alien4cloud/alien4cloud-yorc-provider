@@ -1,21 +1,15 @@
 package alien4cloud.paas.yorc.context.service;
 
-import alien4cloud.model.deployment.Deployment;
 import alien4cloud.paas.IPaaSCallback;
 import alien4cloud.paas.model.InstanceInformation;
 import alien4cloud.paas.model.InstanceStatus;
 import alien4cloud.paas.plan.ToscaNodeLifecycleConstants;
 import alien4cloud.paas.yorc.context.rest.DeploymentClient;
 import alien4cloud.paas.yorc.context.rest.browser.Browser;
-import alien4cloud.paas.yorc.context.rest.response.AttributeDTO;
-import alien4cloud.paas.yorc.context.rest.response.DeploymentDTO;
-import alien4cloud.paas.yorc.context.rest.response.InstanceDTO;
-import alien4cloud.paas.yorc.context.rest.response.NodeDTO;
+import alien4cloud.paas.yorc.context.rest.response.*;
 import com.google.common.collect.Maps;
-import io.reactivex.Completable;
 import io.reactivex.Observable;
 import io.reactivex.Scheduler;
-import io.reactivex.disposables.Disposable;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
@@ -23,9 +17,9 @@ import javax.inject.Inject;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.locks.Lock;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReadWriteLock;
-import java.util.concurrent.locks.ReentrantLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 @Slf4j
@@ -40,20 +34,26 @@ public class InstanceInformationService {
 
     private static class DeploymentInformation {
 
-        // Stream used for lazy initialization
-        Observable<Browser.Context> stream;
+        // Atomic Reference to our stream
+        private final AtomicReference<Observable<Browser.Context>> stream;
 
-        // Lazy init in progress
-        private Disposable disposable;
-
-        // Lock used for the init
-        private final Lock lockInit = new ReentrantLock();
+        private final CountDownLatch completed;
 
         // Lock for the database
-        private final ReadWriteLock lockInfo = new ReentrantReadWriteLock();
+        private final ReadWriteLock lock = new ReentrantReadWriteLock();
 
         // Our InstanceInformations
-        private final Map<String,Map<String,InstanceInformation>> informations = Maps.newConcurrentMap();
+        private final Map<String,Map<String,InstanceInformation>> informations = Maps.newHashMap();
+
+        private DeploymentInformation() {
+            this.stream = null;
+            this.completed = new CountDownLatch(0);
+        }
+
+        private DeploymentInformation(Observable<Browser.Context> stream) {
+            this.completed = new CountDownLatch(1);
+            this.stream = new AtomicReference<>(stream.doOnComplete(() -> this.completed.countDown()));
+        }
     }
 
     private final Map<String,DeploymentInformation> map = Maps.newConcurrentMap();
@@ -64,112 +64,130 @@ public class InstanceInformationService {
      * @param deployementIds knowns deploymentIds
      */
     public void init(Set<String> deployementIds) {
-        for (String deplomentId : deployementIds) {
-            DeploymentInformation information = new DeploymentInformation();
+        for (String deploymentId : deployementIds) {
 
             // Prepare the query
             // - Note that the query is deferred until subscription time
-            Observable<String> links = Observable.just("/deployments/" + deplomentId);
-            information.stream = Browser.browserFor(links, url -> client.queryUrl(url,DeploymentDTO.class),1)
-                .flatMap( agg -> agg.follow("node", url -> client.queryUrl(url,NodeDTO.class),2))
-                .flatMap( agg -> agg.follow("instance", url -> client.queryUrl(url,InstanceDTO.class),2))
-                .flatMap( agg -> agg.follow("attribute", url -> client.queryUrl(url,AttributeDTO.class),2));
+            Observable<String> links = Observable.just("/deployments/" + deploymentId);
 
-            map.put(deplomentId,information);
+            DeploymentInformation di = new DeploymentInformation(
+                Browser.browserFor(links, url -> client.queryUrl(url,DeploymentDTO.class),1)
+                    .flatMap( agg -> agg.follow("node", url -> client.queryUrl(url,NodeDTO.class),5))
+                    .flatMap( agg -> agg.follow("instance", url -> client.queryUrl(url,InstanceDTO.class),5))
+                    .flatMap( agg -> agg.follow("attribute", url -> client.queryUrl(url,AttributeDTO.class),10))
+                    .doOnSubscribe( x -> log.info("Started for {}",deploymentId))
+                    .doOnComplete( () -> log.info("Completed for {}",deploymentId))
+                );
+
+            map.put(deploymentId,di);
         }
+
+        // Lazy initialization
+        Observable.fromIterable(deployementIds).concatMap(this::initializeStreamFor).subscribe(this::onAttribute);
     }
 
     public void getInformation(String deploymentPaaSId, IPaaSCallback<Map<String,Map<String,InstanceInformation>>> callback) {
         DeploymentInformation di = map.get(deploymentPaaSId);
         if (di == null) {
+            // Deployment unknown => nothing to provide
             callback.onSuccess(new HashMap<>());
             return;
         }
 
-        if (di.stream != null) {
-            Completable complete = null;
+        // Check wether there is a init stream
+        Observable<Browser.Context> stream = initializeStreamFor(di);
+        if (stream != null) {
+            // We got a init stream, we must run it
+            stream.observeOn(scheduler).subscribe(this::onAttribute);
+        }
 
-            // A Lazy init should be done
-            try {
-                di.lockInit.lock();
-                if (di.stream != null) {
-                    complete = Completable.fromObservable(di.stream);
-                    if (di.disposable == null) {
-                        // The query is not running, start it
-                        di.disposable = di.stream.observeOn(scheduler).subscribe(this::onLazyInit);
-                    }
-                }
-            } finally {
-                di.lockInit.unlock();
-            }
-
-            // Then wait for its completion
-            complete.blockingAwait();
+        // Wait for latch
+        try {
+            di.completed.await();
+        } catch(InterruptedException e) {
+            callback.onFailure(e);
         }
 
         try {
-            di.lockInfo.readLock().lock();
+            di.lock.readLock().lock();
             callback.onSuccess(di.informations);
         } finally {
-            di.lockInfo.readLock().unlock();
+            di.lock.readLock().unlock();
         }
     }
 
-    private void onLazyInit(Browser.Context context) {
+    private Observable<Browser.Context> initializeStreamFor(DeploymentInformation di) {
+        if (di == null) {
+            return null;
+        }
+
+        return di.stream.getAndSet(null);
+    }
+
+    private Observable<Browser.Context> initializeStreamFor(String deploymentId) {
+        DeploymentInformation di = map.get(deploymentId);
+
+        Observable<Browser.Context> result = initializeStreamFor(di);
+        if (result == null) {
+            // This is null because some one launch the subscription before
+            return Observable.empty();
+        } else {
+            return result;
+        }
+    }
+
+    private void onAttribute(Browser.Context context) {
         DeploymentDTO deploymentDTO = (DeploymentDTO) context.get(0);
         NodeDTO nodeDTO = (NodeDTO) context.get(1);
         InstanceDTO instanceDTO = (InstanceDTO) context.get(2);
         AttributeDTO attributeDTO = (AttributeDTO) context.get(3);
 
-        DeploymentInformation di = update(deploymentDTO.getId(),nodeDTO.getName(),instanceDTO,attributeDTO);
-
-        // Lazy init has been done
-        try {
-            di.lockInit.lock();
-            di.stream = null;
-        } finally {
-            di.lockInit.unlock();
-        }
+        DeploymentInformation di = updateAttribute(deploymentDTO.getId(),nodeDTO.getName(),instanceDTO,attributeDTO);
     }
 
-    private DeploymentInformation update(String deploymentId,String nodeId,InstanceDTO instanceDTO,AttributeDTO attributeDTO) {
-        DeploymentInformation di = map.get(deploymentId);
-        if (di == null) {
-            di = new DeploymentInformation();
-            map.put(deploymentId,di);
-        }
+    private DeploymentInformation updateAttribute(String deploymentId, String nodeId, InstanceDTO instanceDTO, AttributeDTO attributeDTO) {
+        DeploymentInformation di = map.computeIfAbsent(deploymentId,(k) -> new DeploymentInformation());
 
         try {
-            di.lockInfo.writeLock().lock();
+            di.lock.writeLock().lock();
 
-            Map<String,InstanceInformation> ni = di.informations.get(nodeId);
-            if (ni == null) {
-                ni = Maps.newHashMap();
-                di.informations.put(nodeId,ni);
-            }
+            // Update the instance
+            InstanceInformation ii = updateInstance(di,nodeId,instanceDTO.getId(),instanceDTO.getStatus());
 
-            InstanceInformation ii = ni.get(instanceDTO.getId());
-            if (ii == null) {
-                ii = new InstanceInformation(
-                        ToscaNodeLifecycleConstants.INITIAL,
-                        getInstanceStatusFromState(instanceDTO.getStatus()),
-                        Maps.newHashMap(),
-                        Maps.newHashMap(),
-                        Maps.newHashMap()
-                    );
-                ni.put(instanceDTO.getId(),ii);
-            }
-
-            if (ii.getAttributes().get(attributeDTO.getName()) == null) {
-                ii.getAttributes().put(attributeDTO.getName(),attributeDTO.getValue());
-            }
+            // Update the attributes
+            ii.getAttributes().putIfAbsent(attributeDTO.getName(),attributeDTO.getValue());
         } finally {
-            di.lockInfo.writeLock().unlock();
+            di.lock.writeLock().unlock();
         }
 
-        log.info("YORC ATTR {}/{}/{} {}={}",deploymentId,nodeId,instanceDTO.getId(),attributeDTO.getName(),attributeDTO.getValue());
+        //log.debug("YORC ATTR {}/{}/{} {}={}",deploymentId,nodeId,instanceDTO.getId(),attributeDTO.getName(),attributeDTO.getValue());
 
         return di;
+    }
+
+    private InstanceInformation updateInstance(DeploymentInformation di,String nodeId,String instanceId,String status) {
+        Map<String,InstanceInformation> ni = di.informations.computeIfAbsent(nodeId,(key) -> Maps.newHashMap());
+
+        InstanceInformation ii = ni.computeIfAbsent(instanceId,(key) -> {
+            InstanceInformation instance = buildInstance();
+            instance.setState(status);
+            instance.setInstanceStatus(getInstanceStatusFromState(status));
+            return instance;
+        });
+
+        return ii;
+    }
+
+    public void onEvent(Event event) {
+        if (event.getType().equals("instance")) {
+            DeploymentInformation di = map.computeIfAbsent(event.getDeployment_id(),(k) -> new DeploymentInformation());
+
+            if (di != null) {
+                updateInstance(di,event.getNode(),event.getInstance(),event.getStatus());
+            }
+
+            log.info("YORC INST {}/{}/{}->{}",event.getDeployment_id(),event.getNode(),event.getInstance(),event.getStatus());
+        }
     }
 
     /**
@@ -192,5 +210,15 @@ public class InstanceInformationService {
             default:
                 return InstanceStatus.PROCESSING;
         }
+    }
+
+    private static InstanceInformation buildInstance() {
+        return new InstanceInformation(
+            ToscaNodeLifecycleConstants.INITIAL,
+            InstanceStatus.PROCESSING,
+            Maps.newHashMap(),
+            Maps.newHashMap(),
+            Maps.newHashMap()
+        );
     }
 }

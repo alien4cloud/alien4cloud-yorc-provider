@@ -5,6 +5,7 @@ import alien4cloud.paas.yorc.configuration.ProviderConfiguration;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
+import org.apache.http.HttpHost;
 import org.apache.http.config.Registry;
 import org.apache.http.config.RegistryBuilder;
 import org.apache.http.conn.ssl.DefaultHostnameVerifier;
@@ -74,6 +75,8 @@ public class TemplateManager {
         CloseableHttpAsyncClient httpClient = HttpAsyncClients.custom()
                 .setConnectionManager(manager)
                 .setThreadFactory(threadFactory)
+                // TODO: Set proxy here
+                //.setProxy(new HttpHost("<addr here>",8080))
                 .build();
 
         factory =  new HttpComponentsAsyncClientHttpRequestFactory(httpClient);

@@ -68,7 +68,7 @@ public class DeploymentClient extends AbstractClient {
     public Observable<DeploymentDTO> get() {
         String url = getYorcUrl() + "/deployments";
         return sendRequest(url,HttpMethod.GET,AllDeploymentsDTO.class, buildHttpEntityWithDefaultHeader())
-                .map(HttpEntity::getBody)
+                .map(RestUtil.extractBodyWithDefault(AllDeploymentsDTO::new))
                 .toObservable()
                 .flatMapIterable(AllDeploymentsDTO::getDeployments);
     }
