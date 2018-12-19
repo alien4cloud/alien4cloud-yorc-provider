@@ -8,19 +8,19 @@ import alien4cloud.paas.yorc.context.rest.DeploymentClient;
 import alien4cloud.paas.yorc.context.rest.browser.Browser;
 import alien4cloud.paas.yorc.context.rest.response.*;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import io.reactivex.Observable;
 import io.reactivex.Scheduler;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import javax.inject.Inject;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -52,7 +52,11 @@ public class InstanceInformationService {
 
         private DeploymentInformation(Observable<Browser.Context> stream) {
             this.completed = new CountDownLatch(1);
-            this.stream = new AtomicReference<>(stream.doOnComplete(() -> this.completed.countDown()));
+            this.stream = new AtomicReference<>(
+                    stream
+                        .doOnComplete(() -> this.completed.countDown())
+                        .doOnError( x -> this.completed.countDown())
+            );
         }
     }
 
@@ -64,6 +68,8 @@ public class InstanceInformationService {
      * @param deployementIds knowns deploymentIds
      */
     public void init(Set<String> deployementIds) {
+        deployementIds = Sets.newLinkedHashSet(deployementIds);
+
         for (String deploymentId : deployementIds) {
 
             // Prepare the query
@@ -73,17 +79,18 @@ public class InstanceInformationService {
             DeploymentInformation di = new DeploymentInformation(
                 Browser.browserFor(links, url -> client.queryUrl(url,DeploymentDTO.class),1)
                     .flatMap( agg -> agg.follow("node", url -> client.queryUrl(url,NodeDTO.class),5))
-                    .flatMap( agg -> agg.follow("instance", url -> client.queryUrl(url,InstanceDTO.class),5))
+                    .flatMap( agg -> agg.follow("instance", url -> client.queryUrl(url,InstanceDTO.class), 5))
                     .flatMap( agg -> agg.follow("attribute", url -> client.queryUrl(url,AttributeDTO.class),10))
-                    .doOnSubscribe( x -> log.info("Started for {}",deploymentId))
-                    .doOnComplete( () -> log.info("Completed for {}",deploymentId))
+                    .doOnSubscribe( x -> log.info("INST/ATTR Queries started for {}",deploymentId))
+                    .doOnError( x -> log.error("INST/ATTR Queries KO for {} : {}",deploymentId,x.getMessage()))
+                    .doOnComplete( () -> log.info("INST/ATTR Queries OK for {}",deploymentId))
                 );
 
             map.put(deploymentId,di);
         }
 
         // Lazy initialization
-        Observable.fromIterable(deployementIds).concatMap(this::initializeStreamFor).subscribe(this::onAttribute);
+        Observable.fromIterable(deployementIds).concatMapDelayError(this::initializeStreamFor).subscribe(this::onAttribute,this::onError);
     }
 
     public void getInformation(String deploymentPaaSId, IPaaSCallback<Map<String,Map<String,InstanceInformation>>> callback) {
@@ -98,7 +105,7 @@ public class InstanceInformationService {
         Observable<Browser.Context> stream = initializeStreamFor(di);
         if (stream != null) {
             // We got a init stream, we must run it
-            stream.observeOn(scheduler).subscribe(this::onAttribute);
+            stream.observeOn(scheduler).subscribe(this::onAttribute,this::onError);
         }
 
         // Wait for latch
@@ -117,7 +124,7 @@ public class InstanceInformationService {
     }
 
     private Observable<Browser.Context> initializeStreamFor(DeploymentInformation di) {
-        if (di == null) {
+        if (di == null || di.stream == null) {
             return null;
         }
 
@@ -134,6 +141,10 @@ public class InstanceInformationService {
         } else {
             return result;
         }
+    }
+
+    private void onError(Throwable t) {
+        log.error("YORC exception while querying instance/attribute: {}",t.getMessage());
     }
 
     private void onAttribute(Browser.Context context) {
@@ -155,7 +166,9 @@ public class InstanceInformationService {
             InstanceInformation ii = updateInstance(di,nodeId,instanceDTO.getId(),instanceDTO.getStatus());
 
             // Update the attributes
-            ii.getAttributes().putIfAbsent(attributeDTO.getName(),attributeDTO.getValue());
+            if (ii != null) {
+                ii.getAttributes().putIfAbsent(attributeDTO.getName(), attributeDTO.getValue());
+            }
         } finally {
             di.lock.writeLock().unlock();
         }
@@ -166,14 +179,17 @@ public class InstanceInformationService {
     }
 
     private InstanceInformation updateInstance(DeploymentInformation di,String nodeId,String instanceId,String status) {
+        InstanceInformation ii = null;
         Map<String,InstanceInformation> ni = di.informations.computeIfAbsent(nodeId,(key) -> Maps.newHashMap());
 
-        InstanceInformation ii = ni.computeIfAbsent(instanceId,(key) -> {
-            InstanceInformation instance = buildInstance();
-            instance.setState(status);
-            instance.setInstanceStatus(getInstanceStatusFromState(status));
-            return instance;
-        });
+        if (status.equals("deleted")) {
+           ni.remove(instanceId);
+        } else {
+            ii = ni.computeIfAbsent(instanceId, (key) -> buildInstance());
+
+            ii.setState(status);
+            ii.setInstanceStatus(getInstanceStatusFromState(status));
+        }
 
         return ii;
     }

@@ -37,12 +37,12 @@ public class Browser {
                 .flatMapIterable(BrowseableDTO::getLinks)
                 .filter(link -> link.getRel().equals(rel))
                 .map(Link::getHref)
-                .flatMap(x -> Observable.defer(() ->func.apply(x)), concurrency)
-                .map(browseable -> new Context(this, browseable));
+                .flatMap(x -> Observable.defer(() ->func.apply(x)), true, concurrency)
+                .map(object -> new Context(this, object));
         }
     }
 
     static public <T> Observable<Context> browserFor(Observable<String> links, Function<String,Observable<T>> func, int concurrency) {
-        return links.flatMap(x -> Observable.defer(() -> func.apply(x)),concurrency).map( browseable -> new Context(browseable));
+        return links.flatMap(x -> Observable.defer(() -> func.apply(x)), true, concurrency).map( object -> new Context(object));
     }
 }
