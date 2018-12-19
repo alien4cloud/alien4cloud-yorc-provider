@@ -17,11 +17,13 @@ public class FsmListener extends StateMachineListenerAdapter<FsmStates, FsmEvent
 
 	@Override
 	public void stateChanged(State<FsmStates, FsmEvents> from, State<FsmStates, FsmEvents> to) {
-		log.error(String.format("FSM %s changed stage from %s to %s.", id, from.getId(), to.getId()));
+		if (log.isInfoEnabled())
+			log.info(String.format("FSM %s changed state from %s to %s.", id, from.getId(), to.getId()));
 	}
 
 	@Override
 	public void stateMachineStarted(StateMachine<FsmStates, FsmEvents> stateMachine) {
-		log.error(String.format("FSM %s started.", id));
+		if (log.isInfoEnabled())
+			log.info(String.format("FSM %s started.", id));
 	}
 }

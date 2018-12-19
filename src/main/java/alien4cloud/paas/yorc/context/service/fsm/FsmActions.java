@@ -4,15 +4,12 @@ import java.io.IOException;
 
 import javax.inject.Inject;
 
-import org.springframework.context.annotation.Bean;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.statemachine.StateContext;
 import org.springframework.statemachine.action.Action;
 import org.springframework.stereotype.Service;
-
-import com.google.common.collect.ImmutableMap;
 
 import alien4cloud.paas.IPaaSCallback;
 import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
@@ -34,7 +31,6 @@ public class FsmActions {
 	@Inject
 	private BusService busService;
 
-	@Bean
 	protected Action<FsmStates, FsmEvents> buildAndSendZip() {
 		return new Action<FsmStates, FsmEvents>() {
 
@@ -42,12 +38,8 @@ public class FsmActions {
 			private IPaaSCallback<?> callback;
 
 			private void onHttpOk(ResponseEntity<String> value) {
-				Message<FsmEvents> message = MessageBuilder.withPayload(FsmEvents.DEPLOYMENT_SUBMITTED)
-						.setHeader("deploymentId", context.getDeploymentPaaSId())
-						.build();
-
-				busService.publish(message);
-				log.info("HTTP Request OK : {}", value);
+				if (log.isInfoEnabled())
+					log.info("HTTP Request OK : {}", value);
 			}
 
 			private void onHttpKo(Throwable t) {
@@ -56,7 +48,8 @@ public class FsmActions {
 						.build();
 
 				busService.publish(message);
-				log.error("HTTP Request OK : {}", t.getMessage());
+				if (log.isErrorEnabled())
+					log.error("HTTP Request OK : {}", t.getMessage());
 			}
 
 			@Override
@@ -65,7 +58,8 @@ public class FsmActions {
 				context = (PaaSTopologyDeploymentContext) stateContext.getMessageHeaders().get("deploymentContext");
 				callback = (IPaaSCallback<?>) stateContext.getMessageHeaders().get("callback");
 
-				log.debug("Deploying " + context.getDeploymentPaaSId() + " with id : " + context.getDeploymentId());
+				if (log.isInfoEnabled())
+					log.info("Deploying " + context.getDeploymentPaaSId() + " with id : " + context.getDeploymentId());
 
 				try {
 					bytes = zipBuilder.build(context);

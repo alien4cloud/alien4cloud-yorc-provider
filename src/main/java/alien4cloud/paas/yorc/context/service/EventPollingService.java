@@ -81,7 +81,8 @@ public class EventPollingService {
                     bus.publish(event);
                     break;
                 default:
-                    log.warn ("Unknown Yorc Event [{}/{}]",event.getType(),event.getDeployment_id());
+                    if (log.isWarnEnabled())
+                        log.warn("Unknown Yorc Event [{}/{}]", event.getType(), event.getDeployment_id());
             }
         }
 
@@ -97,7 +98,8 @@ public class EventPollingService {
 
     private void processErrors(Throwable t) {
         if (!stopped) {
-            log.error("Event polling Exception: {}", t.getMessage());
+            if (log.isErrorEnabled())
+                log.error("Event polling Exception: {}", t.getMessage());
             Single.timer(2,TimeUnit.SECONDS,scheduler)
                 .flatMap(x -> client.get(index))
                 .subscribe(this::processEvents,this::processErrors);

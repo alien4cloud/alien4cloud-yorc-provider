@@ -1,8 +1,9 @@
 package alien4cloud.paas.yorc.context.service.fsm;
 
-import alien4cloud.paas.yorc.context.rest.response.Event;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
+
+import alien4cloud.paas.yorc.context.rest.response.Event;
 
 public class FsmMapper {
 
@@ -26,12 +27,12 @@ public class FsmMapper {
                 payload = fromYorcToFsmEvent(event.getStatus());
                 break;
             default:
-                throw new Exception("Event Mapping Not handled");
+                throw new Exception("Event mapping not handled");
         }
 
         return MessageBuilder
             .withPayload(payload)
-            .setHeader("event",event)
+            .setHeader("deploymentId", event.getDeployment_id())
             .build();
     }
 
@@ -40,7 +41,7 @@ public class FsmMapper {
      * @param status
      * @return
      */
-    public static FsmEvents fromYorcToFsmEvent(String status) {
+    private static FsmEvents fromYorcToFsmEvent(String status) throws Exception {
         switch (status.toUpperCase()) {
             case "DEPLOYED":
                 return FsmEvents.DEPLOYMENT_SUCCESS;
@@ -51,16 +52,19 @@ public class FsmMapper {
                 return FsmEvents.DEPLOYMENT_IN_PROGRESS;
             case "UNDEPLOYMENT_IN_PROGRESS":
                 return FsmEvents.UNDEPLOYMENT_STARTED;
-//		case "INITIAL":
-//			return DEPLOYMENT_STARTED;
             case "DEPLOYMENT_FAILED":
             case "UNDEPLOYMENT_FAILED":
                 return FsmEvents.FAILURE;
             default:
-                return FsmEvents.FAILURE; //TODO should add an unknown state
+                throw new Exception(String.format("Unknown status from Yorc: %s", status));
         }
     }
 
+    /**
+     * Convert Yorc deployment's state to the Fsm state
+     * @param status Yorc deployment's state
+     * @return Fsm state
+     */
     public static FsmStates fromYorcToFsmState(String status) {
         switch(status) {
             case "DEPLOYED":

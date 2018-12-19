@@ -30,7 +30,6 @@ public class StateMachineService {
 	private static final Map<FsmStates, DeploymentStatus> statesMapping = ImmutableMap.<FsmStates, DeploymentStatus>builder()
 			.put(FsmStates.UNDEPLOYED, DeploymentStatus.UNDEPLOYED)
 			.put(FsmStates.DEPLOYMENT_INIT, DeploymentStatus.INIT_DEPLOYMENT)
-			.put(FsmStates.DEPLOYMENT_SUBMITTED, DeploymentStatus.INIT_DEPLOYMENT)
 			.put(FsmStates.DEPLOYMENT_IN_PROGRESS, DeploymentStatus.DEPLOYMENT_IN_PROGRESS)
 			.put(FsmStates.DEPLOYED, DeploymentStatus.DEPLOYED)
 			.put(FsmStates.UNDEPLOYMENT_IN_PROGRESS, DeploymentStatus.DEPLOYMENT_IN_PROGRESS)
@@ -87,9 +86,11 @@ public class StateMachineService {
 		try {
 			fsm = builder.createFsm(id, initialState);
 			fsm.addStateListener(new FsmListener(id));
-			log.error(String.format("State machine '%s' is created.", id));
+			if (log.isInfoEnabled())
+				log.info(String.format("State machine '%s' is created.", id));
 		} catch (Exception e) {
-			log.error(String.format("Error when creating fsm-%s: %s", id, e.getMessage()));
+			if (log.isInfoEnabled())
+				log.info(String.format("Error when creating fsm-%s: %s", id, e.getMessage()));
 		}
 		return fsm;
 	}
@@ -99,6 +100,10 @@ public class StateMachineService {
 		StateMachine<FsmStates, FsmEvents> fsm = cache.get(deploymentId);
 		if (fsm != null) {
 			fsm.sendEvent(message);
+		} else {
+			if (log.isErrorEnabled()) {
+				log.error(String.format("No state machine found for deployment %s", deploymentId));
+			}
 		}
 	}
 

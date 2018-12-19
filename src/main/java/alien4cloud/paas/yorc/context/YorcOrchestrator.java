@@ -1,15 +1,11 @@
 package alien4cloud.paas.yorc.context;
 
-import java.util.*;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
 
 import javax.inject.Inject;
 
-import alien4cloud.paas.yorc.context.rest.response.DeploymentDTO;
-import alien4cloud.paas.yorc.context.service.InstanceInformationService;
-import alien4cloud.paas.yorc.context.service.LogEventPollingService;
-import alien4cloud.paas.yorc.context.service.fsm.FsmEvents;
-import alien4cloud.paas.yorc.context.service.fsm.FsmMapper;
-import alien4cloud.paas.yorc.context.service.fsm.FsmStates;
 import org.springframework.context.ApplicationContext;
 import org.springframework.http.HttpStatus;
 import org.springframework.messaging.Message;
@@ -34,8 +30,14 @@ import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
 import alien4cloud.paas.yorc.configuration.ProviderConfiguration;
 import alien4cloud.paas.yorc.context.rest.DeploymentClient;
 import alien4cloud.paas.yorc.context.rest.TemplateManager;
+import alien4cloud.paas.yorc.context.rest.response.DeploymentDTO;
 import alien4cloud.paas.yorc.context.service.BusService;
 import alien4cloud.paas.yorc.context.service.EventPollingService;
+import alien4cloud.paas.yorc.context.service.InstanceInformationService;
+import alien4cloud.paas.yorc.context.service.LogEventPollingService;
+import alien4cloud.paas.yorc.context.service.fsm.FsmEvents;
+import alien4cloud.paas.yorc.context.service.fsm.FsmMapper;
+import alien4cloud.paas.yorc.context.service.fsm.FsmStates;
 import alien4cloud.paas.yorc.context.service.fsm.StateMachineService;
 import alien4cloud.paas.yorc.location.AbstractLocationConfigurerFactory;
 import alien4cloud.paas.yorc.service.PluginArchiveService;
@@ -107,7 +109,8 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 
     @Override
     public void init(Map<String, PaaSTopologyDeploymentContext> activeDeployments) {
-        log.info("Init Yorc plugin for " + activeDeployments.size() + " active deployments");
+        if (log.isInfoEnabled())
+            log.info("Init Yorc plugin for " + activeDeployments.size() + " active deployments");
 
         // Blocking REST call to build map
         // - Query all deployments
@@ -141,7 +144,7 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 
         Message<FsmEvents> message = MessageBuilder.withPayload(FsmEvents.DEPLOYMENT_STARTED)
                 .setHeader("callback", callback)
-                .setHeader("deploymentContext",deploymentContext)
+                .setHeader("deploymentContext", deploymentContext)
                 .setHeader("deploymentId", deploymentContext.getDeploymentPaaSId())
                 .build();
 
