@@ -1,11 +1,14 @@
 package alien4cloud.paas.yorc.context;
 
+import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
 import javax.inject.Inject;
 
+import alien4cloud.paas.model.*;
+import alien4cloud.paas.yorc.context.service.*;
 import org.springframework.context.ApplicationContext;
 import org.springframework.http.HttpStatus;
 import org.springframework.messaging.Message;
@@ -21,20 +24,10 @@ import alien4cloud.paas.IPaaSCallback;
 import alien4cloud.paas.exception.MaintenanceModeException;
 import alien4cloud.paas.exception.OperationExecutionException;
 import alien4cloud.paas.exception.PluginConfigurationException;
-import alien4cloud.paas.model.AbstractMonitorEvent;
-import alien4cloud.paas.model.DeploymentStatus;
-import alien4cloud.paas.model.InstanceInformation;
-import alien4cloud.paas.model.NodeOperationExecRequest;
-import alien4cloud.paas.model.PaaSDeploymentContext;
-import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
 import alien4cloud.paas.yorc.configuration.ProviderConfiguration;
 import alien4cloud.paas.yorc.context.rest.DeploymentClient;
 import alien4cloud.paas.yorc.context.rest.TemplateManager;
 import alien4cloud.paas.yorc.context.rest.response.DeploymentDTO;
-import alien4cloud.paas.yorc.context.service.BusService;
-import alien4cloud.paas.yorc.context.service.EventPollingService;
-import alien4cloud.paas.yorc.context.service.InstanceInformationService;
-import alien4cloud.paas.yorc.context.service.LogEventPollingService;
 import alien4cloud.paas.yorc.context.service.fsm.FsmEvents;
 import alien4cloud.paas.yorc.context.service.fsm.FsmMapper;
 import alien4cloud.paas.yorc.context.service.fsm.FsmStates;
@@ -80,8 +73,13 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 	@Inject
 	private InstanceInformationService instanceInformationService;
 
+	@Inject
+	private DeployementRegistry registry;
+
 	@Getter
     private String orchestratorId;
+
+    private final List<AbstractMonitorEvent> pendingEvents = Lists.newArrayList();
 
     @Override
     public ILocationConfiguratorPlugin getConfigurator(String locationType) {
@@ -145,6 +143,9 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
     public void deploy(PaaSTopologyDeploymentContext deploymentContext, IPaaSCallback<?> callback) {
         stateMachineService.newStateMachine(deploymentContext.getDeploymentPaaSId());
 
+        // Registering alienId to yorcId
+        registry.register(deploymentContext.getDeploymentPaaSId(),deploymentContext.getDeploymentId());
+
         Message<FsmEvents> message = MessageBuilder.withPayload(FsmEvents.DEPLOYMENT_STARTED)
                 .setHeader("callback", callback)
                 .setHeader("deploymentContext", deploymentContext)
@@ -199,8 +200,16 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 
     @Override
     public void getEventsSince(Date date, int maxEvents, IPaaSCallback<AbstractMonitorEvent[]> eventCallback) {
-        // TODO: implements
-        log.error("TODO: getEventsSince");
+        AbstractMonitorEvent[] events;
+
+        synchronized (pendingEvents) {
+            events = pendingEvents.toArray(new AbstractMonitorEvent[0]);
+            pendingEvents.clear();
+        }
+
+        if (events.length > 0) log.info("Get events returns {}",events.length);
+
+        eventCallback.onSuccess(events);
     }
 
     @Override
@@ -216,6 +225,19 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
     @Override
     public void switchInstanceMaintenanceMode(PaaSDeploymentContext deploymentContext, String nodeId, String instanceId, boolean maintenanceModeOn) throws MaintenanceModeException {
         // TODO: implements
+    }
+
+    /**
+     * Post event to Alien
+     * @param event
+     */
+    public void postAlienEvent(AbstractPaaSWorkflowMonitorEvent event) {
+        event.setDate((new Date()).getTime());
+        event.setOrchestratorId(orchestratorId);
+
+        synchronized (pendingEvents) {
+            pendingEvents.add(event);
+        }
     }
 
     /**
