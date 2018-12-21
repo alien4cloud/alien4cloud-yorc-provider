@@ -26,9 +26,6 @@ public class BusService {
     @Inject
     private Scheduler scheduler;
 
-    @Inject
-    private InstanceInformationService instanceInformationService;
-
     private static class Buses {
         private final Subject<Event> events = PublishSubject.create();
         private final Subject<LogEvent> logs = PublishSubject.create();
@@ -44,9 +41,6 @@ public class BusService {
         for (String id : ids) {
             Buses b = new Buses();
             eventBuses.put(id, b);
-
-            //  - For now we log, coming on http pool
-            b.logs.subscribe(x -> log.info("LOG YORC: {}",x));
 
             //  - We also filter the event stream and link it to the messages stream
             //    It is subscribed on the task pool

@@ -2,6 +2,9 @@ package alien4cloud.paas.yorc.context.rest;
 
 import alien4cloud.paas.exception.PluginConfigurationException;
 import alien4cloud.paas.yorc.configuration.ProviderConfiguration;
+import io.reactivex.Completable;
+import io.reactivex.Scheduler;
+import io.reactivex.disposables.Disposable;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -32,19 +35,36 @@ import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLContext;
 import java.io.IOException;
 import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
 @Service
 public class TemplateManager {
 
+    private static final int EVICTION_MAX_TIME = 5;
+    private static final int EVICTION_MAX_IDLE = 2;
+
+    private static final int EVITION_FREQUENCY = 1;
+
+    @Inject
+    private Scheduler scheduler;
+
     @Inject
     private ConnectingIOReactor reactor;
+
+    private PoolingNHttpClientConnectionManager manager;
 
     @Resource(name = "http-thread-factory")
     private ThreadFactory threadFactory;
 
     // Template
     private AsyncRestTemplate template;
+
+
+    private AtomicBoolean running = new AtomicBoolean(true);
+
+    private Disposable disposable;
 
     @Getter
     private ProviderConfiguration configuration;
@@ -64,11 +84,19 @@ public class TemplateManager {
         }
 
         Registry<SchemeIOSessionStrategy> registry = RegistryBuilder.<SchemeIOSessionStrategy>create()
-                .register("http" , NoopIOSessionStrategy.INSTANCE)
-                .register( "https", new SSLIOSessionStrategy(context,verifier))
+                .register("http", NoopIOSessionStrategy.INSTANCE)
+                .register("https", new SSLIOSessionStrategy(context, verifier))
                 .build();
 
-        PoolingNHttpClientConnectionManager manager = new PoolingNHttpClientConnectionManager(reactor,registry);
+        manager = new PoolingNHttpClientConnectionManager(
+                reactor,
+                null,
+                registry,
+                null,
+                null,
+                EVICTION_MAX_TIME,
+                TimeUnit.MINUTES
+            );
         manager.setDefaultMaxPerRoute(20);
         manager.setMaxTotal(20);
 
@@ -79,13 +107,35 @@ public class TemplateManager {
                 //.setProxy(new HttpHost("<addr here>",8080))
                 .build();
 
-        factory =  new HttpComponentsAsyncClientHttpRequestFactory(httpClient);
+        factory = new HttpComponentsAsyncClientHttpRequestFactory(httpClient);
 
         template = new AsyncRestTemplate(factory);
+
+        // Schedule eviction task
+        disposable = Completable.timer(EVITION_FREQUENCY, TimeUnit.MINUTES, scheduler).subscribe(this::evictionTask);
     }
 
     public AsyncRestTemplate get() {
         return template;
     }
 
+    public void term() {
+        running.set(false);
+
+        disposable.dispose();
+    }
+
+    public void evictionTask() {
+        if (running.get() == false) {
+            return;
+        }
+
+        log.debug("YORC HTTP BEFORE EVICTION(avail={} , leased = {})",manager.getTotalStats().getAvailable(),manager.getTotalStats().getLeased());
+        manager.closeExpiredConnections();
+        manager.closeIdleConnections(EVICTION_MAX_IDLE,TimeUnit.MINUTES);
+        log.debug("YORC HTTP AFTER  EVICTION(avail={} , leased = {})",manager.getTotalStats().getAvailable(),manager.getTotalStats().getLeased());
+
+        // Reschedule eviction task
+        disposable = Completable.timer(EVITION_FREQUENCY, TimeUnit.MINUTES, scheduler).subscribe(this::evictionTask);
+    }
 }

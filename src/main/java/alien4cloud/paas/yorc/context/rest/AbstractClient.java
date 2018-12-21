@@ -22,13 +22,6 @@ public abstract class AbstractClient {
         return manager.getConfiguration().getUrlYorc();
     }
 
-    protected <T> void logRequest(String url, HttpMethod method, Class<T> responseType, HttpEntity entity) {
-        log.debug("Yorc Request({},{}",method,url);
-        if (entity.getHeaders() != null) {
-            log.debug("Headers: {}",entity.getHeaders());
-        }
-    }
-
     /**
      * This allows to build an HTTPEntity object with body and default headers with JSON ACCEPT
      * @param body
@@ -51,8 +44,12 @@ public abstract class AbstractClient {
     }
 
     public <T> Single<ResponseEntity<T>> sendRequest(String url, HttpMethod method, Class<T> responseType, HttpEntity entity) {
-        if (log.isDebugEnabled()) {
-            logRequest(url, method, responseType, entity);
+        if (log.isTraceEnabled()) {
+            log.trace("Yorc Request({},{}",method,url);
+
+            if (entity.getHeaders() != null) {
+                log.trace("Headers: {}",entity.getHeaders());
+            }
         }
 
         return fromFuture(manager.get().exchange(url,method,entity,responseType))

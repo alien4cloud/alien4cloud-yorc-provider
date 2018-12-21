@@ -45,4 +45,9 @@ public class Browser {
     static public <T> Observable<Context> browserFor(Observable<String> links, Function<String,Observable<T>> func, int concurrency) {
         return links.flatMap(x -> Observable.defer(() -> func.apply(x)), true, concurrency).map( object -> new Context(object));
     }
+
+    static public <T> Observable<Context> browserFor(Observable<String> links, Function<String,Observable<T>> func, int concurrency,Object initial) {
+        Context ctx = new Context(initial);
+        return links.flatMap(x -> Observable.defer(() -> func.apply(x)), true, concurrency).map( object -> new Context(ctx,object));
+    }
 }

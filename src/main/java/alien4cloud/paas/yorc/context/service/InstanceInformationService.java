@@ -143,17 +143,23 @@ public class InstanceInformationService {
         }
     }
 
-    private void onError(Throwable t) {
-        log.error("YORC exception while querying instance/attribute: {}",t.getMessage());
-    }
-
     private void onAttribute(Browser.Context context) {
         DeploymentDTO deploymentDTO = (DeploymentDTO) context.get(0);
         NodeDTO nodeDTO = (NodeDTO) context.get(1);
         InstanceDTO instanceDTO = (InstanceDTO) context.get(2);
         AttributeDTO attributeDTO = (AttributeDTO) context.get(3);
 
-        DeploymentInformation di = updateAttribute(deploymentDTO.getId(),nodeDTO.getName(),instanceDTO,attributeDTO);
+        updateAttribute(deploymentDTO.getId(),nodeDTO.getName(),instanceDTO,attributeDTO);
+    }
+
+    private void onAttributeRefresh(Browser.Context context) {
+        String[] depnod = (String[]) context.get(0);
+        String deploymentId = depnod[0];
+        String nodeId = depnod[1];
+        InstanceDTO instanceDTO = (InstanceDTO) context.get(1);
+        AttributeDTO attributeDTO = (AttributeDTO) context.get(2);
+
+        updateAttribute(deploymentId,nodeId,instanceDTO,attributeDTO);
     }
 
     private DeploymentInformation updateAttribute(String deploymentId, String nodeId, InstanceDTO instanceDTO, AttributeDTO attributeDTO) {
@@ -202,8 +208,25 @@ public class InstanceInformationService {
                 updateInstance(di,event.getNode(),event.getInstance(),event.getStatus());
             }
 
+            // TODO: Disable this query when Yorc will send us events about attributes
+            if (!event.getStatus().equals("deleted")) {
+                requestAttributes(event.getDeployment_id(),event.getNode(),event.getInstance());
+            }
+
             log.info("YORC INST {}/{}/{}->{}",event.getDeployment_id(),event.getNode(),event.getInstance(),event.getStatus());
         }
+    }
+
+    private void requestAttributes(String deploymentId,String nodeId,String instanceId) {
+        Observable<String> links = Observable.just(String.format("/deployments/%s/nodes/%s/instances/%s",deploymentId,nodeId,instanceId));
+
+        Browser.browserFor(links, url -> client.queryUrl(url,InstanceDTO.class),1,new String[] { deploymentId, nodeId })
+                .flatMap( agg -> agg.follow("attribute", url -> client.queryUrl(url,AttributeDTO.class),10))
+                .subscribe(this::onAttributeRefresh,this::onError);
+    }
+
+    private void onError(Throwable t) {
+        log.error("YORC exception while querying instance/attribute: {}",t.getMessage());
     }
 
     /**

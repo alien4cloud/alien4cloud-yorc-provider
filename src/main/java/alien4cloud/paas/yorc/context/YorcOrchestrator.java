@@ -136,6 +136,9 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
         // Notify Pollers that they have to stop
         eventPollingService.term();
         logEventPollingService.term();
+
+        // TemplateManager shutdown
+        templateManager.term();
     }
 
     @Override
