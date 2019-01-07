@@ -1,9 +1,9 @@
 package alien4cloud.paas.yorc.context.service.fsm;
 
+import java.util.Map;
+
 import javax.inject.Inject;
 
-import alien4cloud.paas.yorc.context.service.InstanceInformationService;
-import alien4cloud.paas.yorc.context.service.LogEventService;
 import org.springframework.messaging.Message;
 import org.springframework.statemachine.StateMachine;
 import org.springframework.stereotype.Component;
@@ -13,9 +13,9 @@ import com.google.common.collect.Maps;
 
 import alien4cloud.paas.model.DeploymentStatus;
 import alien4cloud.paas.yorc.context.service.BusService;
+import alien4cloud.paas.yorc.context.service.InstanceInformationService;
+import alien4cloud.paas.yorc.context.service.LogEventService;
 import lombok.extern.slf4j.Slf4j;
-
-import java.util.Map;
 
 @Component
 @Slf4j
@@ -50,34 +50,26 @@ public class StateMachineService {
 	 * Create new state machines with initial state
 	 * @param input A map containing deployment id and initial state
 	 */
-	public void newStateMachine(Map<String,FsmStates> input) {
+	public void newStateMachine(Map<String, FsmStates> input) {
 		for (Map.Entry<String, FsmStates> entry : input.entrySet()) {
 			String id = entry.getKey();
 			FsmStates initialState = entry.getValue();
-			// Create a new state machine
-			cache.put(id, createFsm(id, initialState));
-			// Create a new event bus to this deployment
-			busService.createEventBuses(id);
-
-			// Subscribe the state machine to event bus of message type "deployment"
-			busService.subscribe(id,this::talk);
-
-			// Subscribe events on the InstanceInformationService
-			busService.subscribeEvents(id,instanceInformationService::onEvent);
-
-			// Subscribe logs events on the LogEventService
-			busService.subscribeLogs(id,logEventService::onEvent);
+			newStateMachine(initialState, id);
 		}
+	}
+
+	public void newStateMachine(String ...ids) {
+		newStateMachine(FsmStates.UNDEPLOYED, ids);
 	}
 
 	/**
 	 * Create new state machines (default initial state: Undeployed)
 	 * @param ids ids of deployments
 	 */
-	public void newStateMachine(String ...ids) {
+	public void newStateMachine(FsmStates state, String ...ids) {
 		for (String id : ids) {
 			// Create a new state machine
-			cache.put(id, createFsm(id, FsmStates.UNDEPLOYED));
+			cache.put(id, createFsm(id, state));
 			// Create a new event bus to this deployment
 			busService.createEventBuses(id);
 			// Subscribe the state machine to event bus of message type "deployment"

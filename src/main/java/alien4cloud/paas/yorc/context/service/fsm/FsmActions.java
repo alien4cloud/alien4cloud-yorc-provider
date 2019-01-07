@@ -72,4 +72,42 @@ public class FsmActions {
 			}
 		};
 	}
+
+	protected Action<FsmStates, FsmEvents> undeploy() {
+		return new Action<FsmStates, FsmEvents>() {
+
+			private PaaSTopologyDeploymentContext context;
+			private IPaaSCallback<?> callback;
+
+			private void onHttpOk(String value) {
+				if (log.isInfoEnabled())
+					log.info("HTTP Request OK : {}", value);
+				Message<FsmEvents> message = MessageBuilder.withPayload(FsmEvents.UNDEPLOYMENT_SUCCESS)
+						.setHeader("deploymentId", context.getDeploymentPaaSId())
+						.build();
+			}
+
+			private void onHttpKo(Throwable t) {
+				callback.onFailure(t);
+				Message<FsmEvents> message = MessageBuilder.withPayload(FsmEvents.FAILURE)
+						.setHeader("deploymentId", context.getDeploymentPaaSId())
+						.build();
+
+				busService.publish(message);
+				if (log.isErrorEnabled())
+					log.error("HTTP Request KO : {}", t.getMessage());
+			}
+
+			@Override
+			public void execute(StateContext<FsmStates, FsmEvents> stateContext) {
+				context = (PaaSTopologyDeploymentContext) stateContext.getMessageHeaders().get("deploymentContext");
+				callback = (IPaaSCallback<?>) stateContext.getMessageHeaders().get("callback");
+
+				if (log.isInfoEnabled())
+					log.info("Undeploying " + context.getDeploymentPaaSId() + " with id : " + context.getDeploymentId());
+
+				deploymentClient.undeploy(context.getDeploymentPaaSId()).subscribe(this::onHttpOk, this::onHttpKo);
+			}
+		};
+	}
 }

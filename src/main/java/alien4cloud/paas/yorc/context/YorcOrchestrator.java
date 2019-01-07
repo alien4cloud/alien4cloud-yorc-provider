@@ -162,7 +162,12 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 
     @Override
     public void undeploy(PaaSDeploymentContext deploymentContext, IPaaSCallback<?> callback) {
-        // TODO: implements
+        Message<FsmEvents> message = MessageBuilder.withPayload(FsmEvents.UNDEPLOYMENT_STARTED)
+                .setHeader("callback", callback)
+                .setHeader("deploymentContext", deploymentContext)
+                .setHeader("deploymentId", deploymentContext.getDeploymentPaaSId())
+                .build();
+        busService.publish(message);
     }
 
     @Override

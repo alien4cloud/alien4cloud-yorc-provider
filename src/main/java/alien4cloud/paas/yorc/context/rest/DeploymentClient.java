@@ -1,13 +1,18 @@
 package alien4cloud.paas.yorc.context.rest;
 
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Component;
+
 import alien4cloud.paas.yorc.context.rest.response.AllDeploymentsDTO;
 import alien4cloud.paas.yorc.context.rest.response.DeploymentDTO;
 import alien4cloud.paas.yorc.util.RestUtil;
 import io.reactivex.Observable;
 import io.reactivex.Single;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.*;
-import org.springframework.stereotype.Component;
 
 @Slf4j
 @Component
@@ -77,14 +82,14 @@ public class DeploymentClient extends AbstractClient {
         return undeploy(deploymentId,false);
     }
 
-    public Single<String> undeploy(String deploymentId,boolean purge) {
+    public Single<String> undeploy(String deploymentId, boolean purge) {
         String url = getYorcUrl() + "/deployments/" + deploymentId;
 
-        if (purge == true) {
+        if (purge) {
             url += "?purge";
         }
 
-        return sendRequest(url,HttpMethod.DELETE,String.class,buildHttpEntityWithDefaultHeader())
+        return sendRequest(url, HttpMethod.DELETE, String.class, buildHttpEntityWithDefaultHeader())
             .map(RestUtil.extractHeader("Location"));
     }
 
