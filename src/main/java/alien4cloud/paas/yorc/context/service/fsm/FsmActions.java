@@ -12,6 +12,7 @@ import org.springframework.statemachine.action.Action;
 import org.springframework.stereotype.Service;
 
 import alien4cloud.paas.IPaaSCallback;
+import alien4cloud.paas.model.PaaSDeploymentContext;
 import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
 import alien4cloud.paas.yorc.context.rest.DeploymentClient;
 import alien4cloud.paas.yorc.context.service.BusService;
@@ -76,7 +77,7 @@ public class FsmActions {
 	protected Action<FsmStates, FsmEvents> undeploy() {
 		return new Action<FsmStates, FsmEvents>() {
 
-			private PaaSTopologyDeploymentContext context;
+			private PaaSDeploymentContext context;
 			private IPaaSCallback<?> callback;
 
 			private void onHttpOk(String value) {
@@ -100,13 +101,13 @@ public class FsmActions {
 
 			@Override
 			public void execute(StateContext<FsmStates, FsmEvents> stateContext) {
-				context = (PaaSTopologyDeploymentContext) stateContext.getMessageHeaders().get("deploymentContext");
+				context = (PaaSDeploymentContext) stateContext.getMessageHeaders().get("deploymentContext");
 				callback = (IPaaSCallback<?>) stateContext.getMessageHeaders().get("callback");
 
 				if (log.isInfoEnabled())
 					log.info("Undeploying " + context.getDeploymentPaaSId() + " with id : " + context.getDeploymentId());
 
-				deploymentClient.undeploy(context.getDeploymentPaaSId()).subscribe(this::onHttpOk, this::onHttpKo);
+				deploymentClient.undeploy(context.getDeploymentPaaSId(), true).subscribe(this::onHttpOk, this::onHttpKo);
 			}
 		};
 	}
