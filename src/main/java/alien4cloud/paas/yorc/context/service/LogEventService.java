@@ -1,22 +1,29 @@
 package alien4cloud.paas.yorc.context.service;
 
 import alien4cloud.dao.IGenericSearchDAO;
-import alien4cloud.paas.model.AbstractPaaSWorkflowMonitorEvent;
-import alien4cloud.paas.model.PaaSDeploymentLog;
-import alien4cloud.paas.model.PaaSDeploymentLogLevel;
-import alien4cloud.paas.model.PaaSWorkflowStartedEvent;
+import alien4cloud.paas.model.*;
 import alien4cloud.paas.yorc.context.YorcOrchestrator;
 import alien4cloud.paas.yorc.context.rest.response.LogEvent;
+import com.google.common.collect.Maps;
 import lombok.AllArgsConstructor;
 import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.ToString;
 import lombok.extern.slf4j.Slf4j;
+import org.alien4cloud.tosca.model.templates.Topology;
+import org.alien4cloud.tosca.model.workflow.Workflow;
+import org.alien4cloud.tosca.model.workflow.WorkflowStep;
+import org.alien4cloud.tosca.model.workflow.activities.CallOperationWorkflowActivity;
+import org.alien4cloud.tosca.model.workflow.activities.DelegateWorkflowActivity;
 import org.apache.commons.lang.StringUtils;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import javax.inject.Inject;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+import java.util.UUID;
 import java.util.regex.Pattern;
 
 @Slf4j
@@ -38,15 +45,60 @@ public class LogEventService {
     @Resource(name = "alien-monitor-es-dao")
     private IGenericSearchDAO dao;
 
+    // Mapping
+    private Map<String, Map<TaskKey, String>> mapTaskIds = Maps.newHashMap();
+
     public void onEvent(LogEvent event) {
         String content = event.getContent();
 
         if (content != null && EVENT_HANDLER_PATTERN.get().matcher(content.replaceAll("\\n", "")).matches()) {
-            if (content.startsWith("Start processing workflow")) {
+
+            if (content.equals("executing operation") || content.equals("executing delegate operation")) {
+                String taskId = getOrCreateTaskId(event);
+                String stepId = getStepId(event);
+
+                if (stepId != null) {
+                    WorkflowStepStartedEvent workflowStepStartedEvent = new WorkflowStepStartedEvent();
+                    workflowStepStartedEvent.setStepId(stepId);
+                    postWorkflowStepEvent(workflowStepStartedEvent, event);
+                }
+
+                // a task has been sent ...
+                TaskSentEvent taskSentEvent = new TaskSentEvent();
+                taskSentEvent.setTaskId(taskId);
+                taskSentEvent.setWorkflowStepId(stepId);
+                postTaskEvent(taskSentEvent, event);
+                // ... and started
+                TaskStartedEvent taskStartedEvent = new TaskStartedEvent();
+                taskStartedEvent.setTaskId(taskId);
+                taskStartedEvent.setWorkflowStepId(stepId);
+                postTaskEvent(taskStartedEvent, event);
+
+            } else if (content.startsWith("Start processing workflow")) {
                 // -> PaasWorkflowStartedEvent
                 PaaSWorkflowStartedEvent a4cEvent = new PaaSWorkflowStartedEvent();
                 a4cEvent.setWorkflowName(event.getWorkflowId());
                 postWorkflowMonitorEvent(a4cEvent, event);
+            } else if (content.endsWith("ended without error")) {
+                // -> PaasWorkflowSucceededEvent
+                PaaSWorkflowSucceededEvent a4cEvent = new PaaSWorkflowSucceededEvent();
+                postWorkflowMonitorEvent(a4cEvent, event);
+
+                // TODO: update registration
+            } else if (content.equals("operation succeeded") || content.equals("delegate operation succeeded") ) {
+                String taskId = getOrCreateTaskId(event);
+                String stepId = getStepId(event);
+
+                // -> TaskSucceedeEvent
+                TaskSucceededEvent taskSucceededEvent = new TaskSucceededEvent();
+                taskSucceededEvent.setTaskId(taskId);
+                postTaskEvent(taskSucceededEvent, event);
+
+                if (stepId != null) {
+                    WorkflowStepCompletedEvent workflowStepCompletedEvent = new WorkflowStepCompletedEvent();
+                    workflowStepCompletedEvent.setStepId(stepId);
+                    postWorkflowStepEvent(workflowStepCompletedEvent, event);
+                }
             } else {
                 TaskKey key = buildTaskKey(event);
 
@@ -57,15 +109,79 @@ public class LogEventService {
         save(toPaasDeploymentLog(event));
     }
 
+    private void postWorkflowStepEvent(AbstractWorkflowStepEvent a4cEvent, LogEvent logEvent) {
+        a4cEvent.setNodeId(logEvent.getNodeId());
+        a4cEvent.setInstanceId(logEvent.getInstanceId());
+        a4cEvent.setOperationName(logEvent.getInterfaceName() + "." + logEvent.getOperationName());
+        postWorkflowMonitorEvent(a4cEvent, logEvent);
+    }
+
+    private void postTaskEvent(AbstractTaskEvent a4cEvent, LogEvent logEvent) {
+        a4cEvent.setNodeId(logEvent.getNodeId());
+        a4cEvent.setInstanceId(logEvent.getInstanceId());
+        a4cEvent.setOperationName(logEvent.getInterfaceName() + "." + logEvent.getOperationName());
+        postWorkflowMonitorEvent(a4cEvent, logEvent);
+    }
+
     private void postWorkflowMonitorEvent(AbstractPaaSWorkflowMonitorEvent a4cEvent, LogEvent logEvent) {
         a4cEvent.setExecutionId(logEvent.getExecutionId());
         a4cEvent.setWorkflowId(logEvent.getWorkflowId());
-        a4cEvent.setDeploymentId(logEvent.getDeploymentId());
+        a4cEvent.setDeploymentId(registry.toAlienId(logEvent.getDeploymentId()));
         orchestrator.postAlienEvent(a4cEvent);
     }
 
     private void save(PaaSDeploymentLog event) {
         dao.save(event);
+    }
+
+    private String getOrCreateTaskId(LogEvent event) {
+        Map<TaskKey,String> taskIds = mapTaskIds.computeIfAbsent(event.getDeploymentId(),key -> Maps.newHashMap());
+
+        TaskKey key = buildTaskKey(event);
+        if (key != null) {
+            String taskId = UUID.randomUUID().toString();
+            taskIds.put(key, taskId);
+            return taskId;
+        } else {
+            return null;
+        }
+    }
+
+    private String getStepId(LogEvent event) {
+        Topology topology = registry.getTopology(event.getDeploymentId());
+
+        if (topology == null) {
+            return null;
+        }
+
+        Workflow wf = topology.getWorkflow(event.getWorkflowId());
+        if (wf == null) {
+            return null;
+        }
+
+        Optional<WorkflowStep> step = wf.getSteps().values().stream().filter( wfs -> {
+                if (wfs.getTarget().equals(event.getNodeId())) {
+                    if (wfs.getActivity() instanceof CallOperationWorkflowActivity) {
+                        CallOperationWorkflowActivity activity = (CallOperationWorkflowActivity) wfs.getActivity();
+                        // FIXME : don't try to match onto interfaceName since it's not the same (configure vs Configure)
+                        if (/*activity.getInterfaceName().equals(pLogEvent.getInterfaceName()) &&*/
+                                activity.getOperationName().equals(event.getOperationName())) {
+                            return true;
+                        }
+                    } else if (event.getInterfaceName().equals("delegate") && wfs.getActivity() instanceof DelegateWorkflowActivity) {
+                        DelegateWorkflowActivity activity = (DelegateWorkflowActivity)wfs.getActivity();
+                        if (event.getOperationName().equals(activity.getDelegate())) {
+                            return true;
+                        }
+                    }
+                }
+                return false;
+            }).findFirst();
+
+        if (step.isPresent()) {
+            return step.get().getName();
+        }
+        return null;
     }
 
     private PaaSDeploymentLog toPaasDeploymentLog(final LogEvent logEvent) {

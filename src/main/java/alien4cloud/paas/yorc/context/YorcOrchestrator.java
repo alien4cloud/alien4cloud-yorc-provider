@@ -144,7 +144,7 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
         stateMachineService.newStateMachine(deploymentContext.getDeploymentPaaSId());
 
         // Registering alienId to yorcId
-        registry.register(deploymentContext.getDeploymentPaaSId(),deploymentContext.getDeploymentId());
+        registry.register(deploymentContext);
 
         Message<FsmEvents> message = MessageBuilder.withPayload(FsmEvents.DEPLOYMENT_STARTED)
                 .setHeader("callback", callback)
