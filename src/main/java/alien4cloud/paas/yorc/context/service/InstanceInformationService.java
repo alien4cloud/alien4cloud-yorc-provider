@@ -227,23 +227,23 @@ public class InstanceInformationService {
     }
 
     public void onEvent(Event event) {
-        if (event.getType().equals("instance")) {
-            DeploymentInformation di = map.computeIfAbsent(event.getDeployment_id(),(k) -> new DeploymentInformation());
+        if (event.getType().equals(Event.EVT_INSTANCE)) {
+            DeploymentInformation di = map.computeIfAbsent(event.getDeploymentId(),(k) -> new DeploymentInformation());
 
             di.lock.writeLock().lock();
             try {
                 if (event.getStatus().equals("deleted")) {
-                    deleteInstance(di, event.getNode(), event.getInstance());
+                    deleteInstance(di, event.getNodeId(), event.getInstanceId());
                 } else {
-                    updateInstance(di,event.getNode(),event.getInstance(),event.getStatus());
+                    updateInstance(di,event.getNodeId(),event.getInstanceId(),event.getStatus());
 
-                    requestAttributes(event.getDeployment_id(),event.getNode(),event.getInstance());
+                    requestAttributes(event.getDeploymentId(),event.getNodeId(),event.getInstanceId());
                 }
             } finally {
                 di.lock.writeLock().unlock();
             }
 
-            log.info("YORC INST {}/{}/{}->{}",event.getDeployment_id(),event.getNode(),event.getInstance(),event.getStatus());
+            log.info("YORC INST {}/{}/{}->{}",event.getDeploymentId(),event.getNodeId(),event.getInstanceId(),event.getStatus());
         }
     }
 

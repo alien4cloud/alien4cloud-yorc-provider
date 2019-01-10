@@ -61,8 +61,8 @@ public class BusService {
     }
 
     public void publish(Event event) {
-        if (eventBuses.containsKey(event.getDeployment_id())) {
-            eventBuses.get(event.getDeployment_id()).events.onNext(event);
+        if (eventBuses.containsKey(event.getDeploymentId())) {
+            eventBuses.get(event.getDeploymentId()).events.onNext(event);
         }
     }
 

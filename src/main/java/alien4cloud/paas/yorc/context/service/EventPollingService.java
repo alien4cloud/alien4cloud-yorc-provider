@@ -79,11 +79,13 @@ public class EventPollingService {
                 case Event.EVT_OPERATION:
                 case Event.EVT_SCALING:
                 case Event.EVT_WORKFLOW:
+                case Event.EVT_WORKFLOWSTEP:
+                case Event.EVT_ALIENTASK:
                     bus.publish(event);
                     break;
                 default:
                     if (log.isWarnEnabled())
-                        log.warn("Unknown Yorc Event [{}/{}]", event.getType(), event.getDeployment_id());
+                        log.warn("Unknown Yorc Event [{}/{}]", event.getType(), event.getDeploymentId());
             }
         }
 

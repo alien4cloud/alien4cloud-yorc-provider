@@ -13,17 +13,19 @@ public class Event {
      *  Possible values for Yorc event types
      *  Check with Yorc code for these values.
      */
-    public static final String EVT_INSTANCE   = "instance";
-    public static final String EVT_OPERATION  = "custom-command";
-    public static final String EVT_DEPLOYMENT = "deployment";
-    public static final String EVT_SCALING    = "scaling";
-    public static final String EVT_WORKFLOW   = "workflow";
+    public static final String EVT_INSTANCE     = "Instance";
+    public static final String EVT_OPERATION    = "custom-command";
+    public static final String EVT_DEPLOYMENT   = "Deployment";
+    public static final String EVT_SCALING      = "scaling";
+    public static final String EVT_WORKFLOW     = "Workflow";
+    public static final String EVT_WORKFLOWSTEP = "WorkflowStep";
+    public static final String EVT_ALIENTASK    = "AlienTask";
 
     private String timestamp;
-    private String node;
-    private String instance;
+    private String nodeId;
+    private String instanceId;
     private String status;
     private String type;
-    private String task_id;
-    private String deployment_id;
+    private String taskId;
+    private String deploymentId;
 }
