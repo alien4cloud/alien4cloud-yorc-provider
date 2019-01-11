@@ -72,17 +72,20 @@ public class EventPollingService {
         EventDTO response = entity.getBody();
 
         for (Event event : response.getEvents()) {
+
             switch(event.getType()) {
                 case Event.EVT_INSTANCE:
                 case Event.EVT_DEPLOYMENT:
                 case Event.EVT_OPERATION:
                 case Event.EVT_SCALING:
                 case Event.EVT_WORKFLOW:
+                case Event.EVT_WORKFLOWSTEP:
+                case Event.EVT_ALIENTASK:
                     bus.publish(event);
                     break;
                 default:
                     if (log.isWarnEnabled())
-                        log.warn("Unknown Yorc Event [{}/{}]", event.getType(), event.getDeployment_id());
+                        log.warn("Unknown Yorc Event [{}/{}]", event.getType(), event.getDeploymentId());
             }
         }
 

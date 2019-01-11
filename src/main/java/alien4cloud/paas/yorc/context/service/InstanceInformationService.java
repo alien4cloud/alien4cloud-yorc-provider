@@ -3,7 +3,9 @@ package alien4cloud.paas.yorc.context.service;
 import alien4cloud.paas.IPaaSCallback;
 import alien4cloud.paas.model.InstanceInformation;
 import alien4cloud.paas.model.InstanceStatus;
+import alien4cloud.paas.model.PaaSInstanceStateMonitorEvent;
 import alien4cloud.paas.plan.ToscaNodeLifecycleConstants;
+import alien4cloud.paas.yorc.context.YorcOrchestrator;
 import alien4cloud.paas.yorc.context.rest.DeploymentClient;
 import alien4cloud.paas.yorc.context.rest.browser.Browser;
 import alien4cloud.paas.yorc.context.rest.response.*;
@@ -20,7 +22,7 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
-import java.util.stream.Collectors;
+import java.util.function.Supplier;
 
 @Slf4j
 @Service
@@ -28,6 +30,12 @@ public class InstanceInformationService {
 
     @Inject
     private DeploymentClient client;
+
+    @Inject
+    private DeployementRegistry registry;
+
+    @Inject
+    private YorcOrchestrator orchestrator;
 
     @Inject
     private Scheduler scheduler;
@@ -149,7 +157,7 @@ public class InstanceInformationService {
         InstanceDTO instanceDTO = (InstanceDTO) context.get(2);
         AttributeDTO attributeDTO = (AttributeDTO) context.get(3);
 
-        updateAttribute(deploymentDTO.getId(),nodeDTO.getName(),instanceDTO,attributeDTO);
+        createOrUpdateAttribute(deploymentDTO.getId(),nodeDTO.getName(),instanceDTO,attributeDTO);
     }
 
     private void onAttributeRefresh(Browser.Context context) {
@@ -162,59 +170,103 @@ public class InstanceInformationService {
         updateAttribute(deploymentId,nodeId,instanceDTO,attributeDTO);
     }
 
-    private DeploymentInformation updateAttribute(String deploymentId, String nodeId, InstanceDTO instanceDTO, AttributeDTO attributeDTO) {
+    private void updateAttribute(String deploymentId, String nodeId, InstanceDTO instanceDTO, AttributeDTO attributeDTO) {
         DeploymentInformation di = map.computeIfAbsent(deploymentId,(k) -> new DeploymentInformation());
 
+        di.lock.writeLock().lock();
         try {
-            di.lock.writeLock().lock();
-
             // Update the instance
-            InstanceInformation ii = updateInstance(di,nodeId,instanceDTO.getId(),instanceDTO.getStatus());
+            InstanceInformation ii = getInformation(di,nodeId,instanceDTO.getId());
 
-            // Update the attributes
             if (ii != null) {
-                ii.getAttributes().putIfAbsent(attributeDTO.getName(), attributeDTO.getValue());
+                ii.getAttributes().put(attributeDTO.getName(), attributeDTO.getValue());
             }
         } finally {
             di.lock.writeLock().unlock();
         }
 
         //log.debug("YORC ATTR {}/{}/{} {}={}",deploymentId,nodeId,instanceDTO.getId(),attributeDTO.getName(),attributeDTO.getValue());
-
-        return di;
     }
 
-    private InstanceInformation updateInstance(DeploymentInformation di,String nodeId,String instanceId,String status) {
-        InstanceInformation ii = null;
-        Map<String,InstanceInformation> ni = di.informations.computeIfAbsent(nodeId,(key) -> Maps.newHashMap());
+    private void createOrUpdateAttribute(String deploymentId, String nodeId, InstanceDTO instanceDTO, AttributeDTO attributeDTO) {
+        DeploymentInformation di = map.computeIfAbsent(deploymentId,(k) -> new DeploymentInformation());
 
-        if (status.equals("deleted")) {
-           ni.remove(instanceId);
-        } else {
-            ii = ni.computeIfAbsent(instanceId, (key) -> buildInstance());
+        di.lock.writeLock().lock();
+        try {
 
-            ii.setState(status);
-            ii.setInstanceStatus(getInstanceStatusFromState(status));
+            // Update the instance
+            InstanceInformation ii = createOrGetInformation(di,nodeId,instanceDTO.getId(), instanceBuilder(instanceDTO.getStatus()));
+
+            ii.getAttributes().putIfAbsent(attributeDTO.getName(), attributeDTO.getValue());
+        } finally {
+            di.lock.writeLock().unlock();
         }
 
-        return ii;
+        //log.debug("YORC ATTR {}/{}/{} {}={}",deploymentId,nodeId,instanceDTO.getId(),attributeDTO.getName(),attributeDTO.getValue());
+    }
+
+    private InstanceInformation getInformation(DeploymentInformation di, String nodeId, String instanceId) {
+        Map<String,InstanceInformation> ni = di.informations.computeIfAbsent(nodeId,(key) -> Maps.newHashMap());
+        return ni.get(instanceId);
+    }
+
+    private InstanceInformation createOrGetInformation(DeploymentInformation di, String nodeId, String instanceId,Supplier<InstanceInformation> supplier) {
+        Map<String,InstanceInformation> ni = di.informations.computeIfAbsent(nodeId,(key) -> Maps.newHashMap());
+        return ni.computeIfAbsent(instanceId, (key) -> supplier.get());
+    }
+
+
+    private InstanceInformation createOrGetInformation(DeploymentInformation di,String nodeId,String instanceId) {
+        return createOrGetInformation(di,nodeId,instanceId,instanceBuilder(ToscaNodeLifecycleConstants.INITIAL));
+    }
+
+    private void deleteInstance(DeploymentInformation di,String nodeId,String instanceId) {
+        Map<String,InstanceInformation> ni = di.informations.computeIfAbsent(nodeId,(key) -> Maps.newHashMap());
+        ni.remove(instanceId);
+    }
+
+    private void updateInstance(DeploymentInformation di,String nodeId,String instanceId,String status) {
+        InstanceInformation ii = createOrGetInformation(di,nodeId,instanceId);
+
+        log.info(">>> {}/{}={}",nodeId,instanceId,status);
+
+        ii.setState(status);
+        ii.setInstanceStatus(getInstanceStatusFromState(status));
     }
 
     public void onEvent(Event event) {
-        if (event.getType().equals("instance")) {
-            DeploymentInformation di = map.computeIfAbsent(event.getDeployment_id(),(k) -> new DeploymentInformation());
+        if (event.getType().equals(Event.EVT_INSTANCE)) {
+            DeploymentInformation di = map.computeIfAbsent(event.getDeploymentId(),(k) -> new DeploymentInformation());
 
-            if (di != null) {
-                updateInstance(di,event.getNode(),event.getInstance(),event.getStatus());
+            di.lock.writeLock().lock();
+            try {
+                if (event.getStatus().equals("deleted")) {
+                    deleteInstance(di, event.getNodeId(), event.getInstanceId());
+                } else {
+                    updateInstance(di,event.getNodeId(),event.getInstanceId(),event.getStatus());
+
+                    postInstanceEvent(event);
+
+                    requestAttributes(event.getDeploymentId(),event.getNodeId(),event.getInstanceId());
+                }
+            } finally {
+                di.lock.writeLock().unlock();
             }
 
-            // TODO: Disable this query when Yorc will send us events about attributes
-            if (!event.getStatus().equals("deleted")) {
-                requestAttributes(event.getDeployment_id(),event.getNode(),event.getInstance());
-            }
-
-            log.info("YORC INST {}/{}/{}->{}",event.getDeployment_id(),event.getNode(),event.getInstance(),event.getStatus());
+            log.info("YORC INST {}/{}/{}->{}",event.getDeploymentId(),event.getNodeId(),event.getInstanceId(),event.getStatus());
         }
+    }
+
+    private void postInstanceEvent(Event event) {
+        PaaSInstanceStateMonitorEvent a4cEvent = new PaaSInstanceStateMonitorEvent();
+
+        a4cEvent.setInstanceId(event.getInstanceId());
+        a4cEvent.setInstanceState(event.getStatus());
+        a4cEvent.setInstanceStatus(getInstanceStatusFromState(event.getStatus()));
+        a4cEvent.setNodeTemplateId(event.getNodeId());
+        a4cEvent.setDeploymentId(registry.toAlienId(event.getDeploymentId()));
+
+        orchestrator.postAlienEvent(a4cEvent);
     }
 
     private void requestAttributes(String deploymentId,String nodeId,String instanceId) {
@@ -251,13 +303,14 @@ public class InstanceInformationService {
         }
     }
 
-    private static InstanceInformation buildInstance() {
-        return new InstanceInformation(
-            ToscaNodeLifecycleConstants.INITIAL,
-            InstanceStatus.PROCESSING,
-            Maps.newHashMap(),
-            Maps.newHashMap(),
-            Maps.newHashMap()
+    private Supplier<InstanceInformation> instanceBuilder(String state) {
+        return () -> new InstanceInformation(
+                state,
+                getInstanceStatusFromState(state),
+                Maps.newHashMap(),
+                Maps.newHashMap(),
+                Maps.newHashMap()
         );
     }
+
 }

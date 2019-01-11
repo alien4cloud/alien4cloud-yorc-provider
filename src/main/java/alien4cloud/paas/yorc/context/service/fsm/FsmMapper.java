@@ -32,7 +32,7 @@ public class FsmMapper {
 
         return MessageBuilder
             .withPayload(payload)
-            .setHeader("deploymentId", event.getDeployment_id())
+            .setHeader("deploymentId", event.getDeploymentId())
             .build();
     }
 

@@ -18,6 +18,7 @@ import alien4cloud.paas.model.PaaSDeploymentContext;
 import alien4cloud.paas.yorc.context.service.BusService;
 import alien4cloud.paas.yorc.context.service.InstanceInformationService;
 import alien4cloud.paas.yorc.context.service.LogEventService;
+import alien4cloud.paas.yorc.context.service.WorkflowInformationService;
 import lombok.extern.slf4j.Slf4j;
 
 @Component
@@ -51,6 +52,9 @@ public class StateMachineService {
 	private InstanceInformationService instanceInformationService;
 
 	@Inject
+	private WorkflowInformationService workflowInformationService;
+
+	@Inject
 	private LogEventService logEventService;
 
 	/**
@@ -61,33 +65,41 @@ public class StateMachineService {
 		for (Map.Entry<String, FsmStates> entry : input.entrySet()) {
 			String id = entry.getKey();
 			FsmStates initialState = entry.getValue();
-			newStateMachine(initialState, id);
-		}
-	}
+			// Create a new state machine
+			cache.put(id, createFsm(id, initialState));
 
-	public void newStateMachine(String ...ids) {
-		newStateMachine(FsmStates.UNDEPLOYED, ids);
+			doSubscriptions(id);
+		}
 	}
 
 	/**
 	 * Create new state machines (default initial state: Undeployed)
 	 * @param ids ids of deployments
 	 */
-	public void newStateMachine(FsmStates state, String ...ids) {
+	public void newStateMachine(String ...ids) {
 		for (String id : ids) {
 			// Create a new state machine
-			cache.put(id, createFsm(id, state));
-			// Create a new event bus to this deployment
-			busService.createEventBuses(id);
-			// Subscribe the state machine to event bus of message type "deployment"
-			busService.subscribe(id, this::talk);
+			cache.put(id, createFsm(id, FsmStates.UNDEPLOYED));
 
-            // Subscribe events on the InstanceInformationService
-            busService.subscribeEvents(id,instanceInformationService::onEvent);
-
-			// Subscribe logs events on the LogEventService
-			busService.subscribeLogs(id,logEventService::onEvent);
+			doSubscriptions(id);
 		}
+	}
+
+	private void doSubscriptions(String id ) {
+		// Create a new event bus to this deployment
+		busService.createEventBuses(id);
+
+		// Subscribe the state machine to event bus of message type "deployment"
+		busService.subscribe(id, this::talk);
+
+		// Subscribe events on the InstanceInformationService
+		busService.subscribeEvents(id,instanceInformationService::onEvent);
+
+		// Subscribe events on the WorkflowInformationService
+		busService.subscribeEvents(id,workflowInformationService::onEvent);
+
+		// Subscribe logs events on the LogEventService
+		busService.subscribeLogs(id,logEventService::onEvent);
 	}
 
 	private StateMachine<FsmStates, FsmEvents> createFsm(String id, FsmStates initialState) {

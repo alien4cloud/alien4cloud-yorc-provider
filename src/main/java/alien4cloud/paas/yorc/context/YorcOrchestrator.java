@@ -152,7 +152,7 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
         stateMachineService.newStateMachine(deploymentContext.getDeploymentPaaSId());
 
         // Registering alienId to yorcId
-        registry.register(deploymentContext.getDeploymentPaaSId(),deploymentContext.getDeploymentId());
+        registry.register(deploymentContext);
 
         Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.DEPLOYMENT_STARTED, deploymentContext, callback);
         busService.publish(message);
@@ -235,7 +235,7 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
      * Post event to Alien
      * @param event
      */
-    public void postAlienEvent(AbstractPaaSWorkflowMonitorEvent event) {
+    public void postAlienEvent(AbstractMonitorEvent event) {
         event.setDate((new Date()).getTime());
         event.setOrchestratorId(orchestratorId);
 
@@ -250,8 +250,8 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
      * @param state
      * @return
      */
-    private static DeploymentStatus getDeploymentStatusFromString(String state) {
-        switch (state) {
+    public static DeploymentStatus getDeploymentStatusFromString(String state) {
+        switch (state.toUpperCase()) {
             case "DEPLOYED":
                 return DeploymentStatus.DEPLOYED;
             case "UNDEPLOYED":
