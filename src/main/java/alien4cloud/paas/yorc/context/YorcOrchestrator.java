@@ -9,7 +9,6 @@ import javax.inject.Inject;
 import org.springframework.context.ApplicationContext;
 import org.springframework.http.HttpStatus;
 import org.springframework.messaging.Message;
-import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.stereotype.Component;
 
 import com.google.common.collect.Lists;
@@ -155,12 +154,7 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
         // Registering alienId to yorcId
         registry.register(deploymentContext.getDeploymentPaaSId(),deploymentContext.getDeploymentId());
 
-        Message<FsmEvents> message = MessageBuilder.withPayload(FsmEvents.DEPLOYMENT_STARTED)
-                .setHeader("callback", callback)
-                .setHeader("deploymentContext", deploymentContext)
-                .setHeader("deploymentId", deploymentContext.getDeploymentPaaSId())
-                .build();
-
+        Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.DEPLOYMENT_STARTED, deploymentContext, callback);
         busService.publish(message);
     }
 
@@ -171,11 +165,7 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 
     @Override
     public void undeploy(PaaSDeploymentContext deploymentContext, IPaaSCallback<?> callback) {
-        Message<FsmEvents> message = MessageBuilder.withPayload(FsmEvents.UNDEPLOYMENT_STARTED)
-                .setHeader("callback", callback)
-                .setHeader("deploymentContext", deploymentContext)
-                .setHeader("deploymentId", deploymentContext.getDeploymentPaaSId())
-                .build();
+        Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.UNDEPLOYMENT_STARTED, deploymentContext, callback);
         busService.publish(message);
     }
 

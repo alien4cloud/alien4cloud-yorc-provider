@@ -66,9 +66,19 @@ public class FsmBuilder {
 			.action(actions.undeploy())
 			.and()
 			.withExternal()
-			.source(FsmStates.DEPLOYMENT_IN_PROGRESS).target(FsmStates.UNDEPLOYMENT_IN_PROGRESS)
+			.source(FsmStates.DEPLOYMENT_IN_PROGRESS).target(FsmStates.TASK_CANCELING)
 			.event(FsmEvents.UNDEPLOYMENT_STARTED)
+			.action(actions.cancelTask())
+			.and()
+			.withExternal()
+			.source(FsmStates.TASK_CANCELING).target(FsmStates.UNDEPLOYMENT_IN_PROGRESS)
+			.event(FsmEvents.FAILURE)
 			.action(actions.undeploy())
+			.and()
+			.withExternal()
+			.source(FsmStates.UNDEPLOYMENT_IN_PROGRESS).target(FsmStates.UNDEPLOYMENT_PURGING)
+			.event(FsmEvents.UNDEPLOYMENT_SUCCESS)
+			.action(actions.purge())
 			.and()
 			.withExternal()
 			.source(FsmStates.UNDEPLOYMENT_IN_PROGRESS).target(FsmStates.FAILED)
@@ -80,8 +90,8 @@ public class FsmBuilder {
 			.action(actions.undeploy())
 			.and()
 			.withExternal()
-			.source(FsmStates.UNDEPLOYMENT_IN_PROGRESS).target(FsmStates.UNDEPLOYED)
-			.event(FsmEvents.UNDEPLOYMENT_SUCCESS);
+			.source(FsmStates.UNDEPLOYMENT_PURGING).target(FsmStates.UNDEPLOYED)
+			.event(FsmEvents.DEPLOYMENT_PURGED);
 	}
 
 	private void configure(StateMachineConfigurationConfigurer<FsmStates, FsmEvents> config, String id) throws Exception {

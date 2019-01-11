@@ -78,6 +78,10 @@ public class DeploymentClient extends AbstractClient {
                 .flatMapIterable(AllDeploymentsDTO::getDeployments);
     }
 
+    public Single<String> purge(String deploymentId) {
+        return undeploy(deploymentId,true);
+    }
+
     public Single<String> undeploy(String deploymentId) {
         return undeploy(deploymentId,false);
     }
@@ -93,7 +97,7 @@ public class DeploymentClient extends AbstractClient {
             .map(RestUtil.extractHeader("Location"));
     }
 
-    public Single<String> stopTask(String taskUrl) {
+    public Single<String> cancalTask(String taskUrl) {
         String url = getYorcUrl() + taskUrl;
 
         return sendRequest(url,HttpMethod.DELETE,String.class,buildHttpEntityWithDefaultHeader())
