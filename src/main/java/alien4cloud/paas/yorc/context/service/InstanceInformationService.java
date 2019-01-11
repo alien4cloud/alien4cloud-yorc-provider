@@ -3,7 +3,9 @@ package alien4cloud.paas.yorc.context.service;
 import alien4cloud.paas.IPaaSCallback;
 import alien4cloud.paas.model.InstanceInformation;
 import alien4cloud.paas.model.InstanceStatus;
+import alien4cloud.paas.model.PaaSInstanceStateMonitorEvent;
 import alien4cloud.paas.plan.ToscaNodeLifecycleConstants;
+import alien4cloud.paas.yorc.context.YorcOrchestrator;
 import alien4cloud.paas.yorc.context.rest.DeploymentClient;
 import alien4cloud.paas.yorc.context.rest.browser.Browser;
 import alien4cloud.paas.yorc.context.rest.response.*;
@@ -28,6 +30,12 @@ public class InstanceInformationService {
 
     @Inject
     private DeploymentClient client;
+
+    @Inject
+    private DeployementRegistry registry;
+
+    @Inject
+    private YorcOrchestrator orchestrator;
 
     @Inject
     private Scheduler scheduler;
@@ -171,7 +179,7 @@ public class InstanceInformationService {
             InstanceInformation ii = getInformation(di,nodeId,instanceDTO.getId());
 
             if (ii != null) {
-                ii.getAttributes().putIfAbsent(attributeDTO.getName(), attributeDTO.getValue());
+                ii.getAttributes().put(attributeDTO.getName(), attributeDTO.getValue());
             }
         } finally {
             di.lock.writeLock().unlock();
@@ -237,6 +245,8 @@ public class InstanceInformationService {
                 } else {
                     updateInstance(di,event.getNodeId(),event.getInstanceId(),event.getStatus());
 
+                    postInstanceEvent(event);
+
                     requestAttributes(event.getDeploymentId(),event.getNodeId(),event.getInstanceId());
                 }
             } finally {
@@ -245,6 +255,18 @@ public class InstanceInformationService {
 
             log.info("YORC INST {}/{}/{}->{}",event.getDeploymentId(),event.getNodeId(),event.getInstanceId(),event.getStatus());
         }
+    }
+
+    private void postInstanceEvent(Event event) {
+        PaaSInstanceStateMonitorEvent a4cEvent = new PaaSInstanceStateMonitorEvent();
+
+        a4cEvent.setInstanceId(event.getInstanceId());
+        a4cEvent.setInstanceState(event.getStatus());
+        a4cEvent.setInstanceStatus(getInstanceStatusFromState(event.getStatus()));
+        a4cEvent.setNodeTemplateId(event.getNodeId());
+        a4cEvent.setDeploymentId(registry.toAlienId(event.getDeploymentId()));
+
+        orchestrator.postAlienEvent(a4cEvent);
     }
 
     private void requestAttributes(String deploymentId,String nodeId,String instanceId) {

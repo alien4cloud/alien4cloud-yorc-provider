@@ -28,4 +28,9 @@ public class Event {
     private String type;
     private String taskId;
     private String deploymentId;
+    private String workflowId;
+    private String alienExecutionId;
+    private String alienTaskId;
+    private String stepId;
+    private String operationName;
 }

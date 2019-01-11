@@ -231,7 +231,7 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
      * Post event to Alien
      * @param event
      */
-    public void postAlienEvent(AbstractPaaSWorkflowMonitorEvent event) {
+    public void postAlienEvent(AbstractMonitorEvent event) {
         event.setDate((new Date()).getTime());
         event.setOrchestratorId(orchestratorId);
 
@@ -246,8 +246,8 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
      * @param state
      * @return
      */
-    private static DeploymentStatus getDeploymentStatusFromString(String state) {
-        switch (state) {
+    public static DeploymentStatus getDeploymentStatusFromString(String state) {
+        switch (state.toUpperCase()) {
             case "DEPLOYED":
                 return DeploymentStatus.DEPLOYED;
             case "UNDEPLOYED":

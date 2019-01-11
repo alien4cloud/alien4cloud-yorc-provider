@@ -72,7 +72,7 @@ public class EventPollingService {
         EventDTO response = entity.getBody();
 
         for (Event event : response.getEvents()) {
-            log.info("EVT: {}",event);
+
             switch(event.getType()) {
                 case Event.EVT_INSTANCE:
                 case Event.EVT_DEPLOYMENT:
