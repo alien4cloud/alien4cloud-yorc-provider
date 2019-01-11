@@ -1,22 +1,25 @@
 package alien4cloud.paas.yorc.context.service.fsm;
 
+import java.util.Map;
+
 import javax.inject.Inject;
 
-import alien4cloud.paas.yorc.context.service.InstanceInformationService;
-import alien4cloud.paas.yorc.context.service.LogEventService;
-import alien4cloud.paas.yorc.context.service.WorkflowInformationService;
 import org.springframework.messaging.Message;
+import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.statemachine.StateMachine;
 import org.springframework.stereotype.Component;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 
+import alien4cloud.paas.IPaaSCallback;
 import alien4cloud.paas.model.DeploymentStatus;
+import alien4cloud.paas.model.PaaSDeploymentContext;
 import alien4cloud.paas.yorc.context.service.BusService;
+import alien4cloud.paas.yorc.context.service.InstanceInformationService;
+import alien4cloud.paas.yorc.context.service.LogEventService;
+import alien4cloud.paas.yorc.context.service.WorkflowInformationService;
 import lombok.extern.slf4j.Slf4j;
-
-import java.util.Map;
 
 @Component
 @Slf4j
@@ -24,6 +27,10 @@ public class StateMachineService {
 
 	@Inject
 	private FsmBuilder builder;
+
+	public static final String DEPLOYMENT_CONTEXT = "deploymentContext";
+	public static final String DEPLOYMENT_ID = "deploymentId";
+	public static final String CALLBACK = "callback";
 
 
 	// TODO Problem of concurrency
@@ -54,7 +61,7 @@ public class StateMachineService {
 	 * Create new state machines with initial state
 	 * @param input A map containing deployment id and initial state
 	 */
-	public void newStateMachine(Map<String,FsmStates> input) {
+	public void newStateMachine(Map<String, FsmStates> input) {
 		for (Map.Entry<String, FsmStates> entry : input.entrySet()) {
 			String id = entry.getKey();
 			FsmStates initialState = entry.getValue();
@@ -110,9 +117,18 @@ public class StateMachineService {
 	}
 
 	private void talk(Message<FsmEvents> message) {
-		String deploymentId = (String) message.getHeaders().get("deploymentId");
+		String deploymentId = (String) message.getHeaders().get(DEPLOYMENT_ID);
 		StateMachine<FsmStates, FsmEvents> fsm = cache.get(deploymentId);
 		if (fsm != null) {
+			// Set up some necessary variables for each fsm
+			PaaSDeploymentContext context = (PaaSDeploymentContext) message.getHeaders().get(DEPLOYMENT_CONTEXT);
+			IPaaSCallback<?> callback = (IPaaSCallback<?>) message.getHeaders().get(CALLBACK);
+			if (context != null)
+				fsm.getExtendedState().getVariables().put(DEPLOYMENT_CONTEXT, context);
+			if (callback != null)
+				fsm.getExtendedState().getVariables().put(CALLBACK, callback);
+			fsm.getExtendedState().getVariables().put(DEPLOYMENT_ID, deploymentId);
+
 			fsm.sendEvent(message);
 		} else {
 			if (log.isErrorEnabled()) {
@@ -141,6 +157,34 @@ public class StateMachineService {
 			log.error(String.format("State '%s' is not define in state machine.", state));
 		}
 		return DeploymentStatus.UNKNOWN;
+	}
+
+	/**
+	 * Create a fsm message with deployment id and context
+	 * @param event FsmEvents
+	 * @param deploymentContext Deployment context
+	 * @return New created message
+	 */
+	public Message<FsmEvents> createMessage(FsmEvents event, PaaSDeploymentContext deploymentContext) {
+		return MessageBuilder.withPayload(event)
+				.setHeader(StateMachineService.DEPLOYMENT_CONTEXT, deploymentContext)
+				.setHeader(StateMachineService.DEPLOYMENT_ID, deploymentContext.getDeploymentPaaSId())
+				.build();
+	}
+
+	/**
+	 * Create a fsm message with deployment id and context as well as alien callback
+	 * @param event FsmEvents
+	 * @param deploymentContext Deployment context
+	 * @param callback Alien callback
+	 * @return New created message
+	 */
+	public Message<FsmEvents> createMessage(FsmEvents event, PaaSDeploymentContext deploymentContext, IPaaSCallback<?> callback) {
+		return MessageBuilder.withPayload(event)
+				.setHeader(StateMachineService.CALLBACK, callback)
+				.setHeader(StateMachineService.DEPLOYMENT_CONTEXT, deploymentContext)
+				.setHeader(StateMachineService.DEPLOYMENT_ID, deploymentContext.getDeploymentPaaSId())
+				.build();
 	}
 
 }
