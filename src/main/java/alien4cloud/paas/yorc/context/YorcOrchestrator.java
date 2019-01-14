@@ -7,7 +7,6 @@ import java.util.Map;
 import javax.inject.Inject;
 
 import org.springframework.context.ApplicationContext;
-import org.springframework.http.HttpStatus;
 import org.springframework.messaging.Message;
 import org.springframework.stereotype.Component;
 
@@ -21,7 +20,6 @@ import alien4cloud.paas.exception.MaintenanceModeException;
 import alien4cloud.paas.exception.OperationExecutionException;
 import alien4cloud.paas.exception.PluginConfigurationException;
 import alien4cloud.paas.model.AbstractMonitorEvent;
-import alien4cloud.paas.model.AbstractPaaSWorkflowMonitorEvent;
 import alien4cloud.paas.model.DeploymentStatus;
 import alien4cloud.paas.model.InstanceInformation;
 import alien4cloud.paas.model.NodeOperationExecRequest;
@@ -42,7 +40,6 @@ import alien4cloud.paas.yorc.context.service.fsm.FsmStates;
 import alien4cloud.paas.yorc.context.service.fsm.StateMachineService;
 import alien4cloud.paas.yorc.location.AbstractLocationConfigurerFactory;
 import alien4cloud.paas.yorc.service.PluginArchiveService;
-import alien4cloud.paas.yorc.util.RestUtil;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -181,20 +178,12 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 
     @Override
     public void getStatus(PaaSDeploymentContext deploymentContext, IPaaSCallback<DeploymentStatus> callback) {
-        // TODO: Get status from statemachine. We use a direct rest query until we can undeploy with the plugin
-
-        deploymentClient.getStatus(deploymentContext.getDeploymentPaaSId())
-            .map(YorcOrchestrator::getDeploymentStatusFromString)
-            .subscribe(
-                status ->  callback.onSuccess(status),
-                    throwable -> {
-                        if (RestUtil.isHttpError(throwable, HttpStatus.NOT_FOUND)) {
-                            callback.onSuccess(DeploymentStatus.UNDEPLOYED);
-                        } else {
-                            callback.onFailure(throwable);
-                        }
-                    }
-                );
+        try {
+            DeploymentStatus status = stateMachineService.getState(deploymentContext.getDeploymentPaaSId());
+            callback.onSuccess(status);
+        } catch (Exception e) {
+            callback.onFailure(e);
+        }
     }
 
     @Override
