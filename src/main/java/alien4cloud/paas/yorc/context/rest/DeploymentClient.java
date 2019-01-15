@@ -7,6 +7,9 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+
 import alien4cloud.paas.yorc.context.rest.response.AllDeploymentsDTO;
 import alien4cloud.paas.yorc.context.rest.response.DeploymentDTO;
 import alien4cloud.paas.yorc.util.RestUtil;
@@ -108,6 +111,31 @@ public class DeploymentClient extends AbstractClient {
         return sendRequest(getYorcUrl() + url, HttpMethod.GET, clazz,buildHttpEntityWithDefaultHeader())
                 .map(HttpEntity::getBody)
                 .toObservable();
+    }
+
+    public Single<String> executeWorkflow(String deploymentId, String workflowName, boolean continueOnError) {
+        String url = getYorcUrl() + "/deployments/" + deploymentId + "/workflows/" + workflowName;
+        if (continueOnError) {
+            url += "?continueOnError";
+        }
+        return sendRequest(url, HttpMethod.POST, String.class, buildHttpEntityWithDefaultHeader())
+                .map(RestUtil.extractHeader("Location"));
+    }
+
+    public Single<String> getTaskURL(String deploymentId) {
+        String url = getYorcUrl() + "/deployments/" + deploymentId;
+        return sendRequest(url, HttpMethod.GET, String.class, buildHttpEntityWithDefaultHeader())
+                .map(e -> {
+                    ObjectMapper mapper = new ObjectMapper();
+                    JsonNode node = mapper.readTree(e.getBody());
+                    JsonNode links = node.get("links");
+                    for (int i = 0; i < links.size(); i++) {
+                        if ("task".equals(links.get(i).get("rel").asText())) {
+                            return links.get(i).get("href").asText();
+                        }
+                    }
+                    return null;
+                });
     }
 
 }

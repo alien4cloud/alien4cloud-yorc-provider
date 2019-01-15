@@ -40,8 +40,25 @@ public class FsmActions {
 	/**
 	 * A mapping from deploymentId to taskId
 	 */
-	//TODO How to handle the cache better? (maybe need to be persisted?)
-	private Map<String, String> taskURLCache = Maps.newHashMap();
+	private class TaskURLCache {
+		private Map<String, String> taskURLCache = Maps.newHashMap();
+
+		private void addURL(String deploymentId, String url) {
+			taskURLCache.put(deploymentId, url);
+		}
+
+		private String getURL(String deploymentId) {
+			String result = taskURLCache.get(deploymentId);
+			// Especially in the case of restart, the url does not hit the cache,
+			// send a request to fetch the task url
+			if (result == null) {
+				result = deploymentClient.getTaskURL(deploymentId).blockingGet();
+			}
+			return result;
+		}
+	}
+
+	private TaskURLCache urlCache = new TaskURLCache();
 
 	protected Action<FsmStates, FsmEvents> buildAndSendZip() {
 		return new Action<FsmStates, FsmEvents>() {
@@ -53,7 +70,7 @@ public class FsmActions {
 				if (log.isInfoEnabled())
 					log.info("HTTP Request OK : {}", value);
 				String taskURL = value.getHeaders().get("Location").get(0);
-				taskURLCache.put(context.getDeploymentPaaSId(), taskURL);
+				urlCache.addURL(context.getDeploymentPaaSId(), taskURL);
 			}
 
 			private void onHttpKo(Throwable t) {
@@ -87,7 +104,14 @@ public class FsmActions {
 	protected Action<FsmStates, FsmEvents> cancelTask() {
 		return stateContext -> {
 			String deploymentId = (String) stateContext.getExtendedState().getVariables().get(StateMachineService.DEPLOYMENT_ID);
-			String taskId = taskURLCache.get(deploymentId);
+			String taskId = urlCache.getURL(deploymentId);
+			if (taskId == null && log.isErrorEnabled()) {
+				// Normally, this will not happen.
+				// Because the task id being null means the deployment is either in success or fail,
+				// and in this case, the state of deployment should be deployed or failure.
+				log.error(String.format("Cannot cancel a task with null id for the deployment %s", deploymentId));
+				return;
+			}
 			deploymentClient.cancalTask(taskId);
 		};
 	}

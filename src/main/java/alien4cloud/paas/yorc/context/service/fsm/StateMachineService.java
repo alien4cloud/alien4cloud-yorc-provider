@@ -162,6 +162,18 @@ public class StateMachineService {
 	/**
 	 * Create a fsm message with deployment id and context
 	 * @param event FsmEvents
+	 * @param deploymentId Deployment paas id
+	 * @return New created message
+	 */
+	public Message<FsmEvents> createMessage(FsmEvents event, String deploymentId) {
+		return MessageBuilder.withPayload(event)
+				.setHeader(StateMachineService.DEPLOYMENT_ID, deploymentId)
+				.build();
+	}
+
+	/**
+	 * Create a fsm message with deployment id and context
+	 * @param event FsmEvents
 	 * @param deploymentContext Deployment context
 	 * @return New created message
 	 */
