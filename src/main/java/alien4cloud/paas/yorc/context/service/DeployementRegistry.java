@@ -1,5 +1,6 @@
 package alien4cloud.paas.yorc.context.service;
 
+import alien4cloud.paas.model.PaaSDeploymentContext;
 import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
 import com.google.common.collect.BiMap;
 import com.google.common.collect.HashBiMap;
@@ -17,32 +18,20 @@ import java.util.concurrent.locks.ReentrantLock;
 @Service
 public class DeployementRegistry {
 
-    @Getter
-    private static class DeploymentInfo {
-        private final Topology topology;
-
-        private DeploymentInfo(PaaSTopologyDeploymentContext context) {
-            this.topology = context.getDeploymentTopology();
-        }
-    }
-
     private Lock lock = new ReentrantLock();
 
     private BiMap<String,String> map = HashBiMap.create();
 
-    private Map<String,DeploymentInfo> infos  = new HashMap<>();
-
-    public void register(PaaSTopologyDeploymentContext context) {
+    public void register(PaaSDeploymentContext context) {
         lock.lock();
         try {
             map.put(context.getDeploymentPaaSId(),context.getDeploymentId());
-            infos.put(context.getDeploymentPaaSId(),new DeploymentInfo(context));
         } finally {
             lock.unlock();
         }
     }
 
-    public void unregister(PaaSTopologyDeploymentContext context) {
+    public void unregister(PaaSDeploymentContext context) {
         lock.lock();
         try {
             map.remove(context.getDeploymentPaaSId());
@@ -69,17 +58,4 @@ public class DeployementRegistry {
         }
     }
 
-    public Topology getTopology(String yorcId) {
-        lock.lock();
-        try {
-            DeploymentInfo info = infos.get(yorcId);
-            if (info != null) {
-                return info.getTopology();
-            } else {
-                return null;
-            }
-        } finally {
-            lock.unlock();
-        }
-    }
 }

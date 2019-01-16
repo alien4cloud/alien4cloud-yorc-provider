@@ -53,8 +53,8 @@ public class WorkflowInformationService {
             case "done":
                 postTaskEvent(event,new TaskSucceededEvent());
                 break;
-            case "failed":
-                // TODO:
+            case "error":
+                postTaskEvent(event,new TaskFailedEvent());
             default:
         }
     }
@@ -65,10 +65,8 @@ public class WorkflowInformationService {
                 postWorkflowStepEvent(event,new WorkflowStepStartedEvent());
                 break;
             case "done":
+            case "error":
                 postWorkflowStepEvent(event,new WorkflowStepCompletedEvent());
-                break;
-            case "failed":
-                // TODO: to be done
                 break;
             default:
         }

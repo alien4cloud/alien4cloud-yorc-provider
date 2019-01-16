@@ -5,6 +5,9 @@ import java.util.Map;
 
 import javax.inject.Inject;
 
+import alien4cloud.paas.yorc.context.YorcOrchestrator;
+import alien4cloud.paas.yorc.context.service.DeployementRegistry;
+import alien4cloud.paas.yorc.context.service.InstanceInformationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.Message;
 import org.springframework.statemachine.StateContext;
@@ -36,6 +39,12 @@ public class FsmActions {
 
 	@Inject
 	private StateMachineService fsmService;
+
+	@Inject
+	private DeployementRegistry registry;
+
+	@Inject
+	private InstanceInformationService instanceInformationService;
 
 	/**
 	 * A mapping from deploymentId to taskId
@@ -89,6 +98,24 @@ public class FsmActions {
 			String deploymentId = (String) stateContext.getExtendedState().getVariables().get(StateMachineService.DEPLOYMENT_ID);
 			String taskId = taskURLCache.get(deploymentId);
 			deploymentClient.cancalTask(taskId);
+		};
+	}
+
+	protected Action<FsmStates, FsmEvents> cleanup() {
+		return new Action<FsmStates, FsmEvents>() {
+			@Override
+			public void execute(StateContext<FsmStates, FsmEvents> stateContext) {
+				PaaSDeploymentContext context = (PaaSDeploymentContext) stateContext.getExtendedState().getVariables().get(StateMachineService.DEPLOYMENT_CONTEXT);
+
+				// Cleanup YorcId <-> AlienID
+				registry.unregister(context);
+
+				// Cleanup instance infos
+				instanceInformationService.remove(context.getDeploymentPaaSId());
+
+				// Remove the FSM
+				fsmService.deleteStateMachine(context.getDeploymentPaaSId());
+			}
 		};
 	}
 

@@ -85,6 +85,10 @@ public class StateMachineService {
 		}
 	}
 
+	public void deleteStateMachine(String id) {
+		cache.remove(id);
+	}
+
 	private void doSubscriptions(String id ) {
 		// Create a new event bus to this deployment
 		busService.createEventBuses(id);

@@ -101,6 +101,10 @@ public class InstanceInformationService {
         Observable.fromIterable(deployementIds).concatMapDelayError(this::initializeStreamFor).subscribe(this::onAttribute,this::onError);
     }
 
+    public void remove(String deploymentPaaSId) {
+        map.remove(deploymentPaaSId);
+    }
+
     public void getInformation(String deploymentPaaSId, IPaaSCallback<Map<String,Map<String,InstanceInformation>>> callback) {
         DeploymentInformation di = map.get(deploymentPaaSId);
         if (di == null) {
