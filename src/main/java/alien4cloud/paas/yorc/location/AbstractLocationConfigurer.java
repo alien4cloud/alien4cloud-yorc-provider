@@ -22,7 +22,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.alien4cloud.tosca.catalog.ArchiveParser;
 import org.alien4cloud.tosca.model.definitions.constraints.*;
 import org.alien4cloud.tosca.model.types.AbstractToscaType;
-import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Component;
 
 import javax.inject.Inject;

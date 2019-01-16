@@ -8,7 +8,6 @@ import io.reactivex.disposables.Disposable;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
-import org.apache.http.HttpHost;
 import org.apache.http.config.Registry;
 import org.apache.http.config.RegistryBuilder;
 import org.apache.http.conn.ssl.DefaultHostnameVerifier;
@@ -33,7 +32,6 @@ import javax.annotation.Resource;
 import javax.inject.Inject;
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLContext;
-import java.io.IOException;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;

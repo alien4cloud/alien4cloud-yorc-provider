@@ -32,16 +32,16 @@ public class StateMachineService {
 	public static final String DEPLOYMENT_ID = "deploymentId";
 	public static final String CALLBACK = "callback";
 
-
-	// TODO Problem of concurrency
-	private Map<String, StateMachine<FsmStates, FsmEvents>> cache = Maps.newHashMap();
+	private Map<String, StateMachine<FsmStates, FsmEvents>> cache = Maps.newConcurrentMap();
 
 	private static final Map<FsmStates, DeploymentStatus> statesMapping = ImmutableMap.<FsmStates, DeploymentStatus>builder()
 			.put(FsmStates.UNDEPLOYED, DeploymentStatus.UNDEPLOYED)
 			.put(FsmStates.DEPLOYMENT_INIT, DeploymentStatus.INIT_DEPLOYMENT)
 			.put(FsmStates.DEPLOYMENT_IN_PROGRESS, DeploymentStatus.DEPLOYMENT_IN_PROGRESS)
 			.put(FsmStates.DEPLOYED, DeploymentStatus.DEPLOYED)
-			.put(FsmStates.UNDEPLOYMENT_IN_PROGRESS, DeploymentStatus.DEPLOYMENT_IN_PROGRESS)
+			.put(FsmStates.TASK_CANCELING, DeploymentStatus.UNDEPLOYMENT_IN_PROGRESS)
+			.put(FsmStates.UNDEPLOYMENT_IN_PROGRESS, DeploymentStatus.UNDEPLOYMENT_IN_PROGRESS)
+			.put(FsmStates.UNDEPLOYMENT_PURGING, DeploymentStatus.UNDEPLOYMENT_IN_PROGRESS)
 			.put(FsmStates.FAILED, DeploymentStatus.FAILURE)
 			.build();
 
@@ -147,10 +147,13 @@ public class StateMachineService {
 	 * @return a4c corresponding state of this deployment
 	 */
 	public DeploymentStatus getState(String deploymentId) {
-		if (!cache.containsKey(deploymentId)) {
-			throw new RuntimeException(String.format("The state machine of %s does not exist.", deploymentId));
+		StateMachine<FsmStates, FsmEvents> fsm = cache.get(deploymentId);
+
+		if (fsm == null) {
+			return DeploymentStatus.UNDEPLOYED;
+		} else {
+			return getState(fsm.getState().getId());
 		}
-		return getState(cache.get(deploymentId).getState().getId());
 	}
 
 	private DeploymentStatus getState(FsmStates state) {

@@ -5,7 +5,6 @@ import java.util.Map;
 
 import javax.inject.Inject;
 
-import alien4cloud.paas.yorc.context.YorcOrchestrator;
 import alien4cloud.paas.yorc.context.service.DeployementRegistry;
 import alien4cloud.paas.yorc.context.service.InstanceInformationService;
 import org.springframework.http.ResponseEntity;

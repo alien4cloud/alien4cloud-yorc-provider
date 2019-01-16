@@ -1,7 +1,5 @@
 package alien4cloud.paas.yorc.context.rest;
 
-import alien4cloud.paas.yorc.context.rest.response.EventDTO;
-import alien4cloud.paas.yorc.context.rest.response.LogEvent;
 import alien4cloud.paas.yorc.context.rest.response.LogEventDTO;
 import alien4cloud.paas.yorc.util.RestUtil;
 import io.reactivex.Single;

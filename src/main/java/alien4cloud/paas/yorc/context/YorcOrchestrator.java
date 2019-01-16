@@ -130,6 +130,11 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
         // Initialize InstanceInformationService
         instanceInformationService.init(map.keySet());
 
+        // Register Ids
+        for (PaaSTopologyDeploymentContext context : activeDeployments.values()) {
+            registry.register(context);
+        }
+
 		// Create the state machines for each deployment
         stateMachineService.newStateMachine(map);
 
@@ -181,20 +186,8 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 
     @Override
     public void getStatus(PaaSDeploymentContext deploymentContext, IPaaSCallback<DeploymentStatus> callback) {
-        // TODO: Get status from statemachine. We use a direct rest query until we can undeploy with the plugin
-
-        deploymentClient.getStatus(deploymentContext.getDeploymentPaaSId())
-            .map(YorcOrchestrator::getDeploymentStatusFromString)
-            .subscribe(
-                status ->  callback.onSuccess(status),
-                    throwable -> {
-                        if (RestUtil.isHttpError(throwable, HttpStatus.NOT_FOUND)) {
-                            callback.onSuccess(DeploymentStatus.UNDEPLOYED);
-                        } else {
-                            callback.onFailure(throwable);
-                        }
-                    }
-                );
+        DeploymentStatus status = stateMachineService.getState(deploymentContext.getDeploymentPaaSId());
+        callback.onSuccess(status);
     }
 
     @Override
@@ -223,12 +216,12 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 
     @Override
     public void switchMaintenanceMode(PaaSDeploymentContext deploymentContext, boolean maintenanceModeOn) throws MaintenanceModeException {
-        // TODO: implements
+        // TODO: implements (what to do?)
     }
 
     @Override
     public void switchInstanceMaintenanceMode(PaaSDeploymentContext deploymentContext, String nodeId, String instanceId, boolean maintenanceModeOn) throws MaintenanceModeException {
-        // TODO: implements
+        // TODO: implements (what to do?)
     }
 
     /**

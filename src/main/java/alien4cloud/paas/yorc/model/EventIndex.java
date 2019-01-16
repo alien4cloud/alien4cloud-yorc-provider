@@ -4,7 +4,6 @@ import lombok.*;
 import org.elasticsearch.annotation.ESObject;
 import org.elasticsearch.annotation.Id;
 import org.elasticsearch.annotation.NumberField;
-import org.elasticsearch.annotation.StringField;
 import org.elasticsearch.mapping.IndexType;
 
 @Getter

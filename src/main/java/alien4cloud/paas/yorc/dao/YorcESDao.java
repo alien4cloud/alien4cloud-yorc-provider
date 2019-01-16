@@ -1,7 +1,5 @@
 package alien4cloud.paas.yorc.dao;
 
-import alien4cloud.audit.model.AuditConfiguration;
-import alien4cloud.audit.model.AuditTrace;
 import alien4cloud.dao.ESGenericSearchDAO;
 import alien4cloud.exception.IndexingServiceException;
 import alien4cloud.paas.yorc.model.EventIndex;

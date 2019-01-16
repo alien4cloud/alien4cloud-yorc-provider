@@ -34,8 +34,7 @@ public class BusService {
         private final Subject<Message<FsmEvents>> messages = PublishSubject.<Message<FsmEvents>>create().toSerialized();
     }
 
-    //TODO Concurrency?
-    private Map<String, Buses> eventBuses = Maps.newHashMap();
+    private Map<String, Buses> eventBuses = Maps.newConcurrentMap();
 
     public void createEventBuses(String... ids) {
         for (String id : ids) {
@@ -61,22 +60,25 @@ public class BusService {
     }
 
     public void publish(Event event) {
-        if (eventBuses.containsKey(event.getDeploymentId())) {
-            eventBuses.get(event.getDeploymentId()).events.onNext(event);
+        Buses b = eventBuses.get(event.getDeploymentId());
+        if (b != null) {
+            b.events.onNext(event);
         }
     }
 
     public void publish(LogEvent logEvent) {
-        if (eventBuses.containsKey(logEvent.getDeploymentId())) {
-            eventBuses.get(logEvent.getDeploymentId()).logs.onNext(logEvent);
+        Buses b = eventBuses.get(logEvent.getDeploymentId());
+        if (b != null) {
+            b.logs.onNext(logEvent);
         }
     }
 
     public void publish(Message<FsmEvents> message) {
         String deploymentId = (String) message.getHeaders().get("deploymentId");
 
-        if (eventBuses.containsKey(deploymentId)) {
-            eventBuses.get(deploymentId).messages.onNext(message);
+        Buses b = eventBuses.get(deploymentId);
+        if (b != null) {
+            b.messages.onNext(message);
         }
     }
 }
