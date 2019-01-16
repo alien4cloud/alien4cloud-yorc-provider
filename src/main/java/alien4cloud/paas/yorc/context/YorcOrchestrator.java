@@ -11,6 +11,7 @@ import org.springframework.messaging.Message;
 import org.springframework.stereotype.Component;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 
 import alien4cloud.orchestrators.plugin.ILocationConfiguratorPlugin;
 import alien4cloud.orchestrators.plugin.IOrchestratorPlugin;
@@ -28,7 +29,6 @@ import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
 import alien4cloud.paas.yorc.configuration.ProviderConfiguration;
 import alien4cloud.paas.yorc.context.rest.DeploymentClient;
 import alien4cloud.paas.yorc.context.rest.TemplateManager;
-import alien4cloud.paas.yorc.context.rest.response.DeploymentDTO;
 import alien4cloud.paas.yorc.context.service.BusService;
 import alien4cloud.paas.yorc.context.service.DeployementRegistry;
 import alien4cloud.paas.yorc.context.service.EventPollingService;
@@ -119,16 +119,28 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
         // - Query all deployments
         // - Keep only known deployments
         // - Build a Map deploymentId -> FsmStates
-        Map<String,FsmStates> map = deploymentClient.get()
+        // - Build a Map deploymentId -> taskUrl
+        Map<String, FsmStates> initialStates = Maps.newHashMap();
+        Map<String, String> taskURLs = Maps.newHashMap();
+        deploymentClient.get()
             .filter(deployment -> activeDeployments.containsKey(deployment.getId()))
-            .toMap(DeploymentDTO::getId,deployment -> FsmMapper.fromYorcToFsmState(deployment.getStatus()))
-            .blockingGet();
+            .blockingForEach(deployment -> {
+                String deploymentId = deployment.getId();
+                initialStates.put(deploymentId, FsmMapper.fromYorcToFsmState(deployment.getStatus()));
+                if (ifRunning(deployment.getStatus())) {
+                    String url = deploymentClient.getTaskURL(deploymentId).blockingGet();
+                    taskURLs.put(deploymentId, url);
+                }
+            });
 
         // Initialize InstanceInformationService
-        instanceInformationService.init(map.keySet());
+        instanceInformationService.init(initialStates.keySet());
 
 		// Create the state machines for each deployment
-        stateMachineService.newStateMachine(map);
+        stateMachineService.newStateMachine(initialStates);
+
+        // Set the task url for the running deployment
+        stateMachineService.setTaskUrl(taskURLs);
 
         // Start Pollers
         eventPollingService.init();
@@ -257,6 +269,22 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
                 return DeploymentStatus.FAILURE;
             default:
                 return DeploymentStatus.UNKNOWN;
+        }
+    }
+
+    /**
+     * Check if there is any running task according to the Yorc deployment state
+     * @param status Yorc deployment state
+     * @return True if existing running task
+     */
+    private boolean ifRunning(String status) {
+        switch (status.toUpperCase()) {
+            case "DEPLOYMENT_IN_PROGRESS":
+            case "SCALING_IN_PROGRESS":
+            case "UNDEPLOYMENT_IN_PROGRESS":
+                return true;
+            default:
+                return false;
         }
     }
 

@@ -7,11 +7,9 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
-
 import alien4cloud.paas.yorc.context.rest.response.AllDeploymentsDTO;
 import alien4cloud.paas.yorc.context.rest.response.DeploymentDTO;
+import alien4cloud.paas.yorc.context.rest.response.Link;
 import alien4cloud.paas.yorc.util.RestUtil;
 import io.reactivex.Observable;
 import io.reactivex.Single;
@@ -124,14 +122,11 @@ public class DeploymentClient extends AbstractClient {
 
     public Single<String> getTaskURL(String deploymentId) {
         String url = getYorcUrl() + "/deployments/" + deploymentId;
-        return sendRequest(url, HttpMethod.GET, String.class, buildHttpEntityWithDefaultHeader())
-                .map(e -> {
-                    ObjectMapper mapper = new ObjectMapper();
-                    JsonNode node = mapper.readTree(e.getBody());
-                    JsonNode links = node.get("links");
-                    for (int i = 0; i < links.size(); i++) {
-                        if ("task".equals(links.get(i).get("rel").asText())) {
-                            return links.get(i).get("href").asText();
+        return sendRequest(url, HttpMethod.GET, DeploymentDTO.class, buildHttpEntityWithDefaultHeader())
+                .map(RestUtil.extractBodyWithDefault(DeploymentDTO::new)).map(deployment -> {
+                    for (Link link : deployment.getLinks()) {
+                        if ("task".equals(link.getRel())) {
+                            return link.getHref();
                         }
                     }
                     return null;

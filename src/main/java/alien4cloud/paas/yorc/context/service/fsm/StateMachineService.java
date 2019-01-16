@@ -31,6 +31,7 @@ public class StateMachineService {
 	public static final String DEPLOYMENT_CONTEXT = "deploymentContext";
 	public static final String DEPLOYMENT_ID = "deploymentId";
 	public static final String CALLBACK = "callback";
+	public static final String TASK_URL = "taskURL";
 
 
 	// TODO Problem of concurrency
@@ -41,7 +42,9 @@ public class StateMachineService {
 			.put(FsmStates.DEPLOYMENT_INIT, DeploymentStatus.INIT_DEPLOYMENT)
 			.put(FsmStates.DEPLOYMENT_IN_PROGRESS, DeploymentStatus.DEPLOYMENT_IN_PROGRESS)
 			.put(FsmStates.DEPLOYED, DeploymentStatus.DEPLOYED)
-			.put(FsmStates.UNDEPLOYMENT_IN_PROGRESS, DeploymentStatus.DEPLOYMENT_IN_PROGRESS)
+			.put(FsmStates.TASK_CANCELING, DeploymentStatus.UNDEPLOYMENT_IN_PROGRESS)
+			.put(FsmStates.UNDEPLOYMENT_IN_PROGRESS, DeploymentStatus.UNDEPLOYMENT_IN_PROGRESS)
+			.put(FsmStates.UNDEPLOYMENT_PURGING, DeploymentStatus.UNDEPLOYMENT_IN_PROGRESS)
 			.put(FsmStates.FAILED, DeploymentStatus.FAILURE)
 			.build();
 
@@ -199,4 +202,14 @@ public class StateMachineService {
 				.build();
 	}
 
+	public void setTaskUrl(String deploymentId, String url) throws Exception {
+		if (!cache.containsKey(deploymentId)) {
+			throw new Exception("Fsm-%s does not exist");
+		}
+		cache.get(deploymentId).getExtendedState().getVariables().put(TASK_URL, url);
+	}
+
+	public void setTaskUrl(Map<String, String> map) {
+		map.entrySet().stream().filter(e -> cache.containsKey(e.getKey())).forEach(e -> cache.get(e.getKey()).getExtendedState().getVariables().put(TASK_URL, e.getValue()));
+	}
 }

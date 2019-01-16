@@ -1,7 +1,6 @@
 package alien4cloud.paas.yorc.context.service.fsm;
 
 import java.io.IOException;
-import java.util.Map;
 
 import javax.inject.Inject;
 
@@ -10,8 +9,6 @@ import org.springframework.messaging.Message;
 import org.springframework.statemachine.StateContext;
 import org.springframework.statemachine.action.Action;
 import org.springframework.stereotype.Service;
-
-import com.google.common.collect.Maps;
 
 import alien4cloud.paas.IPaaSCallback;
 import alien4cloud.paas.model.PaaSDeploymentContext;
@@ -35,30 +32,7 @@ public class FsmActions {
 	private BusService busService;
 
 	@Inject
-	private StateMachineService fsmService;
-
-	/**
-	 * A mapping from deploymentId to taskId
-	 */
-	private class TaskURLCache {
-		private Map<String, String> taskURLCache = Maps.newHashMap();
-
-		private void addURL(String deploymentId, String url) {
-			taskURLCache.put(deploymentId, url);
-		}
-
-		private String getURL(String deploymentId) {
-			String result = taskURLCache.get(deploymentId);
-			// Especially in the case of restart, the url does not hit the cache,
-			// send a request to fetch the task url
-			if (result == null) {
-				result = deploymentClient.getTaskURL(deploymentId).blockingGet();
-			}
-			return result;
-		}
-	}
-
-	private TaskURLCache urlCache = new TaskURLCache();
+	private StateMachineService stateMachineService;
 
 	protected Action<FsmStates, FsmEvents> buildAndSendZip() {
 		return new Action<FsmStates, FsmEvents>() {
@@ -66,15 +40,15 @@ public class FsmActions {
 			private PaaSTopologyDeploymentContext context;
 			private IPaaSCallback<?> callback;
 
-			private void onHttpOk(ResponseEntity<String> value) {
+			private void onHttpOk(ResponseEntity<String> value) throws Exception {
 				if (log.isInfoEnabled())
 					log.info("HTTP Request OK : {}", value);
 				String taskURL = value.getHeaders().get("Location").get(0);
-				urlCache.addURL(context.getDeploymentPaaSId(), taskURL);
+				stateMachineService.setTaskUrl(context.getDeploymentPaaSId(), taskURL);
 			}
 
 			private void onHttpKo(Throwable t) {
-				Message<FsmEvents> message = fsmService.createMessage(FsmEvents.FAILURE, context);
+				Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.FAILURE, context);
 				busService.publish(message);
 				if (log.isErrorEnabled())
 					log.error("HTTP Request OK : {}", t.getMessage());
@@ -104,13 +78,9 @@ public class FsmActions {
 	protected Action<FsmStates, FsmEvents> cancelTask() {
 		return stateContext -> {
 			String deploymentId = (String) stateContext.getExtendedState().getVariables().get(StateMachineService.DEPLOYMENT_ID);
-			String taskId = urlCache.getURL(deploymentId);
-			if (taskId == null && log.isErrorEnabled()) {
-				// Normally, this will not happen.
-				// Because the task id being null means the deployment is either in success or fail,
-				// and in this case, the state of deployment should be deployed or failure.
-				log.error(String.format("Cannot cancel a task with null id for the deployment %s", deploymentId));
-				return;
+			String taskId = (String) stateContext.getExtendedState().getVariables().get(StateMachineService.TASK_URL);
+			if (log.isInfoEnabled()) {
+				log.info(String.format("Cancelling the task %s for deployment %s", taskId, deploymentId));
 			}
 			deploymentClient.cancalTask(taskId);
 		};
@@ -129,7 +99,7 @@ public class FsmActions {
 
 			private void onHttpKo(Throwable t) {
 				callback.onFailure(t);
-				Message<FsmEvents> message = fsmService.createMessage(FsmEvents.FAILURE, context);
+				Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.FAILURE, context);
 				busService.publish(message);
 				if (log.isErrorEnabled())
 					log.error("HTTP Request KO : {}", t.getMessage());
@@ -156,13 +126,13 @@ public class FsmActions {
 			private void onHttpOk(String value) {
 				if (log.isInfoEnabled())
 					log.info("HTTP Request OK : {}", value);
-				Message<FsmEvents> message = fsmService.createMessage(FsmEvents.DEPLOYMENT_PURGED, context);
+				Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.DEPLOYMENT_PURGED, context);
 				busService.publish(message);
 			}
 
 			private void onHttpKo(Throwable t) {
 				callback.onFailure(t);
-				Message<FsmEvents> message = fsmService.createMessage(FsmEvents.FAILURE, context);
+				Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.FAILURE, context);
 				busService.publish(message);
 				if (log.isErrorEnabled())
 					log.error("HTTP Request KO : {}", t.getMessage());
