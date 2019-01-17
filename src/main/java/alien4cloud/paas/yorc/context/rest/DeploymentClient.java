@@ -9,6 +9,7 @@ import org.springframework.stereotype.Component;
 
 import alien4cloud.paas.yorc.context.rest.response.AllDeploymentsDTO;
 import alien4cloud.paas.yorc.context.rest.response.DeploymentDTO;
+import alien4cloud.paas.yorc.context.rest.response.Link;
 import alien4cloud.paas.yorc.util.RestUtil;
 import io.reactivex.Observable;
 import io.reactivex.Single;
@@ -108,6 +109,28 @@ public class DeploymentClient extends AbstractClient {
         return sendRequest(getYorcUrl() + url, HttpMethod.GET, clazz,buildHttpEntityWithDefaultHeader())
                 .map(HttpEntity::getBody)
                 .toObservable();
+    }
+
+    public Single<String> executeWorkflow(String deploymentId, String workflowName, boolean continueOnError) {
+        String url = getYorcUrl() + "/deployments/" + deploymentId + "/workflows/" + workflowName;
+        if (continueOnError) {
+            url += "?continueOnError";
+        }
+        return sendRequest(url, HttpMethod.POST, String.class, buildHttpEntityWithDefaultHeader())
+                .map(RestUtil.extractHeader("Location"));
+    }
+
+    public Single<String> getTaskURL(String deploymentId) {
+        String url = getYorcUrl() + "/deployments/" + deploymentId;
+        return sendRequest(url, HttpMethod.GET, DeploymentDTO.class, buildHttpEntityWithDefaultHeader())
+                .map(RestUtil.extractBodyWithDefault(DeploymentDTO::new)).map(deployment -> {
+                    for (Link link : deployment.getLinks()) {
+                        if ("task".equals(link.getRel())) {
+                            return link.getHref();
+                        }
+                    }
+                    return null;
+                });
     }
 
 }

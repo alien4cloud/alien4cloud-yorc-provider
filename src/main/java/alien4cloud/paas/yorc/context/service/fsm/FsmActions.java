@@ -1,25 +1,22 @@
 package alien4cloud.paas.yorc.context.service.fsm;
 
 import java.io.IOException;
-import java.util.Map;
 
 import javax.inject.Inject;
 
-import alien4cloud.paas.yorc.context.service.DeployementRegistry;
-import alien4cloud.paas.yorc.context.service.InstanceInformationService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.Message;
 import org.springframework.statemachine.StateContext;
 import org.springframework.statemachine.action.Action;
 import org.springframework.stereotype.Service;
 
-import com.google.common.collect.Maps;
-
 import alien4cloud.paas.IPaaSCallback;
 import alien4cloud.paas.model.PaaSDeploymentContext;
 import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
 import alien4cloud.paas.yorc.context.rest.DeploymentClient;
 import alien4cloud.paas.yorc.context.service.BusService;
+import alien4cloud.paas.yorc.context.service.DeployementRegistry;
+import alien4cloud.paas.yorc.context.service.InstanceInformationService;
 import alien4cloud.paas.yorc.service.ZipBuilder;
 import lombok.extern.slf4j.Slf4j;
 
@@ -37,7 +34,7 @@ public class FsmActions {
 	private BusService busService;
 
 	@Inject
-	private StateMachineService fsmService;
+	private StateMachineService stateMachineService;
 
 	@Inject
 	private DeployementRegistry registry;
@@ -45,27 +42,21 @@ public class FsmActions {
 	@Inject
 	private InstanceInformationService instanceInformationService;
 
-	/**
-	 * A mapping from deploymentId to taskId
-	 */
-	//TODO How to handle the cache better? (maybe need to be persisted?)
-	private Map<String, String> taskURLCache = Maps.newHashMap();
-
 	protected Action<FsmStates, FsmEvents> buildAndSendZip() {
 		return new Action<FsmStates, FsmEvents>() {
 
 			private PaaSTopologyDeploymentContext context;
 			private IPaaSCallback<?> callback;
 
-			private void onHttpOk(ResponseEntity<String> value) {
+			private void onHttpOk(ResponseEntity<String> value) throws Exception {
 				if (log.isInfoEnabled())
 					log.info("HTTP Request OK : {}", value);
 				String taskURL = value.getHeaders().get("Location").get(0);
-				taskURLCache.put(context.getDeploymentPaaSId(), taskURL);
+				stateMachineService.setTaskUrl(context.getDeploymentPaaSId(), taskURL);
 			}
 
 			private void onHttpKo(Throwable t) {
-				Message<FsmEvents> message = fsmService.createMessage(FsmEvents.FAILURE, context);
+				Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.FAILURE, context);
 				busService.publish(message);
 				if (log.isErrorEnabled())
 					log.error("HTTP Request OK : {}", t.getMessage());
@@ -95,26 +86,26 @@ public class FsmActions {
 	protected Action<FsmStates, FsmEvents> cancelTask() {
 		return stateContext -> {
 			String deploymentId = (String) stateContext.getExtendedState().getVariables().get(StateMachineService.DEPLOYMENT_ID);
-			String taskId = taskURLCache.get(deploymentId);
+			String taskId = (String) stateContext.getExtendedState().getVariables().get(StateMachineService.TASK_URL);
+			if (log.isInfoEnabled()) {
+				log.info(String.format("Cancelling the task %s for deployment %s", taskId, deploymentId));
+			}
 			deploymentClient.cancalTask(taskId);
 		};
 	}
 
 	protected Action<FsmStates, FsmEvents> cleanup() {
-		return new Action<FsmStates, FsmEvents>() {
-			@Override
-			public void execute(StateContext<FsmStates, FsmEvents> stateContext) {
-				PaaSDeploymentContext context = (PaaSDeploymentContext) stateContext.getExtendedState().getVariables().get(StateMachineService.DEPLOYMENT_CONTEXT);
+		return stateContext -> {
+			PaaSDeploymentContext context = (PaaSDeploymentContext) stateContext.getExtendedState().getVariables().get(StateMachineService.DEPLOYMENT_CONTEXT);
 
-				// Cleanup YorcId <-> AlienID
-				registry.unregister(context);
+			// Cleanup YorcId <-> AlienID
+			registry.unregister(context);
 
-				// Cleanup instance infos
-				instanceInformationService.remove(context.getDeploymentPaaSId());
+			// Cleanup instance infos
+			instanceInformationService.remove(context.getDeploymentPaaSId());
 
-				// Remove the FSM
-				fsmService.deleteStateMachine(context.getDeploymentPaaSId());
-			}
+			// Remove the FSM
+			stateMachineService.deleteStateMachine(context.getDeploymentPaaSId());
 		};
 	}
 
@@ -131,7 +122,7 @@ public class FsmActions {
 
 			private void onHttpKo(Throwable t) {
 				callback.onFailure(t);
-				Message<FsmEvents> message = fsmService.createMessage(FsmEvents.FAILURE, context);
+				Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.FAILURE, context);
 				busService.publish(message);
 				if (log.isErrorEnabled())
 					log.error("HTTP Request KO : {}", t.getMessage());
@@ -158,13 +149,13 @@ public class FsmActions {
 			private void onHttpOk(String value) {
 				if (log.isInfoEnabled())
 					log.info("HTTP Request OK : {}", value);
-				Message<FsmEvents> message = fsmService.createMessage(FsmEvents.DEPLOYMENT_PURGED, context);
+				Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.DEPLOYMENT_PURGED, context);
 				busService.publish(message);
 			}
 
 			private void onHttpKo(Throwable t) {
 				callback.onFailure(t);
-				Message<FsmEvents> message = fsmService.createMessage(FsmEvents.FAILURE, context);
+				Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.FAILURE, context);
 				busService.publish(message);
 				if (log.isErrorEnabled())
 					log.error("HTTP Request KO : {}", t.getMessage());

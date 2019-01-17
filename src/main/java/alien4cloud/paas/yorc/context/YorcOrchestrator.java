@@ -7,11 +7,11 @@ import java.util.Map;
 import javax.inject.Inject;
 
 import org.springframework.context.ApplicationContext;
-import org.springframework.http.HttpStatus;
 import org.springframework.messaging.Message;
 import org.springframework.stereotype.Component;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 
 import alien4cloud.orchestrators.plugin.ILocationConfiguratorPlugin;
 import alien4cloud.orchestrators.plugin.IOrchestratorPlugin;
@@ -21,7 +21,6 @@ import alien4cloud.paas.exception.MaintenanceModeException;
 import alien4cloud.paas.exception.OperationExecutionException;
 import alien4cloud.paas.exception.PluginConfigurationException;
 import alien4cloud.paas.model.AbstractMonitorEvent;
-import alien4cloud.paas.model.AbstractPaaSWorkflowMonitorEvent;
 import alien4cloud.paas.model.DeploymentStatus;
 import alien4cloud.paas.model.InstanceInformation;
 import alien4cloud.paas.model.NodeOperationExecRequest;
@@ -30,7 +29,6 @@ import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
 import alien4cloud.paas.yorc.configuration.ProviderConfiguration;
 import alien4cloud.paas.yorc.context.rest.DeploymentClient;
 import alien4cloud.paas.yorc.context.rest.TemplateManager;
-import alien4cloud.paas.yorc.context.rest.response.DeploymentDTO;
 import alien4cloud.paas.yorc.context.service.BusService;
 import alien4cloud.paas.yorc.context.service.DeployementRegistry;
 import alien4cloud.paas.yorc.context.service.EventPollingService;
@@ -42,7 +40,6 @@ import alien4cloud.paas.yorc.context.service.fsm.FsmStates;
 import alien4cloud.paas.yorc.context.service.fsm.StateMachineService;
 import alien4cloud.paas.yorc.location.AbstractLocationConfigurerFactory;
 import alien4cloud.paas.yorc.service.PluginArchiveService;
-import alien4cloud.paas.yorc.util.RestUtil;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
@@ -122,13 +119,22 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
         // - Query all deployments
         // - Keep only known deployments
         // - Build a Map deploymentId -> FsmStates
-        Map<String,FsmStates> map = deploymentClient.get()
+        // - Build a Map deploymentId -> taskUrl
+        Map<String, FsmStates> initialStates = Maps.newHashMap();
+        Map<String, String> taskURLs = Maps.newHashMap();
+        deploymentClient.get()
             .filter(deployment -> activeDeployments.containsKey(deployment.getId()))
-            .toMap(DeploymentDTO::getId,deployment -> FsmMapper.fromYorcToFsmState(deployment.getStatus()))
-            .blockingGet();
+            .blockingForEach(deployment -> {
+                String deploymentId = deployment.getId();
+                initialStates.put(deploymentId, FsmMapper.fromYorcToFsmState(deployment.getStatus()));
+                if (ifRunning(deployment.getStatus())) {
+                    String url = deploymentClient.getTaskURL(deploymentId).blockingGet();
+                    taskURLs.put(deploymentId, url);
+                }
+            });
 
         // Initialize InstanceInformationService
-        instanceInformationService.init(map.keySet());
+        instanceInformationService.init(initialStates.keySet());
 
         // Register Ids
         for (PaaSTopologyDeploymentContext context : activeDeployments.values()) {
@@ -136,7 +142,21 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
         }
 
 		// Create the state machines for each deployment
-        stateMachineService.newStateMachine(map);
+        stateMachineService.newStateMachine(initialStates);
+
+        // Set the task url for the running deployment
+        stateMachineService.setTaskUrl(taskURLs);
+
+        // Set the deployment context for the active state machines
+        activeDeployments.values().forEach(context -> {
+            try {
+                stateMachineService.setDeploymentContext(context);
+            } catch (Exception e) {
+                if (log.isErrorEnabled()) {
+                    log.error(String.format("Fsm not found when setting context in fsm for deployment %s", context.getDeploymentPaaSId()));
+                }
+            }
+        });
 
         // Start Pollers
         eventPollingService.init();
@@ -181,7 +201,10 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 
     @Override
     public void launchWorkflow(PaaSDeploymentContext deploymentContext, String workflowName, Map<String, Object> inputs, IPaaSCallback<?> callback) {
-        // TODO: implements
+        if (log.isInfoEnabled()) {
+            log.info(String.format("Launching workflow %s for deployment %s", workflowName, deploymentContext.getDeploymentPaaSId()));
+        }
+        deploymentClient.executeWorkflow(deploymentContext.getDeploymentPaaSId(), workflowName, false).subscribe(s -> {}, callback::onFailure);
     }
 
     @Override
@@ -261,6 +284,22 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
                 return DeploymentStatus.FAILURE;
             default:
                 return DeploymentStatus.UNKNOWN;
+        }
+    }
+
+    /**
+     * Check if there is any running task according to the Yorc deployment state
+     * @param status Yorc deployment state
+     * @return True if existing running task
+     */
+    private boolean ifRunning(String status) {
+        switch (status.toUpperCase()) {
+            case "DEPLOYMENT_IN_PROGRESS":
+            case "SCALING_IN_PROGRESS":
+            case "UNDEPLOYMENT_IN_PROGRESS":
+                return true;
+            default:
+                return false;
         }
     }
 

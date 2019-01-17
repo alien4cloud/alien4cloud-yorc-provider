@@ -15,6 +15,7 @@ import com.google.common.collect.Maps;
 import alien4cloud.paas.IPaaSCallback;
 import alien4cloud.paas.model.DeploymentStatus;
 import alien4cloud.paas.model.PaaSDeploymentContext;
+import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
 import alien4cloud.paas.yorc.context.service.BusService;
 import alien4cloud.paas.yorc.context.service.InstanceInformationService;
 import alien4cloud.paas.yorc.context.service.LogEventService;
@@ -31,6 +32,7 @@ public class StateMachineService {
 	public static final String DEPLOYMENT_CONTEXT = "deploymentContext";
 	public static final String DEPLOYMENT_ID = "deploymentId";
 	public static final String CALLBACK = "callback";
+	public static final String TASK_URL = "taskURL";
 
 	private Map<String, StateMachine<FsmStates, FsmEvents>> cache = Maps.newConcurrentMap();
 
@@ -89,7 +91,7 @@ public class StateMachineService {
 		cache.remove(id);
 	}
 
-	private void doSubscriptions(String id ) {
+	private void doSubscriptions(String id) {
 		// Create a new event bus to this deployment
 		busService.createEventBuses(id);
 
@@ -169,6 +171,18 @@ public class StateMachineService {
 	/**
 	 * Create a fsm message with deployment id and context
 	 * @param event FsmEvents
+	 * @param deploymentId Deployment paas id
+	 * @return New created message
+	 */
+	public Message<FsmEvents> createMessage(FsmEvents event, String deploymentId) {
+		return MessageBuilder.withPayload(event)
+				.setHeader(StateMachineService.DEPLOYMENT_ID, deploymentId)
+				.build();
+	}
+
+	/**
+	 * Create a fsm message with deployment id and context
+	 * @param event FsmEvents
 	 * @param deploymentContext Deployment context
 	 * @return New created message
 	 */
@@ -194,4 +208,27 @@ public class StateMachineService {
 				.build();
 	}
 
+	public void setTaskUrl(String deploymentId, String url) throws Exception {
+		if (!cache.containsKey(deploymentId)) {
+			throw new Exception("Fsm-%s does not exist");
+		}
+		cache.get(deploymentId).getExtendedState().getVariables().put(TASK_URL, url);
+	}
+
+	public void setTaskUrl(Map<String, String> map) {
+		map.entrySet().stream().filter(e -> cache.containsKey(e.getKey())).forEach(e -> cache.get(e.getKey()).getExtendedState().getVariables().put(TASK_URL, e.getValue()));
+	}
+
+	/**
+	 * Set the deployment context for the according fsm
+	 * @param context Deployment context
+	 */
+	public void setDeploymentContext(PaaSTopologyDeploymentContext context) throws Exception {
+		if (cache.containsKey(context.getDeploymentPaaSId())) {
+			throw new Exception("Fsm-%s does not exist");
+		}
+		Map<Object, Object> variables = cache.get(context.getDeploymentPaaSId()).getExtendedState().getVariables();
+		variables.put(DEPLOYMENT_CONTEXT, context);
+		variables.put(DEPLOYMENT_ID, context.getDeploymentPaaSId());
+	}
 }
