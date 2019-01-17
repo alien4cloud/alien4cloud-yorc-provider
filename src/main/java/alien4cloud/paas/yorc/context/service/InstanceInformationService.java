@@ -101,6 +101,10 @@ public class InstanceInformationService {
         Observable.fromIterable(deployementIds).concatMapDelayError(this::initializeStreamFor).subscribe(this::onAttribute,this::onError);
     }
 
+    public void remove(String deploymentPaaSId) {
+        map.remove(deploymentPaaSId);
+    }
+
     public void getInformation(String deploymentPaaSId, IPaaSCallback<Map<String,Map<String,InstanceInformation>>> callback) {
         DeploymentInformation di = map.get(deploymentPaaSId);
         if (di == null) {
@@ -228,7 +232,7 @@ public class InstanceInformationService {
     private void updateInstance(DeploymentInformation di,String nodeId,String instanceId,String status) {
         InstanceInformation ii = createOrGetInformation(di,nodeId,instanceId);
 
-        log.info(">>> {}/{}={}",nodeId,instanceId,status);
+        log.debug("Instance Status changed:  {}/{} {}->{}",nodeId,instanceId,ii.getInstanceStatus(),status);
 
         ii.setState(status);
         ii.setInstanceStatus(getInstanceStatusFromState(status));
@@ -252,8 +256,6 @@ public class InstanceInformationService {
             } finally {
                 di.lock.writeLock().unlock();
             }
-
-            log.info("YORC INST {}/{}/{}->{}",event.getDeploymentId(),event.getNodeId(),event.getInstanceId(),event.getStatus());
         }
     }
 

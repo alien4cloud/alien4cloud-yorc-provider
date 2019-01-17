@@ -2,12 +2,9 @@ package alien4cloud.paas.yorc.context.service;
 
 import alien4cloud.paas.yorc.context.YorcOrchestrator;
 import alien4cloud.paas.yorc.context.rest.LogEventClient;
-import alien4cloud.paas.yorc.context.rest.response.Event;
-import alien4cloud.paas.yorc.context.rest.response.EventDTO;
 import alien4cloud.paas.yorc.context.rest.response.LogEvent;
 import alien4cloud.paas.yorc.context.rest.response.LogEventDTO;
 import alien4cloud.paas.yorc.dao.YorcESDao;
-import alien4cloud.paas.yorc.model.EventIndex;
 import alien4cloud.paas.yorc.model.LogEventIndex;
 import io.reactivex.Scheduler;
 import io.reactivex.Single;

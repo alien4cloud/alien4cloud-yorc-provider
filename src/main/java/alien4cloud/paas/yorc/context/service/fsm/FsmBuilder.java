@@ -91,7 +91,8 @@ public class FsmBuilder {
 			.and()
 			.withExternal()
 			.source(FsmStates.UNDEPLOYMENT_PURGING).target(FsmStates.UNDEPLOYED)
-			.event(FsmEvents.DEPLOYMENT_PURGED);
+			.event(FsmEvents.DEPLOYMENT_PURGED)
+			.action(actions.cleanup());
 	}
 
 	private void configure(StateMachineConfigurationConfigurer<FsmStates, FsmEvents> config, String id) throws Exception {

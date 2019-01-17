@@ -15,6 +15,8 @@ import alien4cloud.paas.model.PaaSDeploymentContext;
 import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
 import alien4cloud.paas.yorc.context.rest.DeploymentClient;
 import alien4cloud.paas.yorc.context.service.BusService;
+import alien4cloud.paas.yorc.context.service.DeployementRegistry;
+import alien4cloud.paas.yorc.context.service.InstanceInformationService;
 import alien4cloud.paas.yorc.service.ZipBuilder;
 import lombok.extern.slf4j.Slf4j;
 
@@ -33,6 +35,12 @@ public class FsmActions {
 
 	@Inject
 	private StateMachineService stateMachineService;
+
+	@Inject
+	private DeployementRegistry registry;
+
+	@Inject
+	private InstanceInformationService instanceInformationService;
 
 	protected Action<FsmStates, FsmEvents> buildAndSendZip() {
 		return new Action<FsmStates, FsmEvents>() {
@@ -83,6 +91,21 @@ public class FsmActions {
 				log.info(String.format("Cancelling the task %s for deployment %s", taskId, deploymentId));
 			}
 			deploymentClient.cancalTask(taskId);
+		};
+	}
+
+	protected Action<FsmStates, FsmEvents> cleanup() {
+		return stateContext -> {
+			PaaSDeploymentContext context = (PaaSDeploymentContext) stateContext.getExtendedState().getVariables().get(StateMachineService.DEPLOYMENT_CONTEXT);
+
+			// Cleanup YorcId <-> AlienID
+			registry.unregister(context);
+
+			// Cleanup instance infos
+			instanceInformationService.remove(context.getDeploymentPaaSId());
+
+			// Remove the FSM
+			stateMachineService.deleteStateMachine(context.getDeploymentPaaSId());
 		};
 	}
 

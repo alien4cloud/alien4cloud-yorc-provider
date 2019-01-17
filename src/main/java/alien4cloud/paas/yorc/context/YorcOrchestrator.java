@@ -136,6 +136,11 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
         // Initialize InstanceInformationService
         instanceInformationService.init(initialStates.keySet());
 
+        // Register Ids
+        for (PaaSTopologyDeploymentContext context : activeDeployments.values()) {
+            registry.register(context);
+        }
+
 		// Create the state machines for each deployment
         stateMachineService.newStateMachine(initialStates);
 
@@ -193,12 +198,8 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 
     @Override
     public void getStatus(PaaSDeploymentContext deploymentContext, IPaaSCallback<DeploymentStatus> callback) {
-        try {
-            DeploymentStatus status = stateMachineService.getState(deploymentContext.getDeploymentPaaSId());
-            callback.onSuccess(status);
-        } catch (Exception e) {
-            callback.onFailure(e);
-        }
+        DeploymentStatus status = stateMachineService.getState(deploymentContext.getDeploymentPaaSId());
+        callback.onSuccess(status);
     }
 
     @Override
@@ -227,12 +228,12 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 
     @Override
     public void switchMaintenanceMode(PaaSDeploymentContext deploymentContext, boolean maintenanceModeOn) throws MaintenanceModeException {
-        // TODO: implements
+        // TODO: implements (what to do?)
     }
 
     @Override
     public void switchInstanceMaintenanceMode(PaaSDeploymentContext deploymentContext, String nodeId, String instanceId, boolean maintenanceModeOn) throws MaintenanceModeException {
-        // TODO: implements
+        // TODO: implements (what to do?)
     }
 
     /**

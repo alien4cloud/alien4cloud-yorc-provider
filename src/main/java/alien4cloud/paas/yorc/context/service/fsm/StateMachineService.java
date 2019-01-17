@@ -33,9 +33,7 @@ public class StateMachineService {
 	public static final String CALLBACK = "callback";
 	public static final String TASK_URL = "taskURL";
 
-
-	// TODO Problem of concurrency
-	private Map<String, StateMachine<FsmStates, FsmEvents>> cache = Maps.newHashMap();
+	private Map<String, StateMachine<FsmStates, FsmEvents>> cache = Maps.newConcurrentMap();
 
 	private static final Map<FsmStates, DeploymentStatus> statesMapping = ImmutableMap.<FsmStates, DeploymentStatus>builder()
 			.put(FsmStates.UNDEPLOYED, DeploymentStatus.UNDEPLOYED)
@@ -86,6 +84,10 @@ public class StateMachineService {
 
 			doSubscriptions(id);
 		}
+	}
+
+	public void deleteStateMachine(String id) {
+		cache.remove(id);
 	}
 
 	private void doSubscriptions(String id ) {
@@ -146,10 +148,13 @@ public class StateMachineService {
 	 * @return a4c corresponding state of this deployment
 	 */
 	public DeploymentStatus getState(String deploymentId) {
-		if (!cache.containsKey(deploymentId)) {
-			throw new RuntimeException(String.format("The state machine of %s does not exist.", deploymentId));
+		StateMachine<FsmStates, FsmEvents> fsm = cache.get(deploymentId);
+
+		if (fsm == null) {
+			return DeploymentStatus.UNDEPLOYED;
+		} else {
+			return getState(fsm.getState().getId());
 		}
-		return getState(cache.get(deploymentId).getState().getId());
 	}
 
 	private DeploymentStatus getState(FsmStates state) {
