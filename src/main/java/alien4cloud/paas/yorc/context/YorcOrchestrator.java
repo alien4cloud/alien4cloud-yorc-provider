@@ -147,6 +147,17 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
         // Set the task url for the running deployment
         stateMachineService.setTaskUrl(taskURLs);
 
+        // Set the deployment context for the active state machines
+        activeDeployments.values().forEach(context -> {
+            try {
+                stateMachineService.setDeploymentContext(context);
+            } catch (Exception e) {
+                if (log.isErrorEnabled()) {
+                    log.error(String.format("Fsm not found when setting context in fsm for deployment %s", context.getDeploymentPaaSId()));
+                }
+            }
+        });
+
         // Start Pollers
         eventPollingService.init();
         logEventPollingService.init();

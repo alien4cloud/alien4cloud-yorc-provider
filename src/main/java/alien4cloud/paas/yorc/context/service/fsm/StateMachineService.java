@@ -15,6 +15,7 @@ import com.google.common.collect.Maps;
 import alien4cloud.paas.IPaaSCallback;
 import alien4cloud.paas.model.DeploymentStatus;
 import alien4cloud.paas.model.PaaSDeploymentContext;
+import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
 import alien4cloud.paas.yorc.context.service.BusService;
 import alien4cloud.paas.yorc.context.service.InstanceInformationService;
 import alien4cloud.paas.yorc.context.service.LogEventService;
@@ -90,7 +91,7 @@ public class StateMachineService {
 		cache.remove(id);
 	}
 
-	private void doSubscriptions(String id ) {
+	private void doSubscriptions(String id) {
 		// Create a new event bus to this deployment
 		busService.createEventBuses(id);
 
@@ -216,5 +217,18 @@ public class StateMachineService {
 
 	public void setTaskUrl(Map<String, String> map) {
 		map.entrySet().stream().filter(e -> cache.containsKey(e.getKey())).forEach(e -> cache.get(e.getKey()).getExtendedState().getVariables().put(TASK_URL, e.getValue()));
+	}
+
+	/**
+	 * Set the deployment context for the according fsm
+	 * @param context Deployment context
+	 */
+	public void setDeploymentContext(PaaSTopologyDeploymentContext context) throws Exception {
+		if (cache.containsKey(context.getDeploymentPaaSId())) {
+			throw new Exception("Fsm-%s does not exist");
+		}
+		Map<Object, Object> variables = cache.get(context.getDeploymentPaaSId()).getExtendedState().getVariables();
+		variables.put(DEPLOYMENT_CONTEXT, context);
+		variables.put(DEPLOYMENT_ID, context.getDeploymentPaaSId());
 	}
 }

@@ -65,19 +65,24 @@ public class FsmMapper {
      * @param status Yorc deployment's state
      * @return Fsm state
      */
-    public static FsmStates fromYorcToFsmState(String status) {
+    public static FsmStates fromYorcToFsmState(String status) throws Exception {
         switch(status) {
             case "DEPLOYED":
                 return FsmStates.DEPLOYED;
+            case "UNDEPLOYMENT_IN_PROGRESS":
             case "UNDEPLOYED":
-                return FsmStates.UNDEPLOYED;
+                // This is not an error. It means that the deployment has been undeployed without purging.
+                // That is to say, the undeploy process has not yet finished.
+                // So the plugin should continue the undeploy process, i.e., to purge the deployment.
+                return FsmStates.UNDEPLOYMENT_IN_PROGRESS;
             case "INIT_DEPLOYMENT":
                 return FsmStates.DEPLOYMENT_INIT;
             case "DEPLOYMENT_IN_PROGRESS":
                 return FsmStates.DEPLOYMENT_IN_PROGRESS;
-            default:
-            case "FAILURE":
+            case "DEPLOYMENT_FAILED":
                 return FsmStates.FAILED;
+            default:
+                throw new Exception(String.format("Unknown status from Yorc: %s", status));
 
         }
     }
