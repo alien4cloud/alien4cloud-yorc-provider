@@ -1,5 +1,6 @@
 package alien4cloud.paas.yorc.context.service.fsm;
 
+import java.util.Date;
 import java.util.Map;
 
 import javax.inject.Inject;
@@ -15,7 +16,9 @@ import com.google.common.collect.Maps;
 import alien4cloud.paas.IPaaSCallback;
 import alien4cloud.paas.model.DeploymentStatus;
 import alien4cloud.paas.model.PaaSDeploymentContext;
+import alien4cloud.paas.model.PaaSDeploymentStatusMonitorEvent;
 import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
+import alien4cloud.paas.yorc.context.YorcOrchestrator;
 import alien4cloud.paas.yorc.context.service.BusService;
 import alien4cloud.paas.yorc.context.service.InstanceInformationService;
 import alien4cloud.paas.yorc.context.service.LogEventService;
@@ -28,6 +31,9 @@ public class StateMachineService {
 
 	@Inject
 	private FsmBuilder builder;
+
+	@Inject
+	private YorcOrchestrator orchestrator;
 
 	public static final String DEPLOYMENT_CONTEXT = "deploymentContext";
 	public static final String DEPLOYMENT_ID = "deploymentId";
@@ -112,7 +118,7 @@ public class StateMachineService {
 		StateMachine<FsmStates, FsmEvents> fsm = null;
 		try {
 			fsm = builder.createFsm(id, initialState);
-			fsm.addStateListener(new FsmListener(id));
+			fsm.addStateListener(new FsmListener(id, this));
 			if (log.isInfoEnabled())
 				log.info(String.format("State machine '%s' is created.", id));
 		} catch (Exception e) {
@@ -186,7 +192,7 @@ public class StateMachineService {
 	 * @param deploymentContext Deployment context
 	 * @return New created message
 	 */
-	public Message<FsmEvents> createMessage(FsmEvents event, PaaSDeploymentContext deploymentContext) {
+	protected Message<FsmEvents> createMessage(FsmEvents event, PaaSDeploymentContext deploymentContext) {
 		return MessageBuilder.withPayload(event)
 				.setHeader(StateMachineService.DEPLOYMENT_CONTEXT, deploymentContext)
 				.setHeader(StateMachineService.DEPLOYMENT_ID, deploymentContext.getDeploymentPaaSId())
@@ -206,6 +212,23 @@ public class StateMachineService {
 				.setHeader(StateMachineService.DEPLOYMENT_CONTEXT, deploymentContext)
 				.setHeader(StateMachineService.DEPLOYMENT_ID, deploymentContext.getDeploymentPaaSId())
 				.build();
+	}
+
+	/**
+	 * Send event of a4c type to Alien
+	 * @param deploymentId Deployment paas id
+	 * @param state Fsm state
+	 */
+	public void sendEventToAlien(String deploymentId, FsmStates state) {
+		PaaSDeploymentStatusMonitorEvent event = new PaaSDeploymentStatusMonitorEvent();
+		event.setDeploymentStatus(getState(state));
+		event.setDate((new Date()).getTime());
+		event.setDeploymentId(deploymentId);
+		event.setOrchestratorId(orchestrator.getOrchestratorId());
+		orchestrator.addEvent(event);
+		if (log.isInfoEnabled()) {
+			log.info(String.format("Append event %s to Alien", event));
+		}
 	}
 
 	public void setTaskUrl(String deploymentId, String url) throws Exception {

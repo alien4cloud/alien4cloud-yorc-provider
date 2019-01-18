@@ -9,16 +9,22 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class FsmListener extends StateMachineListenerAdapter<FsmStates, FsmEvents> {
 
+	private StateMachineService stateMachineService;
+
 	private String id;
 
-	public FsmListener(String id) {
+	public FsmListener(String id, StateMachineService fsmService) {
 		this.id = id;
+		this.stateMachineService = fsmService;
 	}
 
 	@Override
 	public void stateChanged(State<FsmStates, FsmEvents> from, State<FsmStates, FsmEvents> to) {
 		if (log.isInfoEnabled())
 			log.info(String.format("FSM %s changed state from %s to %s.", id, from.getId(), to.getId()));
+
+		// Send the event of a4c type to ensure that the state can be changed in a4c
+		stateMachineService.sendEventToAlien(id, to.getId());
 	}
 
 	@Override
