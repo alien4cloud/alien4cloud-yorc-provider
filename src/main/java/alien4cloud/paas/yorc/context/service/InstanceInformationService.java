@@ -232,7 +232,7 @@ public class InstanceInformationService {
     private void updateInstance(DeploymentInformation di,String nodeId,String instanceId,String status) {
         InstanceInformation ii = createOrGetInformation(di,nodeId,instanceId);
 
-        log.debug("Instance Status changed:  {}/{} {}->{}",nodeId,instanceId,ii.getInstanceStatus(),status);
+        log.debug("Instance Status changed:  {}/{} {}->{}",nodeId,instanceId,ii.getState(),status);
 
         ii.setState(status);
         ii.setInstanceStatus(getInstanceStatusFromState(status));

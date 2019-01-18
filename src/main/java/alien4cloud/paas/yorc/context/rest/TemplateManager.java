@@ -120,7 +120,9 @@ public class TemplateManager {
     public void term() {
         running.set(false);
 
-        disposable.dispose();
+        if (disposable != null) {
+            disposable.dispose();
+        }
     }
 
     public void evictionTask() {

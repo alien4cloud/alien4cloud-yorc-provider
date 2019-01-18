@@ -185,7 +185,7 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 
     @Override
     public void update(PaaSTopologyDeploymentContext deploymentContext, IPaaSCallback<?> callback) {
-        // TODO: implements
+        callback.onFailure(new UnsupportedOperationException("update topology not supported in Yorc"));
     }
 
     @Override
@@ -226,8 +226,6 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
             events = pendingEvents.toArray(new AbstractMonitorEvent[0]);
             pendingEvents.clear();
         }
-
-        if (events.length > 0) log.info("Get events returns {}",events.length);
 
         eventCallback.onSuccess(events);
     }

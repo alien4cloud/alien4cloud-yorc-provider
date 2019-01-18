@@ -61,7 +61,7 @@ public class LogEventPollingService {
      * @return
      */
     private void doQuery() {
-        log.info("Events Query - index={}", index);
+        log.debug("Events Query - index={}", index);
         client.get(index).subscribe(this::processEvents,this::processErrors);
     }
 
