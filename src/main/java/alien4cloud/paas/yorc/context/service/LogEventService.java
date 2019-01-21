@@ -43,6 +43,7 @@ public class LogEventService {
         deploymentLog.setTimestamp(logEvent.getDate());
         deploymentLog.setWorkflowId(logEvent.getWorkflowId());
         deploymentLog.setOperationName(logEvent.getOperationName());
+        deploymentLog.setTaskId(logEvent.getAlienTaskId());
         return deploymentLog;
     }
 }
