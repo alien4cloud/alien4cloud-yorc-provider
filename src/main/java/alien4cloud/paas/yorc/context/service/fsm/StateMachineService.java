@@ -222,10 +222,8 @@ public class StateMachineService {
 	public void sendEventToAlien(String deploymentId, FsmStates state) {
 		PaaSDeploymentStatusMonitorEvent event = new PaaSDeploymentStatusMonitorEvent();
 		event.setDeploymentStatus(getState(state));
-		event.setDate((new Date()).getTime());
 		event.setDeploymentId(deploymentId);
-		event.setOrchestratorId(orchestrator.getOrchestratorId());
-		orchestrator.addEvent(event);
+		orchestrator.postAlienEvent(event);
 		if (log.isInfoEnabled()) {
 			log.info(String.format("Append event %s to Alien", event));
 		}

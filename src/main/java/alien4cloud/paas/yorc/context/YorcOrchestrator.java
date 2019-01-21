@@ -86,16 +86,6 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 
     private final List<AbstractMonitorEvent> pendingEvents = Lists.newArrayList();
 
-    /**
-     * Append a4c event to the queue
-     * @param event A4C event
-     */
-    public void addEvent(AbstractMonitorEvent event) {
-        synchronized (pendingEvents) {
-            pendingEvents.add(event);
-        }
-    }
-
     @Override
     public ILocationConfiguratorPlugin getConfigurator(String locationType) {
         return yorcLocationConfigurerFactory.newInstance(locationType);
