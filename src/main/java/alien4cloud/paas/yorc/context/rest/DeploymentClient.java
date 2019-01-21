@@ -123,6 +123,13 @@ public class DeploymentClient extends AbstractClient {
                 .map(RestUtil.extractHeader("Location"));
     }
 
+    public Single<String> scale(String deploymentId,String nodeName,int delta) {
+        String url = getYorcUrl() + "/deployments/" + deploymentId + "/scale/" + nodeName + "?delta=" + delta;
+
+        return sendRequest(url, HttpMethod.POST, String.class, buildHttpEntityWithDefaultHeader())
+                .map(RestUtil.extractHeader("Location"));
+    }
+
     public Single<String> executeOperation(String deploymentId, NodeOperationExecRequest request) {
         String url = getYorcUrl() + "/deployments/" + deploymentId + "/custom";
 
