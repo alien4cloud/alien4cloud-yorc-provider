@@ -245,8 +245,12 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
     }
 
     @Override
-    public void executeOperation(PaaSTopologyDeploymentContext deploymentContext, NodeOperationExecRequest request, IPaaSCallback<Map<String, String>> operationResultCallback) throws OperationExecutionException {
-        // TODO: implements
+    public void executeOperation(PaaSTopologyDeploymentContext deploymentContext, NodeOperationExecRequest request, IPaaSCallback<Map<String, String>> callback) throws OperationExecutionException {
+        deploymentClient.executeOperation(deploymentContext.getDeploymentPaaSId(),request).subscribe(s -> {
+            Map<String,String> customResults = Maps.newHashMap();
+            customResults.put("result", "Succesfully execute custom " + request.getOperationName() + " on node " + request.getNodeTemplateName());
+            callback.onSuccess(customResults);
+        }, callback::onFailure);
     }
 
     @Override

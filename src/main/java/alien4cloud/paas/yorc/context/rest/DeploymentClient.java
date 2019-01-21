@@ -1,5 +1,8 @@
 package alien4cloud.paas.yorc.context.rest;
 
+import alien4cloud.paas.model.NodeOperationExecRequest;
+
+import org.json.JSONObject;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -117,6 +120,25 @@ public class DeploymentClient extends AbstractClient {
             url += "?continueOnError";
         }
         return sendRequest(url, HttpMethod.POST, String.class, buildHttpEntityWithDefaultHeader())
+                .map(RestUtil.extractHeader("Location"));
+    }
+
+    public Single<String> executeOperation(String deploymentId, NodeOperationExecRequest request) {
+        String url = getYorcUrl() + "/deployments/" + deploymentId + "/custom";
+
+        JSONObject json = new JSONObject();
+        json.put("node",request.getNodeTemplateName());
+        json.put("interface",request.getInterfaceName());
+        json.put("name",request.getOperationName());
+        json.put("inputs",request.getParameters());
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.add(HttpHeaders.ACCEPT,MediaType.APPLICATION_JSON_VALUE);
+        headers.add(HttpHeaders.CONTENT_TYPE,MediaType.APPLICATION_JSON_VALUE);
+
+        HttpEntity<byte[]> entity = new HttpEntity<>(json.toString().getBytes(),headers);
+
+        return sendRequest(url, HttpMethod.POST,String.class,entity)
                 .map(RestUtil.extractHeader("Location"));
     }
 
