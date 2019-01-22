@@ -245,7 +245,7 @@ public class StateMachineService {
 	 * @param context Deployment context
 	 */
 	public void setDeploymentContext(PaaSTopologyDeploymentContext context) throws Exception {
-		if (cache.containsKey(context.getDeploymentPaaSId())) {
+		if (!cache.containsKey(context.getDeploymentPaaSId())) {
 			throw new Exception("Fsm-%s does not exist");
 		}
 		Map<Object, Object> variables = cache.get(context.getDeploymentPaaSId()).getExtendedState().getVariables();

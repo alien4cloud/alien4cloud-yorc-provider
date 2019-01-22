@@ -154,7 +154,9 @@ public class FsmActions {
 			}
 
 			private void onHttpKo(Throwable t) {
-				callback.onFailure(t);
+				if (callback != null) {
+					callback.onFailure(t);
+				}
 				Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.FAILURE, context);
 				busService.publish(message);
 				if (log.isErrorEnabled())
