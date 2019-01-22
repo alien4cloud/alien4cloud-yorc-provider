@@ -20,8 +20,8 @@ public class FsmListener extends StateMachineListenerAdapter<FsmStates, FsmEvent
 
 	@Override
 	public void stateChanged(State<FsmStates, FsmEvents> from, State<FsmStates, FsmEvents> to) {
-		if (log.isInfoEnabled())
-			log.info(String.format("FSM %s changed state from %s to %s.", id, from.getId(), to.getId()));
+		if (log.isDebugEnabled())
+			log.debug(String.format("FSM %s changed state from %s to %s.", id, from.getId(), to.getId()));
 
 		// Send the event of a4c type to ensure that the state can be changed in a4c
 		stateMachineService.sendEventToAlien(id, to.getId());
@@ -29,7 +29,7 @@ public class FsmListener extends StateMachineListenerAdapter<FsmStates, FsmEvent
 
 	@Override
 	public void stateMachineStarted(StateMachine<FsmStates, FsmEvents> stateMachine) {
-		if (log.isInfoEnabled())
-			log.info(String.format("FSM %s started.", id));
+		if (log.isDebugEnabled())
+			log.debug(String.format("FSM %s started.", id));
 	}
 }

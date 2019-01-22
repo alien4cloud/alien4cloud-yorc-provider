@@ -25,7 +25,7 @@ public class LogEventService {
         save(toPaasDeploymentLog(event));
     }
 
-    private void save(PaaSDeploymentLog event) {
+    public void save(PaaSDeploymentLog event) {
         dao.save(event);
     }
 

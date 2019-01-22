@@ -75,7 +75,7 @@ public class FsmMapper {
                 // That is to say, the undeploy process has not yet finished.
                 // So the plugin should continue the undeploy process, i.e., to purge the deployment.
                 return FsmStates.UNDEPLOYMENT_IN_PROGRESS;
-            case "INIT_DEPLOYMENT":
+            case "INITIAL":
                 return FsmStates.DEPLOYMENT_INIT;
             case "DEPLOYMENT_IN_PROGRESS":
                 return FsmStates.DEPLOYMENT_IN_PROGRESS;
