@@ -1,9 +1,16 @@
 package alien4cloud.paas.yorc.context.service.fsm;
 
 import java.io.IOException;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.TemporalAccessor;
+import java.util.Date;
 
 import javax.inject.Inject;
 
+import alien4cloud.paas.model.PaaSDeploymentLog;
+import alien4cloud.paas.model.PaaSDeploymentLogLevel;
+import alien4cloud.paas.yorc.context.rest.response.LogEvent;
+import alien4cloud.paas.yorc.context.service.LogEventService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.Message;
 import org.springframework.statemachine.StateContext;
@@ -42,6 +49,9 @@ public class FsmActions {
 	@Inject
 	private InstanceInformationService instanceInformationService;
 
+	@Inject
+	private LogEventService logEventService;
+
 	protected Action<FsmStates, FsmEvents> buildAndSendZip() {
 		return new Action<FsmStates, FsmEvents>() {
 
@@ -58,8 +68,9 @@ public class FsmActions {
 			private void onHttpKo(Throwable t) {
 				Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.FAILURE, context);
 				busService.publish(message);
+				sendHttpErrorToAlienLogs(context, "Error while sending zip to Yorc", t.getMessage());
 				if (log.isErrorEnabled())
-					log.error("HTTP Request OK : {}", t.getMessage());
+					log.error("HTTP Request KO : {}", t.getMessage());
 			}
 
 			@Override
@@ -124,6 +135,7 @@ public class FsmActions {
 				callback.onFailure(t);
 				Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.FAILURE, context);
 				busService.publish(message);
+				sendHttpErrorToAlienLogs(context, "Error while sending undeploy order to Yorc", t.getMessage());
 				if (log.isErrorEnabled())
 					log.error("HTTP Request KO : {}", t.getMessage());
 			}
@@ -157,6 +169,8 @@ public class FsmActions {
 				if (callback != null) {
 					callback.onFailure(t);
 				}
+				sendHttpErrorToAlienLogs(context, "Error while sending purge order to Yorc", t.getMessage());
+
 				Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.FAILURE, context);
 				busService.publish(message);
 				if (log.isErrorEnabled())
@@ -176,4 +190,15 @@ public class FsmActions {
 
 		};
 	}
+
+	private void sendHttpErrorToAlienLogs(PaaSDeploymentContext context, String message, String error) {
+		PaaSDeploymentLog logEvent = new PaaSDeploymentLog();
+		logEvent.setDeploymentId(context.getDeploymentId());
+		logEvent.setDeploymentPaaSId(context.getDeploymentPaaSId());
+		logEvent.setLevel(PaaSDeploymentLogLevel.ERROR);
+		logEvent.setTimestamp(new Date());
+		logEvent.setContent(message + " : " + error);
+		logEventService.save(logEvent);
+	}
+
 }
