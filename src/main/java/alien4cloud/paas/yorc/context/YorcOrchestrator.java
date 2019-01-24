@@ -232,8 +232,8 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 
         eventCallback.onSuccess(events);
 
-        if (log.isInfoEnabled() && events.length != 0) {
-            log.info(String.format("Successfully sent %d events to Alien", events.length));
+        if (log.isDebugEnabled() && events.length != 0) {
+            log.debug(String.format("Successfully sent %d events to Alien", events.length));
         }
     }
 
