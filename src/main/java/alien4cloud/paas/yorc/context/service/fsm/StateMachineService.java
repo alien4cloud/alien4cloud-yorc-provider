@@ -119,11 +119,11 @@ public class StateMachineService {
 		try {
 			fsm = builder.createFsm(id, initialState);
 			fsm.addStateListener(new FsmListener(id, this));
-			if (log.isInfoEnabled())
-				log.info(String.format("State machine '%s' is created.", id));
+			if (log.isDebugEnabled())
+				log.debug(String.format("State machine '%s' is created.", id));
 		} catch (Exception e) {
-			if (log.isInfoEnabled())
-				log.info(String.format("Error when creating fsm-%s: %s", id, e.getMessage()));
+			if (log.isErrorEnabled())
+				log.error(String.format("Error when creating fsm-%s: %s", id, e.getMessage()));
 		}
 		return fsm;
 	}
@@ -224,8 +224,8 @@ public class StateMachineService {
 		event.setDeploymentStatus(getState(state));
 		event.setDeploymentId(deploymentId);
 		orchestrator.postAlienEvent(event);
-		if (log.isInfoEnabled()) {
-			log.info(String.format("Append event %s to Alien", event));
+		if (log.isDebugEnabled()) {
+			log.debug(String.format("Append event %s to Alien", event));
 		}
 	}
 

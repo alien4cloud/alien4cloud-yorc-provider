@@ -58,8 +58,8 @@ public class FsmActions {
 			private IPaaSCallback<?> callback;
 
 			private void onHttpOk(ResponseEntity<String> value) throws Exception {
-				if (log.isInfoEnabled())
-					log.info("HTTP Request OK : {}", value);
+				if (log.isDebugEnabled())
+					log.debug("HTTP Request OK : {}", value);
 				String taskURL = value.getHeaders().get("Location").get(0);
 				stateMachineService.setTaskUrl(context.getDeploymentPaaSId(), taskURL);
 			}
@@ -167,8 +167,8 @@ public class FsmActions {
 			private IPaaSCallback<?> callback;
 
 			private void onHttpOk(String value) {
-				if (log.isInfoEnabled())
-					log.info("HTTP Request OK : {}", value);
+				if (log.isDebugEnabled())
+					log.debug("HTTP Request OK : {}", value);
 				Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.DEPLOYMENT_PURGED, context);
 				busService.publish(message);
 			}
