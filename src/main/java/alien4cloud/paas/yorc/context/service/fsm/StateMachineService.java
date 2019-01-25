@@ -5,6 +5,7 @@ import java.util.Map;
 
 import javax.inject.Inject;
 
+import alien4cloud.paas.yorc.context.service.*;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.statemachine.StateMachine;
@@ -19,10 +20,6 @@ import alien4cloud.paas.model.PaaSDeploymentContext;
 import alien4cloud.paas.model.PaaSDeploymentStatusMonitorEvent;
 import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
 import alien4cloud.paas.yorc.context.YorcOrchestrator;
-import alien4cloud.paas.yorc.context.service.BusService;
-import alien4cloud.paas.yorc.context.service.InstanceInformationService;
-import alien4cloud.paas.yorc.context.service.LogEventService;
-import alien4cloud.paas.yorc.context.service.WorkflowInformationService;
 import lombok.extern.slf4j.Slf4j;
 
 @Component
@@ -34,6 +31,9 @@ public class StateMachineService {
 
 	@Inject
 	private YorcOrchestrator orchestrator;
+
+	@Inject
+	private DeployementRegistry registry;
 
 	public static final String DEPLOYMENT_CONTEXT = "deploymentContext";
 	public static final String DEPLOYMENT_ID = "deploymentId";
@@ -222,7 +222,7 @@ public class StateMachineService {
 	public void sendEventToAlien(String deploymentId, FsmStates state) {
 		PaaSDeploymentStatusMonitorEvent event = new PaaSDeploymentStatusMonitorEvent();
 		event.setDeploymentStatus(getState(state));
-		event.setDeploymentId(deploymentId);
+		event.setDeploymentId(registry.toAlienId(deploymentId));
 		orchestrator.postAlienEvent(event);
 		if (log.isDebugEnabled()) {
 			log.debug(String.format("Append event %s to Alien", event));
