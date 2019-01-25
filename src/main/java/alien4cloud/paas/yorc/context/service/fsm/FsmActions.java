@@ -108,6 +108,9 @@ public class FsmActions {
 		return stateContext -> {
 			PaaSDeploymentContext context = (PaaSDeploymentContext) stateContext.getExtendedState().getVariables().get(StateMachineService.DEPLOYMENT_CONTEXT);
 
+			// Send event
+			stateMachineService.sendEventToAlien(context.getDeploymentPaaSId(), FsmStates.UNDEPLOYED);
+
 			// Cleanup YorcId <-> AlienID
 			registry.unregister(context);
 
