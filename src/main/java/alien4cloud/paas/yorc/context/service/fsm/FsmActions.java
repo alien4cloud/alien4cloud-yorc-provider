@@ -65,6 +65,9 @@ public class FsmActions {
 			}
 
 			private void onHttpKo(Throwable t) {
+				// send manually an event to alien
+				stateMachineService.sendEventToAlien(context.getDeploymentPaaSId(), FsmStates.FAILED);
+
 				Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.FAILURE, context);
 				busService.publish(message);
 				sendHttpErrorToAlienLogs(context, "Error while sending zip to Yorc", t.getMessage());
@@ -129,8 +132,8 @@ public class FsmActions {
 			private IPaaSCallback<?> callback;
 
 			private void onHttpOk(String value) {
-				if (log.isInfoEnabled())
-					log.info("HTTP Request OK : {}", value);
+				if (log.isDebugEnabled())
+					log.debug("HTTP Request OK : {}", value);
 			}
 
 			private void onHttpKo(Throwable t) {
