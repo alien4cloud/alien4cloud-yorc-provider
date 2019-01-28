@@ -65,6 +65,9 @@ public class FsmActions {
 			}
 
 			private void onHttpKo(Throwable t) {
+				// send manually an event to alien
+				stateMachineService.sendEventToAlien(context.getDeploymentPaaSId(), FsmStates.FAILED);
+
 				Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.FAILURE, context);
 				busService.publish(message);
 				sendHttpErrorToAlienLogs(context, "Error while sending zip to Yorc", t.getMessage());

@@ -4,7 +4,6 @@ import java.util.Map;
 
 import javax.inject.Inject;
 
-import alien4cloud.paas.yorc.context.service.*;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.statemachine.StateMachine;
@@ -19,6 +18,11 @@ import alien4cloud.paas.model.PaaSDeploymentContext;
 import alien4cloud.paas.model.PaaSDeploymentStatusMonitorEvent;
 import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
 import alien4cloud.paas.yorc.context.YorcOrchestrator;
+import alien4cloud.paas.yorc.context.service.BusService;
+import alien4cloud.paas.yorc.context.service.DeploymentRegistry;
+import alien4cloud.paas.yorc.context.service.InstanceInformationService;
+import alien4cloud.paas.yorc.context.service.LogEventService;
+import alien4cloud.paas.yorc.context.service.WorkflowInformationService;
 import lombok.extern.slf4j.Slf4j;
 
 @Component
@@ -117,7 +121,7 @@ public class StateMachineService {
 		StateMachine<FsmStates, FsmEvents> fsm = null;
 		try {
 			fsm = builder.createFsm(id, initialState);
-			fsm.addStateListener(new FsmListener(id, this));
+			fsm.addStateListener(new FsmListener(id));
 			if (log.isDebugEnabled())
 				log.debug(String.format("State machine '%s' is created.", id));
 		} catch (Exception e) {
