@@ -1,6 +1,5 @@
 package alien4cloud.paas.yorc.context.service.fsm;
 
-import java.util.Date;
 import java.util.Map;
 
 import javax.inject.Inject;
@@ -33,7 +32,7 @@ public class StateMachineService {
 	private YorcOrchestrator orchestrator;
 
 	@Inject
-	private DeployementRegistry registry;
+	private DeploymentRegistry registry;
 
 	public static final String DEPLOYMENT_CONTEXT = "deploymentContext";
 	public static final String DEPLOYMENT_ID = "deploymentId";

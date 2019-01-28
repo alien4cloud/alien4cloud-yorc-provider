@@ -101,7 +101,7 @@ public class DeploymentClient extends AbstractClient {
             .map(RestUtil.extractHeader("Location"));
     }
 
-    public Single<String> cancalTask(String taskUrl) {
+    public Single<String> cancelTask(String taskUrl) {
         String url = getYorcUrl() + taskUrl;
 
         return sendRequest(url,HttpMethod.DELETE,String.class,buildHttpEntityWithDefaultHeader())

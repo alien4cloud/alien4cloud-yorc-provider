@@ -32,7 +32,7 @@ public class InstanceInformationService {
     private DeploymentClient client;
 
     @Inject
-    private DeployementRegistry registry;
+    private DeploymentRegistry registry;
 
     @Inject
     private YorcOrchestrator orchestrator;
@@ -73,12 +73,12 @@ public class InstanceInformationService {
     /**
      * Initialization
      *
-     * @param deployementIds knowns deploymentIds
+     * @param deploymentIds knowns deploymentIds
      */
-    public void init(Set<String> deployementIds) {
-        deployementIds = Sets.newLinkedHashSet(deployementIds);
+    public void init(Set<String> deploymentIds) {
+        deploymentIds = Sets.newLinkedHashSet(deploymentIds);
 
-        for (String deploymentId : deployementIds) {
+        for (String deploymentId : deploymentIds) {
 
             // Prepare the query
             // - Note that the query is deferred until subscription time
@@ -98,7 +98,7 @@ public class InstanceInformationService {
         }
 
         // Lazy initialization
-        Observable.fromIterable(deployementIds).concatMapDelayError(this::initializeStreamFor).subscribe(this::onAttribute,this::onError);
+        Observable.fromIterable(deploymentIds).concatMapDelayError(this::initializeStreamFor).subscribe(this::onAttribute,this::onError);
     }
 
     public void remove(String deploymentPaaSId) {

@@ -8,7 +8,7 @@ import org.springframework.stereotype.Service;
 
 @Slf4j
 @Service
-public class DeployementRegistry {
+public class DeploymentRegistry {
 
     private BiMap<String,String> map = HashBiMap.create();
 

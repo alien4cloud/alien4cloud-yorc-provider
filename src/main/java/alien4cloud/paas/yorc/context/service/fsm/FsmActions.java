@@ -20,7 +20,7 @@ import alien4cloud.paas.model.PaaSDeploymentLogLevel;
 import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
 import alien4cloud.paas.yorc.context.rest.DeploymentClient;
 import alien4cloud.paas.yorc.context.service.BusService;
-import alien4cloud.paas.yorc.context.service.DeployementRegistry;
+import alien4cloud.paas.yorc.context.service.DeploymentRegistry;
 import alien4cloud.paas.yorc.context.service.InstanceInformationService;
 import alien4cloud.paas.yorc.context.service.LogEventService;
 import alien4cloud.paas.yorc.service.ZipBuilder;
@@ -43,7 +43,7 @@ public class FsmActions {
 	private StateMachineService stateMachineService;
 
 	@Inject
-	private DeployementRegistry registry;
+	private DeploymentRegistry registry;
 
 	@Inject
 	private InstanceInformationService instanceInformationService;
@@ -100,7 +100,7 @@ public class FsmActions {
 			if (log.isInfoEnabled()) {
 				log.info(String.format("Cancelling the task %s for deployment %s", taskId, deploymentId));
 			}
-			deploymentClient.cancalTask(taskId);
+			deploymentClient.cancelTask(taskId);
 		};
 	}
 

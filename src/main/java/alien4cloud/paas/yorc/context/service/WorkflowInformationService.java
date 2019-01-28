@@ -16,7 +16,7 @@ public class WorkflowInformationService {
     private YorcOrchestrator orchestrator;
 
     @Inject
-    private DeployementRegistry registry;
+    private DeploymentRegistry registry;
 
     public void onEvent(Event event) {
         switch(event.getType()) {
