@@ -129,8 +129,8 @@ public class FsmActions {
 			private IPaaSCallback<?> callback;
 
 			private void onHttpOk(String value) {
-				if (log.isInfoEnabled())
-					log.info("HTTP Request OK : {}", value);
+				if (log.isDebugEnabled())
+					log.debug("HTTP Request OK : {}", value);
 			}
 
 			private void onHttpKo(Throwable t) {

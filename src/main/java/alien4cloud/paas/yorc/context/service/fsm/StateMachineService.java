@@ -230,7 +230,7 @@ public class StateMachineService {
 
 	public void setTaskUrl(String deploymentId, String url) throws Exception {
 		if (!cache.containsKey(deploymentId)) {
-			throw new Exception("Fsm-%s does not exist");
+			throw new Exception(String.format("Fsm-%s does not exist", deploymentId));
 		}
 		cache.get(deploymentId).getExtendedState().getVariables().put(TASK_URL, url);
 	}
@@ -245,7 +245,7 @@ public class StateMachineService {
 	 */
 	public void setDeploymentContext(PaaSTopologyDeploymentContext context) throws Exception {
 		if (!cache.containsKey(context.getDeploymentPaaSId())) {
-			throw new Exception("Fsm-%s does not exist");
+			throw new Exception(String.format("Fsm-%s does not exist", context.getDeploymentPaaSId()));
 		}
 		Map<Object, Object> variables = cache.get(context.getDeploymentPaaSId()).getExtendedState().getVariables();
 		variables.put(DEPLOYMENT_CONTEXT, context);
