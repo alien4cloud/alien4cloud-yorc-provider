@@ -14,7 +14,7 @@ import javax.inject.Inject;
 public class LogEventService {
 
     @Inject
-    private DeployementRegistry registry;
+    private DeploymentRegistry registry;
 
     @Resource(name = "alien-monitor-es-dao")
     private IGenericSearchDAO dao;

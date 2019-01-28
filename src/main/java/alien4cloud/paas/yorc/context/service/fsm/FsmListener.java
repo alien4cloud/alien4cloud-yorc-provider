@@ -24,7 +24,11 @@ public class FsmListener extends StateMachineListenerAdapter<FsmStates, FsmEvent
 			log.debug(String.format("FSM %s changed state from %s to %s.", id, from.getId(), to.getId()));
 
 		// Send the event of a4c type to ensure that the state can be changed in a4c
-		stateMachineService.sendEventToAlien(id, to.getId());
+		if (to.getId() != FsmStates.UNDEPLOYED) {
+			// Dont send the event here because the mapping between id does not exist any more
+			// Instead we send the event in cleanup phase
+			stateMachineService.sendEventToAlien(id, to.getId());
+		}
 	}
 
 	@Override

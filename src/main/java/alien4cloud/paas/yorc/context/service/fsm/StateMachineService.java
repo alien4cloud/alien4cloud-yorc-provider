@@ -1,10 +1,10 @@
 package alien4cloud.paas.yorc.context.service.fsm;
 
-import java.util.Date;
 import java.util.Map;
 
 import javax.inject.Inject;
 
+import alien4cloud.paas.yorc.context.service.*;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.statemachine.StateMachine;
@@ -19,10 +19,6 @@ import alien4cloud.paas.model.PaaSDeploymentContext;
 import alien4cloud.paas.model.PaaSDeploymentStatusMonitorEvent;
 import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
 import alien4cloud.paas.yorc.context.YorcOrchestrator;
-import alien4cloud.paas.yorc.context.service.BusService;
-import alien4cloud.paas.yorc.context.service.InstanceInformationService;
-import alien4cloud.paas.yorc.context.service.LogEventService;
-import alien4cloud.paas.yorc.context.service.WorkflowInformationService;
 import lombok.extern.slf4j.Slf4j;
 
 @Component
@@ -34,6 +30,9 @@ public class StateMachineService {
 
 	@Inject
 	private YorcOrchestrator orchestrator;
+
+	@Inject
+	private DeploymentRegistry registry;
 
 	public static final String DEPLOYMENT_CONTEXT = "deploymentContext";
 	public static final String DEPLOYMENT_ID = "deploymentId";
@@ -119,11 +118,11 @@ public class StateMachineService {
 		try {
 			fsm = builder.createFsm(id, initialState);
 			fsm.addStateListener(new FsmListener(id, this));
-			if (log.isInfoEnabled())
-				log.info(String.format("State machine '%s' is created.", id));
+			if (log.isDebugEnabled())
+				log.debug(String.format("State machine '%s' is created.", id));
 		} catch (Exception e) {
-			if (log.isInfoEnabled())
-				log.info(String.format("Error when creating fsm-%s: %s", id, e.getMessage()));
+			if (log.isErrorEnabled())
+				log.error(String.format("Error when creating fsm-%s: %s", id, e.getMessage()));
 		}
 		return fsm;
 	}
@@ -222,10 +221,10 @@ public class StateMachineService {
 	public void sendEventToAlien(String deploymentId, FsmStates state) {
 		PaaSDeploymentStatusMonitorEvent event = new PaaSDeploymentStatusMonitorEvent();
 		event.setDeploymentStatus(getState(state));
-		event.setDeploymentId(deploymentId);
+		event.setDeploymentId(registry.toAlienId(deploymentId));
 		orchestrator.postAlienEvent(event);
-		if (log.isInfoEnabled()) {
-			log.info(String.format("Append event %s to Alien", event));
+		if (log.isDebugEnabled()) {
+			log.debug(String.format("Append event %s to Alien", event));
 		}
 	}
 

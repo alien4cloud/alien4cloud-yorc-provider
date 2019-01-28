@@ -90,6 +90,11 @@ public class FsmBuilder {
 			.action(actions.undeploy())
 			.and()
 			.withExternal()
+			.source(FsmStates.UNDEPLOYMENT_IN_PROGRESS).target(FsmStates.UNDEPLOYED)
+			.event(FsmEvents.DEPLOYMENT_NOT_EXISTING)
+			.action(actions.cleanup())
+			.and()
+			.withExternal()
 			.source(FsmStates.UNDEPLOYMENT_PURGING).target(FsmStates.UNDEPLOYED)
 			.event(FsmEvents.DEPLOYMENT_PURGED)
 			.action(actions.cleanup());

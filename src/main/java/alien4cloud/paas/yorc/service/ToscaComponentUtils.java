@@ -58,10 +58,10 @@ public class ToscaComponentUtils {
                     String template;
                     if (propertyEntry.getValue() instanceof PropertyDefinition) {
                         velocityContext.put("property", propertyEntry.getValue());
-                        template = "org/ystia/yorc/alien4cloud/plugin/tosca/property_def.vm";
+                        template = "alien4cloud/paas/yorc/tosca/property_def.vm";
                     } else if (propertyEntry.getValue() instanceof AttributeDefinition) {
                         velocityContext.put("attribute", propertyEntry.getValue());
-                        template = "org/ystia/yorc/alien4cloud/plugin/tosca/attribute_def.vm";
+                        template = "alien4cloud/paas/yorc/tosca/attribute_def.vm";
                     } else {
                         throw new RuntimeException("Unsupported type: " + propertyEntry.getValue().getClass());
                     }

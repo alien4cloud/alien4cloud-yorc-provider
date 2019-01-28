@@ -30,7 +30,7 @@ import alien4cloud.paas.yorc.configuration.ProviderConfiguration;
 import alien4cloud.paas.yorc.context.rest.DeploymentClient;
 import alien4cloud.paas.yorc.context.rest.TemplateManager;
 import alien4cloud.paas.yorc.context.service.BusService;
-import alien4cloud.paas.yorc.context.service.DeployementRegistry;
+import alien4cloud.paas.yorc.context.service.DeploymentRegistry;
 import alien4cloud.paas.yorc.context.service.EventPollingService;
 import alien4cloud.paas.yorc.context.service.InstanceInformationService;
 import alien4cloud.paas.yorc.context.service.LogEventPollingService;
@@ -79,7 +79,7 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 	private InstanceInformationService instanceInformationService;
 
 	@Inject
-	private DeployementRegistry registry;
+	private DeploymentRegistry registry;
 
 	@Getter
     private String orchestratorId;
@@ -232,8 +232,8 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 
         eventCallback.onSuccess(events);
 
-        if (log.isInfoEnabled() && events.length != 0) {
-            log.info(String.format("Successfully sent %d events to Alien", events.length));
+        if (log.isDebugEnabled() && events.length != 0) {
+            log.debug(String.format("Successfully sent %d events to Alien", events.length));
         }
     }
 

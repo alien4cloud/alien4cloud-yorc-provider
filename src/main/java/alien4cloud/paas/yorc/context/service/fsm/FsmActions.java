@@ -1,29 +1,28 @@
 package alien4cloud.paas.yorc.context.service.fsm;
 
 import java.io.IOException;
-import java.time.format.DateTimeFormatter;
-import java.time.temporal.TemporalAccessor;
 import java.util.Date;
 
 import javax.inject.Inject;
 
-import alien4cloud.paas.model.PaaSDeploymentLog;
-import alien4cloud.paas.model.PaaSDeploymentLogLevel;
-import alien4cloud.paas.yorc.context.rest.response.LogEvent;
-import alien4cloud.paas.yorc.context.service.LogEventService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.messaging.Message;
 import org.springframework.statemachine.StateContext;
 import org.springframework.statemachine.action.Action;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
 
 import alien4cloud.paas.IPaaSCallback;
 import alien4cloud.paas.model.PaaSDeploymentContext;
+import alien4cloud.paas.model.PaaSDeploymentLog;
+import alien4cloud.paas.model.PaaSDeploymentLogLevel;
 import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
 import alien4cloud.paas.yorc.context.rest.DeploymentClient;
 import alien4cloud.paas.yorc.context.service.BusService;
-import alien4cloud.paas.yorc.context.service.DeployementRegistry;
+import alien4cloud.paas.yorc.context.service.DeploymentRegistry;
 import alien4cloud.paas.yorc.context.service.InstanceInformationService;
+import alien4cloud.paas.yorc.context.service.LogEventService;
 import alien4cloud.paas.yorc.service.ZipBuilder;
 import lombok.extern.slf4j.Slf4j;
 
@@ -44,7 +43,7 @@ public class FsmActions {
 	private StateMachineService stateMachineService;
 
 	@Inject
-	private DeployementRegistry registry;
+	private DeploymentRegistry registry;
 
 	@Inject
 	private InstanceInformationService instanceInformationService;
@@ -59,8 +58,8 @@ public class FsmActions {
 			private IPaaSCallback<?> callback;
 
 			private void onHttpOk(ResponseEntity<String> value) throws Exception {
-				if (log.isInfoEnabled())
-					log.info("HTTP Request OK : {}", value);
+				if (log.isDebugEnabled())
+					log.debug("HTTP Request OK : {}", value);
 				String taskURL = value.getHeaders().get("Location").get(0);
 				stateMachineService.setTaskUrl(context.getDeploymentPaaSId(), taskURL);
 			}
@@ -101,13 +100,16 @@ public class FsmActions {
 			if (log.isInfoEnabled()) {
 				log.info(String.format("Cancelling the task %s for deployment %s", taskId, deploymentId));
 			}
-			deploymentClient.cancalTask(taskId);
+			deploymentClient.cancelTask(taskId);
 		};
 	}
 
 	protected Action<FsmStates, FsmEvents> cleanup() {
 		return stateContext -> {
 			PaaSDeploymentContext context = (PaaSDeploymentContext) stateContext.getExtendedState().getVariables().get(StateMachineService.DEPLOYMENT_CONTEXT);
+
+			// Send event
+			stateMachineService.sendEventToAlien(context.getDeploymentPaaSId(), FsmStates.UNDEPLOYED);
 
 			// Cleanup YorcId <-> AlienID
 			registry.unregister(context);
@@ -132,12 +134,21 @@ public class FsmActions {
 			}
 
 			private void onHttpKo(Throwable t) {
-				callback.onFailure(t);
-				Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.FAILURE, context);
-				busService.publish(message);
 				sendHttpErrorToAlienLogs(context, "Error while sending undeploy order to Yorc", t.getMessage());
 				if (log.isErrorEnabled())
 					log.error("HTTP Request KO : {}", t.getMessage());
+
+				// If 404 received, it means that the deployment has been already undeployed
+				if (t instanceof HttpClientErrorException && ((HttpClientErrorException) t).getStatusCode().equals(HttpStatus.NOT_FOUND)) {
+					Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.DEPLOYMENT_NOT_EXISTING, context);
+					busService.publish(message);
+					return;
+				}
+
+				// Otherwise, continue the undeploy process
+				callback.onFailure(t);
+				Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.FAILURE, context);
+				busService.publish(message);
 			}
 
 			@Override
@@ -159,8 +170,8 @@ public class FsmActions {
 			private IPaaSCallback<?> callback;
 
 			private void onHttpOk(String value) {
-				if (log.isInfoEnabled())
-					log.info("HTTP Request OK : {}", value);
+				if (log.isDebugEnabled())
+					log.debug("HTTP Request OK : {}", value);
 				Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.DEPLOYMENT_PURGED, context);
 				busService.publish(message);
 			}
