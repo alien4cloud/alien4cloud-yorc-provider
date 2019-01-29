@@ -65,6 +65,13 @@ public class FsmActions {
 			}
 
 			private void onHttpKo(Throwable t) {
+				// If 409 received, it means that the deployment has already existed in orchestrator
+				if (t instanceof HttpClientErrorException && ((HttpClientErrorException) t).getStatusCode().equals(HttpStatus.CONFLICT)) {
+					Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.DEPLOYMENT_CONFLICT, context);
+					busService.publish(message);
+					return;
+				}
+
 				// send manually an event to alien
 				stateMachineService.sendEventToAlien(context.getDeploymentPaaSId(), FsmStates.FAILED);
 
