@@ -65,6 +65,8 @@ public class FsmActions {
 			}
 
 			private void onHttpKo(Throwable t) {
+				callback.onFailure(t);
+
 				// If 409 received, it means that the deployment has already existed in orchestrator
 				if (t instanceof HttpClientErrorException && ((HttpClientErrorException) t).getStatusCode().equals(HttpStatus.CONFLICT)) {
 					Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.DEPLOYMENT_CONFLICT, context);
@@ -145,6 +147,8 @@ public class FsmActions {
 
 			private void onHttpKo(Throwable t) {
 				sendHttpErrorToAlienLogs(context, "Error while sending undeploy order to Yorc", t.getMessage());
+				callback.onFailure(t);
+
 				if (log.isErrorEnabled())
 					log.error("HTTP Request KO : {}", t.getMessage());
 
@@ -156,7 +160,6 @@ public class FsmActions {
 				}
 
 				// Otherwise, continue the undeploy process
-				callback.onFailure(t);
 				Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.FAILURE, context);
 				busService.publish(message);
 			}

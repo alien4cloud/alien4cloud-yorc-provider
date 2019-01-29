@@ -41,6 +41,7 @@ public class LogEventService {
         deploymentLog.setType(logEvent.getType());
         deploymentLog.setNodeId(logEvent.getNodeId());
         deploymentLog.setTimestamp(logEvent.getDate());
+        deploymentLog.setRawtimestamp(logEvent.getTimestamp());
         deploymentLog.setWorkflowId(logEvent.getWorkflowId());
         deploymentLog.setOperationName(logEvent.getOperationName());
         deploymentLog.setTaskId(logEvent.getAlienTaskId());
