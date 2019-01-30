@@ -106,7 +106,8 @@ public class YorcPluginFactory implements IOrchestratorPluginFactory<YorcOrchest
                 "tosca.artifacts.Deployment.Image.Container.Docker.Kubernetes",
                 "yorc.artifacts.Deployment.SlurmJob",
                 // FIXME: temporally added but should probably be defined @ location instance level
-                "alien.artifacts.AnsiblePlaybook"
+                "alien.artifacts.AnsiblePlaybook",
+                "org.alien4cloud.artifacts.AnsiblePlaybook"
             });
     }
 
