@@ -164,32 +164,22 @@ public class InstanceInformationService {
         createOrUpdateAttribute(deploymentDTO.getId(),nodeDTO.getName(),instanceDTO,attributeDTO);
     }
 
-    private void onAttributeRefresh(Browser.Context context) {
-        String[] depnod = (String[]) context.get(0);
-        String deploymentId = depnod[0];
-        String nodeId = depnod[1];
-        InstanceDTO instanceDTO = (InstanceDTO) context.get(1);
-        AttributeDTO attributeDTO = (AttributeDTO) context.get(2);
-
-        updateAttribute(deploymentId,nodeId,instanceDTO,attributeDTO);
-    }
-
-    private void updateAttribute(String deploymentId, String nodeId, InstanceDTO instanceDTO, AttributeDTO attributeDTO) {
+    private void updateAttribute(String deploymentId, String nodeId, String instanceId, String attribute,String value) {
         DeploymentInformation di = map.computeIfAbsent(deploymentId,(k) -> new DeploymentInformation());
 
         di.lock.writeLock().lock();
         try {
             // Update the instance
-            InstanceInformation ii = getInformation(di,nodeId,instanceDTO.getId());
+            InstanceInformation ii = getInformation(di,nodeId,instanceId);
 
             if (ii != null) {
-                ii.getAttributes().put(attributeDTO.getName(), attributeDTO.getValue());
+                ii.getAttributes().put(attribute, value);
             }
         } finally {
             di.lock.writeLock().unlock();
         }
 
-        //log.debug("YORC ATTR {}/{}/{} {}={}",deploymentId,nodeId,instanceDTO.getId(),attributeDTO.getName(),attributeDTO.getValue());
+        log.debug("YORC ATTR {}/{}/{} {}={}",deploymentId,nodeId,instanceId,attribute,value);
     }
 
     private void createOrUpdateAttribute(String deploymentId, String nodeId, InstanceDTO instanceDTO, AttributeDTO attributeDTO) {
@@ -248,13 +238,16 @@ public class InstanceInformationService {
                     deleteInstance(di, event.getNodeId(), event.getInstanceId());
                 } else {
                     updateInstance(di,event.getNodeId(),event.getInstanceId(),event.getStatus());
-
                     postInstanceEvent(event);
-
-                    requestAttributes(event.getDeploymentId(),event.getNodeId(),event.getInstanceId());
                 }
             } finally {
                 di.lock.writeLock().unlock();
+            }
+        } else if (event.getType().equals(Event.EVT_ATTRIBUTE)) {
+            if (event.getStatus().equals("updated")) {
+                updateAttribute(event.getDeploymentId(), event.getNodeId(), event.getInstanceId(), event.getAttribute(), event.getValue());
+            } else {
+                log.warn("ATTR EVENT NOT HANDLED: {}",event);
             }
         }
     }
@@ -269,14 +262,6 @@ public class InstanceInformationService {
         a4cEvent.setDeploymentId(registry.toAlienId(event.getDeploymentId()));
 
         orchestrator.postAlienEvent(a4cEvent);
-    }
-
-    private void requestAttributes(String deploymentId,String nodeId,String instanceId) {
-        Observable<String> links = Observable.just(String.format("/deployments/%s/nodes/%s/instances/%s",deploymentId,nodeId,instanceId));
-
-        Browser.browserFor(links, url -> client.queryUrl(url,InstanceDTO.class),1,new String[] { deploymentId, nodeId })
-                .flatMap( agg -> agg.follow("attribute", url -> client.queryUrl(url,AttributeDTO.class),10))
-                .subscribe(this::onAttributeRefresh,this::onError);
     }
 
     private void onError(Throwable t) {

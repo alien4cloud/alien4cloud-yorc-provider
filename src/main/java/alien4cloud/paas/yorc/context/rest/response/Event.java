@@ -20,6 +20,7 @@ public class Event {
     public static final String EVT_WORKFLOW     = "Workflow";
     public static final String EVT_WORKFLOWSTEP = "WorkflowStep";
     public static final String EVT_ALIENTASK    = "AlienTask";
+    public static final String EVT_ATTRIBUTE    = "AttributeValue";
 
     private String timestamp;
     private String nodeId;
@@ -33,4 +34,6 @@ public class Event {
     private String alienTaskId;
     private String stepId;
     private String operationName;
+    private String attribute;
+    private String value;
 }
