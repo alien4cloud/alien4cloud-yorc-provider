@@ -12,7 +12,6 @@
   <version>2.2.0-SNAPSHOT</version>
 
   <properties>
-    <alien4cloud.version>2.2.0-SNAPSHOT</alien4cloud.version>
     <alien4cloud.dsl.version>alien_dsl_2_0_0</alien4cloud.dsl.version>
     <tosca.normative.types.version>1.0.0-ALIEN20</tosca.normative.types.version>
     <alien4cloud.kubernetes.api.version>2.2.0-SNAPSHOT</alien4cloud.kubernetes.api.version>
@@ -33,13 +32,13 @@
     <dependency>
       <groupId>alien4cloud</groupId>
       <artifactId>alien4cloud-core</artifactId>
-      <version>${alien4cloud.version}</version>
+      <version>${project.version}</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
       <groupId>alien4cloud</groupId>
       <artifactId>alien4cloud-rest-api</artifactId>
-      <version>${alien4cloud.version}</version>
+      <version>${project.version}</version>
       <scope>provided</scope>
     </dependency>
     <dependency>
