@@ -73,6 +73,10 @@ public class EventPollingService {
 
         for (Event event : response.getEvents()) {
 
+            if (log.isTraceEnabled()) {
+                log.trace("Event received : {}", event);
+            }
+
             switch(event.getType()) {
                 case Event.EVT_INSTANCE:
                 case Event.EVT_DEPLOYMENT:
