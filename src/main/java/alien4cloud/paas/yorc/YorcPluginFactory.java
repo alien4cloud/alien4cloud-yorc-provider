@@ -6,6 +6,9 @@ import alien4cloud.orchestrators.plugin.IOrchestratorPluginFactory;
 import alien4cloud.paas.yorc.configuration.ProviderConfiguration;
 import alien4cloud.paas.yorc.context.YorcOrchestrator;
 import alien4cloud.paas.yorc.context.YorcOrchestratorConfiguration;
+import alien4cloud.paas.yorc.dao.YorcESDao;
+import alien4cloud.paas.yorc.model.EventIndex;
+import alien4cloud.paas.yorc.model.LogEventIndex;
 import alien4cloud.utils.ClassLoaderUtil;
 import com.google.common.collect.Maps;
 import lombok.extern.slf4j.Slf4j;
@@ -16,6 +19,7 @@ import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import javax.annotation.Resource;
+import javax.inject.Inject;
 import java.util.Map;
 
 @Slf4j
@@ -38,6 +42,9 @@ public class YorcPluginFactory implements IOrchestratorPluginFactory<YorcOrchest
      */
     @Resource
     private ApplicationContext pluginContext;
+
+    @Inject
+    private YorcESDao dao;
 
     /**
      * Deployment properties
@@ -133,5 +140,11 @@ public class YorcPluginFactory implements IOrchestratorPluginFactory<YorcOrchest
         props.put(MONITORING_TIME_INTERVAL, monitoringInterval);
 
         return props;
+    }
+
+    @Override
+    public void delete(String id) {
+        dao.delete(LogEventIndex.class,id);
+        dao.delete(EventIndex.class,id);
     }
 }
