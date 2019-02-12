@@ -8,12 +8,14 @@ import io.reactivex.disposables.Disposable;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
+import org.apache.http.HttpHost;
 import org.apache.http.config.Registry;
 import org.apache.http.config.RegistryBuilder;
 import org.apache.http.conn.ssl.DefaultHostnameVerifier;
 import org.apache.http.conn.ssl.NoopHostnameVerifier;
 
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
+import org.apache.http.impl.nio.client.HttpAsyncClientBuilder;
 import org.apache.http.impl.nio.client.HttpAsyncClients;
 import org.apache.http.impl.nio.conn.PoolingNHttpClientConnectionManager;
 import org.apache.http.nio.conn.NoopIOSessionStrategy;
@@ -71,6 +73,8 @@ public class TemplateManager {
         AsyncClientHttpRequestFactory factory;
         HostnameVerifier verifier;
 
+        HttpHost proxy = getProxy();
+
         SSLContext context = SSLContexts.createSystemDefault();
 
         this.configuration = configuration;
@@ -98,12 +102,15 @@ public class TemplateManager {
         manager.setDefaultMaxPerRoute(20);
         manager.setMaxTotal(20);
 
-        CloseableHttpAsyncClient httpClient = HttpAsyncClients.custom()
-                .setConnectionManager(manager)
-                .setThreadFactory(threadFactory)
-                // TODO: Set proxy here
-                //.setProxy(new HttpHost("<addr here>",8080))
-                .build();
+        HttpAsyncClientBuilder builder = HttpAsyncClients.custom()
+                    .setConnectionManager(manager)
+                    .setThreadFactory(threadFactory);
+
+        if (proxy != null) {
+            builder = builder.setProxy(proxy);
+        }
+
+        CloseableHttpAsyncClient httpClient = builder.build();
 
         factory = new HttpComponentsAsyncClientHttpRequestFactory(httpClient);
 
@@ -137,5 +144,20 @@ public class TemplateManager {
 
         // Reschedule eviction task
         disposable = Completable.timer(EVITION_FREQUENCY, TimeUnit.MINUTES, scheduler).subscribe(this::evictionTask);
+    }
+
+    private HttpHost getProxy() {
+        String host = System.getProperty("http.proxyHost");
+        String port = System.getProperty("http.proxyPort");
+
+        if (host == null) {
+            return null;
+        }
+
+        if (port != null) {
+            return new HttpHost(host, Integer.valueOf(port));
+        } else {
+            return new HttpHost(host, 8080);
+        }
     }
 }

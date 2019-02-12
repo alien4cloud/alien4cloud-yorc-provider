@@ -204,10 +204,15 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 
     @Override
     public void launchWorkflow(PaaSDeploymentContext deploymentContext, String workflowName, Map<String, Object> inputs, IPaaSCallback<?> callback) {
-        if (log.isInfoEnabled()) {
-            log.info(String.format("Launching workflow %s for deployment %s", workflowName, deploymentContext.getDeploymentPaaSId()));
+        if (log.isDebugEnabled()) {
+            log.debug(String.format("Launching workflow %s for deployment %s", workflowName, deploymentContext.getDeploymentPaaSId()));
         }
-        deploymentClient.executeWorkflow(deploymentContext.getDeploymentPaaSId(), workflowName, false).subscribe(s -> {}, callback::onFailure);
+        deploymentClient.executeWorkflow(deploymentContext.getDeploymentPaaSId(), workflowName, false).subscribe(s -> {
+            if (log.isDebugEnabled()) {
+                log.debug("Workflow {} launched for deployment {} : {}", workflowName, deploymentContext.getDeploymentPaaSId(), s);
+            }
+            callback.onSuccess(null);
+        }, callback::onFailure);
     }
 
     @Override
