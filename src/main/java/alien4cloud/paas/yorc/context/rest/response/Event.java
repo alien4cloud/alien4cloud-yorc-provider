@@ -23,17 +23,18 @@ public class Event {
     public static final String EVT_ATTRIBUTE    = "AttributeValue";
 
     private String timestamp;
-    private String nodeId;
-    private String instanceId;
+    private String deploymentId;
     private String status;
     private String type;
-    private String taskId;
-    private String deploymentId;
     private String workflowId;
     private String alienExecutionId;
-    private String alienTaskId;
-    private String stepId;
+    private String nodeId;
+    private String instanceId;
     private String operationName;
+    private String alienTaskId;
+    private String targetNodeId;
+    private String targetInstanceId;
+    private String stepId;
     private String attribute;
     private String value;
 }
