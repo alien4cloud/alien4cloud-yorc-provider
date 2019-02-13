@@ -61,7 +61,9 @@ public class EventPollingService {
      * @return
      */
     private void doQuery() {
-        log.debug("Events Query - index={}", index);
+        if (log.isDebugEnabled()) {
+            log.debug("Querying events for orch <{} from index <{}>", orchestrator.getOrchestratorId(), index);
+        }
         client.get(index).subscribe(this::processEvents,this::processErrors);
     }
 
@@ -89,7 +91,7 @@ public class EventPollingService {
                     break;
                 default:
                     if (log.isWarnEnabled())
-                        log.warn("Unknown Yorc Event [{}/{}]", event.getType(), event.getDeploymentId());
+                        log.warn("Unknown Yorc Event of type <{}> for deployment <{}> : {}", event.getType(), event.getDeploymentId(), event);
             }
         }
 
