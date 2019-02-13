@@ -209,6 +209,9 @@ public class FsmActions {
 				if (log.isInfoEnabled())
 					log.info("Purging " + context.getDeploymentPaaSId() + " with id : " + context.getDeploymentId());
 
+				// Cancel subscription
+				busService.deleteEventBuses(context.getDeploymentPaaSId());
+
 				deploymentClient.purge(context.getDeploymentPaaSId()).subscribe(this::onHttpOk, this::onHttpKo);
 			}
 

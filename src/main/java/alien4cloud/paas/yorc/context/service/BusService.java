@@ -47,6 +47,10 @@ public class BusService {
         }
     }
 
+    public void deleteEventBuses(String deploymentId) {
+        eventBuses.remove(deploymentId);
+    }
+
     public void subscribe(String deploymentId, Consumer<Message<FsmEvents>> callback) {
         eventBuses.get(deploymentId).messages.observeOn(scheduler).subscribe(callback);
     }
