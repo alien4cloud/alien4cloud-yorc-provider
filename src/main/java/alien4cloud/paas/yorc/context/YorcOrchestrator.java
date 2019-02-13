@@ -6,6 +6,7 @@ import java.util.Map;
 
 import javax.inject.Inject;
 
+import io.reactivex.disposables.Disposable;
 import org.springframework.context.ApplicationContext;
 import org.springframework.messaging.Message;
 import org.springframework.stereotype.Component;
@@ -203,7 +204,7 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
     }
 
     @Override
-    public void launchWorkflow(PaaSDeploymentContext deploymentContext, String workflowName, Map<String, Object> inputs, IPaaSCallback<?> callback) {
+    public void launchWorkflow(PaaSDeploymentContext deploymentContext, String workflowName, Map<String, Object> inputs, IPaaSCallback<String> callback) {
         if (log.isDebugEnabled()) {
             log.debug(String.format("Launching workflow %s for deployment %s", workflowName, deploymentContext.getDeploymentPaaSId()));
         }
@@ -211,7 +212,8 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
             if (log.isDebugEnabled()) {
                 log.debug("Workflow {} launched for deployment {} : {}", workflowName, deploymentContext.getDeploymentPaaSId(), s);
             }
-            callback.onSuccess(null);
+            String executionId = s.substring(s.lastIndexOf("/") + 1);
+            callback.onSuccess(executionId);
         }, callback::onFailure);
     }
 
