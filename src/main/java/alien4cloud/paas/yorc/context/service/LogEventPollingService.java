@@ -61,7 +61,9 @@ public class LogEventPollingService {
      * @return
      */
     private void doQuery() {
-        log.debug("Events Query - index={}", index);
+        if (log.isDebugEnabled()) {
+            log.debug("Querying log events for orch <{}> from index <{}>", orchestrator.getOrchestratorId(), index);
+        }
         client.get(index).subscribe(this::processEvents,this::processErrors);
     }
 
