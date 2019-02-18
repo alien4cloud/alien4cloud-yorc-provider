@@ -1,11 +1,13 @@
 package alien4cloud.paas.yorc.context.rest;
 
+import alien4cloud.paas.yorc.configuration.ProviderConfiguration;
 import io.reactivex.Single;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
 import org.springframework.util.concurrent.ListenableFuture;
 import org.springframework.util.concurrent.ListenableFutureCallback;
 
+import javax.annotation.Resource;
 import javax.inject.Inject;
 import java.util.concurrent.ExecutionException;
 
@@ -15,11 +17,14 @@ public abstract class AbstractClient {
     @Inject
     TemplateManager manager;
 
+    @Resource
+    private ProviderConfiguration configuration;
+
     /**
      * @return Yorc Url from configuration
      */
     protected String getYorcUrl() {
-        return manager.getConfiguration().getUrlYorc();
+        return configuration.getUrlYorc();
     }
 
     /**

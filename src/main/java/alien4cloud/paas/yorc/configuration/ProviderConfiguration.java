@@ -1,5 +1,6 @@
 package alien4cloud.paas.yorc.configuration;
 
+import alien4cloud.paas.IPaaSProviderConfiguration;
 import alien4cloud.ui.form.annotation.FormProperties;
 import alien4cloud.ui.form.annotation.FormPropertyConstraint;
 import alien4cloud.ui.form.annotation.FormPropertyDefinition;
@@ -8,14 +9,22 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.apache.commons.lang3.StringUtils;
+
+import java.util.concurrent.atomic.AtomicInteger;
 
 @Getter
 @Setter
 @NoArgsConstructor
-@FormProperties({"urlYorc", "insecureTLS"})
+@FormProperties({"urlYorc", "insecureTLS", "connectionTimeout", "socketTimeout", "executorThreadPoolSize", "IOThreadCount", "eventPollingPeriod", "logPollingPeriod", "connectionMaxPoolSize", "connectionEvictionPeriod", "connectionTtl", "connectionMaxIdleTime" })
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
-public class ProviderConfiguration {
+public class ProviderConfiguration implements IPaaSProviderConfiguration {
+
+    /**
+     * Sequence Number
+     */
+    private static final AtomicInteger ID = new AtomicInteger(0);
 
     @FormPropertyDefinition(
             type = "string",
@@ -32,4 +41,85 @@ public class ProviderConfiguration {
                 "and may expose to man in the middle attacks."
     )
     private Boolean insecureTLS;
+
+    @FormPropertyDefinition(
+            type = "integer",
+            defaultValue = "10",
+            description = "Connection timeout in seconds."
+    )
+    private Integer connectionTimeout = 10;
+
+    @FormPropertyDefinition(
+            type = "integer",
+            defaultValue = "900",
+            description = "Socket timeout in seconds. Because communication with Yorc use long polling requests, should not be a too small value."
+    )
+    private Integer socketTimeout = 900;
+
+    @FormPropertyDefinition(
+            type = "integer",
+            defaultValue = "4",
+            description = "executorThreadPoolSize: number of threads used to execute actions that are not handled by IO threads (zip, scheduled tasks ...)."
+    )
+    private Integer executorThreadPoolSize = 4;
+
+    @FormPropertyDefinition(
+            type = "integer",
+            defaultValue = "4",
+            description = "IOThreadCount: number of threads used to handle non blocking HTTP operations. This number should not be greater than the number of available processors on the host."
+    )
+    private Integer IOThreadCount = 4;
+
+    @FormPropertyDefinition(
+            type = "integer",
+            defaultValue = "2",
+            description = "eventPollingPeriod: in seconds, the period used to poll events"
+    )
+    private Integer eventPollingPeriod = 2;
+
+    @FormPropertyDefinition(
+            type = "integer",
+            defaultValue = "2",
+            description = "logPollingPeriod: in seconds, the period used to poll logs"
+    )
+    private Integer logPollingPeriod = 2;
+
+    @FormPropertyDefinition(
+            type = "integer",
+            defaultValue = "20",
+            description = "connectionMaxPoolSize: maximum number of connections in the pool."
+    )
+    private Integer connectionMaxPoolSize = 20;
+
+    @FormPropertyDefinition(
+            type = "integer",
+            defaultValue = "60",
+            description = "connectionEvictionPeriod: in seconds, the period used to run connection eviction."
+    )
+    private Integer connectionEvictionPeriod = 60;
+
+    @FormPropertyDefinition(
+            type = "integer",
+            defaultValue = "300",
+            description = "connectionTtl: in seconds, the max time to live for a connection."
+    )
+    private Integer connectionTtl = 300;
+
+    @FormPropertyDefinition(
+            type = "integer",
+            defaultValue = "120",
+            description = "connectionMaxIdleTime: in seconds, the max time an IDLE connection is kept in the pool."
+    )
+    private Integer connectionMaxIdleTime = 120;
+
+    private String orchestratorName;
+    private String orchestratorId;
+
+    public synchronized  String getOrchestratorIdentifier() {
+        if (orchestratorName == null) {
+            orchestratorName = Integer.toString(ID.getAndIncrement());
+        }
+        return orchestratorName.replaceAll("\\W", "");
+    }
+
 }

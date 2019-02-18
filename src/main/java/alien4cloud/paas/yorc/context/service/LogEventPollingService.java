@@ -1,5 +1,6 @@
 package alien4cloud.paas.yorc.context.service;
 
+import alien4cloud.paas.yorc.configuration.ProviderConfiguration;
 import alien4cloud.paas.yorc.context.YorcOrchestrator;
 import alien4cloud.paas.yorc.context.rest.LogEventClient;
 import alien4cloud.paas.yorc.context.rest.response.LogEvent;
@@ -12,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.Resource;
 import javax.inject.Inject;
 import java.util.concurrent.TimeUnit;
 
@@ -33,6 +35,9 @@ public class LogEventPollingService {
 
     @Inject
     private BusService bus;
+
+    @Resource
+    private ProviderConfiguration configuration;
 
     /**
      * Index
@@ -62,7 +67,7 @@ public class LogEventPollingService {
      */
     private void doQuery() {
         if (log.isDebugEnabled()) {
-            log.debug("Querying log events for orch <{}> from index <{}>", orchestrator.getOrchestratorId(), index);
+            log.debug("Querying log events for orch <{}> from index <{}>", configuration.getOrchestratorId(), index);
         }
         client.get(index).subscribe(this::processEvents,this::processErrors);
     }
@@ -91,7 +96,7 @@ public class LogEventPollingService {
     private void processErrors(Throwable t) {
         if (!stopped) {
             log.error("Event polling Exception: {}", t.getMessage());
-            Single.timer(2,TimeUnit.SECONDS,scheduler)
+            Single.timer(configuration.getLogPollingPeriod(),TimeUnit.SECONDS,scheduler)
                     .flatMap(x -> client.get(index))
                     .subscribe(this::processEvents,this::processErrors);
         }
@@ -102,13 +107,13 @@ public class LogEventPollingService {
     }
 
     private void initIndex() {
-        LogEventIndex data = dao.findById(LogEventIndex.class,orchestrator.getOrchestratorId());
+        LogEventIndex data = dao.findById(LogEventIndex.class,configuration.getOrchestratorId());
         if (data == null) {
             // This is our first run, initialize the index from Yorc
             Integer lastIndex = client.getLastIndex().blockingGet();
 
             data = new LogEventIndex();
-            data.setId(orchestrator.getOrchestratorId());
+            data.setId(configuration.getOrchestratorId());
             data.setIndex(lastIndex);
             dao.save(data);
         }
@@ -117,6 +122,6 @@ public class LogEventPollingService {
     }
 
     private void saveIndex() {
-        dao.save(new LogEventIndex(orchestrator.getOrchestratorId(),index));
+        dao.save(new LogEventIndex(configuration.getOrchestratorId(),index));
     }
 }
