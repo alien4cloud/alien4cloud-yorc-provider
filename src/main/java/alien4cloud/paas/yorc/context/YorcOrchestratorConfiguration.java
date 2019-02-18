@@ -1,5 +1,6 @@
 package alien4cloud.paas.yorc.context;
 
+import alien4cloud.paas.yorc.configuration.ProviderConfiguration;
 import io.reactivex.Scheduler;
 import io.reactivex.schedulers.Schedulers;
 import lombok.SneakyThrows;
@@ -14,6 +15,7 @@ import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 
 import javax.annotation.PreDestroy;
+import javax.annotation.Resource;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
@@ -22,33 +24,20 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Slf4j
 @Configuration
 @ComponentScan(basePackages = {
-        "alien4cloud.paas.yorc.context",
-        "alien4cloud.paas.yorc.tasks"
+        "alien4cloud.paas.yorc.context"
 })
 public class YorcOrchestratorConfiguration {
-
-    /**
-     * Connection time out
-     */
-    private static final int CONNECTION_TIMEOUT = 10000;
-
-    /**
-     * Socket timeout (15 min because of long polling)
-     */
-    private static final int SOCKET_TIMEOUT = 900000;
-
-    /**
-     * Sequence Number
-     */
-    private static final AtomicInteger ID = new AtomicInteger(0);
 
     /**
      * @return an identifier bound to the context that will be used for naming pools
      */
     @Bean
     String contextName() {
-        return "yorc-"+ ID.incrementAndGet();
+        return "yorc-"+ configuration.getOrchestratorIdentifier();
     }
+
+    @Resource
+    private ProviderConfiguration configuration;
 
     /**
      * Thread factory for task threads
@@ -73,11 +62,16 @@ public class YorcOrchestratorConfiguration {
     @Bean
     @SneakyThrows(IOReactorException.class)
     ConnectingIOReactor ioReactor() {
+
+        configuration.getUrlYorc();
+
         IOReactorConfig config = IOReactorConfig.custom()
-                .setConnectTimeout(CONNECTION_TIMEOUT)
-                .setSoTimeout(SOCKET_TIMEOUT)
-                .setIoThreadCount(Runtime.getRuntime().availableProcessors())
+                .setConnectTimeout(configuration.getConnectionTimeout() * 1000)
+                .setSoTimeout(configuration.getSocketTimeout() * 1000)
+                .setIoThreadCount(configuration.getIOThreadCount())
                 .build();
+
+        log.info("IOReactor will be configured using : " + config);
 
         return new DefaultConnectingIOReactor(config,httpThreadFactory());
     }
@@ -87,9 +81,8 @@ public class YorcOrchestratorConfiguration {
      */
     @Bean
     ExecutorService executorService() {
-        ExecutorService svc = Executors.newFixedThreadPool(4 , taskThreadFactory() );
-        // TODO: Use SysProp for pool size
-
+        log.info("Executor will use {} threads.", configuration.getExecutorThreadPoolSize());
+        ExecutorService svc = Executors.newFixedThreadPool(configuration.getExecutorThreadPoolSize() , taskThreadFactory() );
         return svc;
     }
 

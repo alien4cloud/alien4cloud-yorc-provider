@@ -30,6 +30,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.client.AsyncRestTemplate;
 
 
+import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import javax.inject.Inject;
 import javax.net.ssl.HostnameVerifier;
@@ -42,16 +43,19 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @Service
 public class TemplateManager {
 
-    private static final int EVICTION_MAX_TIME = 5;
-    private static final int EVICTION_MAX_IDLE = 2;
-
-    private static final int EVITION_FREQUENCY = 1;
+//    private static final int EVICTION_MAX_TIME = 5;
+//    private static final int EVICTION_MAX_IDLE = 2;
+//
+//    private static final int EVITION_FREQUENCY = 1;
 
     @Inject
     private Scheduler scheduler;
 
     @Inject
     private ConnectingIOReactor reactor;
+
+    @Resource
+    private ProviderConfiguration configuration;
 
     private PoolingNHttpClientConnectionManager manager;
 
@@ -66,18 +70,17 @@ public class TemplateManager {
 
     private Disposable disposable;
 
-    @Getter
-    private ProviderConfiguration configuration;
+    @PostConstruct
+    public void configure() throws PluginConfigurationException {
+        log.info("Configuring connection manager using ConnectionMaxPoolSize: {}, ConnectionTtl: {}s", configuration.getConnectionMaxPoolSize(), configuration.getConnectionTtl());
+        log.info("Connectino eviction will be done each {} seconds, ConnectionMaxIdleTime: {}s", configuration.getConnectionEvictionPeriod(), configuration.getConnectionMaxIdleTime());
 
-    public void configure(ProviderConfiguration configuration) throws PluginConfigurationException {
         AsyncClientHttpRequestFactory factory;
         HostnameVerifier verifier;
 
         HttpHost proxy = getProxy();
 
         SSLContext context = SSLContexts.createSystemDefault();
-
-        this.configuration = configuration;
 
         if (Boolean.TRUE.equals(configuration.getInsecureTLS())) {
             verifier = new NoopHostnameVerifier();
@@ -96,17 +99,18 @@ public class TemplateManager {
                 registry,
                 null,
                 null,
-                EVICTION_MAX_TIME,
-                TimeUnit.MINUTES
+                configuration.getConnectionTtl(),
+                TimeUnit.SECONDS
             );
-        manager.setDefaultMaxPerRoute(20);
-        manager.setMaxTotal(20);
+        manager.setDefaultMaxPerRoute(configuration.getConnectionMaxPoolSize());
+        manager.setMaxTotal(configuration.getConnectionMaxPoolSize());
 
         HttpAsyncClientBuilder builder = HttpAsyncClients.custom()
                     .setConnectionManager(manager)
                     .setThreadFactory(threadFactory);
 
         if (proxy != null) {
+            log.info("Will use HTTP proxy {}", proxy);
             builder = builder.setProxy(proxy);
         }
 
@@ -117,7 +121,7 @@ public class TemplateManager {
         template = new AsyncRestTemplate(factory);
 
         // Schedule eviction task
-        disposable = Completable.timer(EVITION_FREQUENCY, TimeUnit.MINUTES, scheduler).subscribe(this::evictionTask);
+        disposable = Completable.timer(configuration.getConnectionEvictionPeriod(), TimeUnit.SECONDS, scheduler).subscribe(this::evictionTask);
     }
 
     public AsyncRestTemplate get() {
@@ -136,14 +140,17 @@ public class TemplateManager {
         if (running.get() == false) {
             return;
         }
-
-        log.debug("YORC HTTP BEFORE EVICTION(avail={} , leased = {})",manager.getTotalStats().getAvailable(),manager.getTotalStats().getLeased());
+        if (log.isDebugEnabled()) {
+            log.debug("Before connection eviction : {}", manager.getTotalStats());
+        }
         manager.closeExpiredConnections();
-        manager.closeIdleConnections(EVICTION_MAX_IDLE,TimeUnit.MINUTES);
-        log.debug("YORC HTTP AFTER  EVICTION(avail={} , leased = {})",manager.getTotalStats().getAvailable(),manager.getTotalStats().getLeased());
+        manager.closeIdleConnections(configuration.getConnectionMaxIdleTime(),TimeUnit.SECONDS);
+        if (log.isDebugEnabled()) {
+            log.debug("After connection eviction : {}", manager.getTotalStats());
+        }
 
         // Reschedule eviction task
-        disposable = Completable.timer(EVITION_FREQUENCY, TimeUnit.MINUTES, scheduler).subscribe(this::evictionTask);
+        disposable = Completable.timer(configuration.getConnectionEvictionPeriod(), TimeUnit.SECONDS, scheduler).subscribe(this::evictionTask);
     }
 
     private HttpHost getProxy() {

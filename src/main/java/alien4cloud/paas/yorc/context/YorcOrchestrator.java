@@ -4,6 +4,7 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
+import javax.annotation.Resource;
 import javax.inject.Inject;
 
 import io.reactivex.disposables.Disposable;
@@ -82,8 +83,8 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 	@Inject
 	private DeploymentRegistry registry;
 
-	@Getter
-    private String orchestratorId;
+    @Resource
+    private ProviderConfiguration configuration;
 
     private final List<AbstractMonitorEvent> pendingEvents = Lists.newArrayList();
 
@@ -105,10 +106,7 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
     @Override
     public void setConfiguration(String orchestratorId, ProviderConfiguration configuration) throws PluginConfigurationException {
         // Store orchestrator Id
-        this.orchestratorId = orchestratorId;
-
-        // Configure Rest Clients
-        templateManager.configure(configuration);
+//        this.orchestratorId = orchestratorId;
     }
 
     @Override
@@ -269,7 +267,7 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
      */
     public void postAlienEvent(AbstractMonitorEvent event) {
         event.setDate((new Date()).getTime());
-        event.setOrchestratorId(orchestratorId);
+        event.setOrchestratorId(configuration.getOrchestratorId());
 
         synchronized (pendingEvents) {
             pendingEvents.add(event);

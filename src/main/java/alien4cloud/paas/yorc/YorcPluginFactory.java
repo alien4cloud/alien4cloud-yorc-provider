@@ -52,13 +52,14 @@ public class YorcPluginFactory implements IOrchestratorPluginFactory<YorcOrchest
     private final Map<String, PropertyDefinition> deploymentProperties = buildDeploymentProperties();
 
     @Override
-    public YorcOrchestrator newInstance() {
+    public YorcOrchestrator newInstance(ProviderConfiguration configuration) {
         AnnotationConfigApplicationContext orchestratorContext = new AnnotationConfigApplicationContext();
 
         orchestratorContext.setParent(pluginContext);
         orchestratorContext.setClassLoader(pluginContext.getClassLoader());
 
         ClassLoaderUtil.runWithContextClassLoader(pluginContext.getClassLoader(), () -> {
+            orchestratorContext.getBeanFactory().registerResolvableDependency(ProviderConfiguration.class, configuration);
             orchestratorContext.register(YorcOrchestratorConfiguration.class);
             orchestratorContext.refresh();
         });
