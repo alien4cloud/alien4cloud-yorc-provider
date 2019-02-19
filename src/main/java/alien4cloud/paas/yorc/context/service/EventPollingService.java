@@ -87,7 +87,7 @@ public class EventPollingService {
             switch(event.getType()) {
                 case Event.EVT_INSTANCE:
                 case Event.EVT_DEPLOYMENT:
-                case Event.EVT_OPERATION:
+                case Event.EVT_CUSTOMCMD:
                 case Event.EVT_SCALING:
                 case Event.EVT_WORKFLOW:
                 case Event.EVT_WORKFLOWSTEP:

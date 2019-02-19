@@ -14,7 +14,7 @@ public class Event {
      *  Check with Yorc code for these values.
      */
     public static final String EVT_INSTANCE     = "Instance";
-    public static final String EVT_OPERATION    = "custom-command";
+    public static final String EVT_CUSTOMCMD     = "CustomCommand";
     public static final String EVT_DEPLOYMENT   = "Deployment";
     public static final String EVT_SCALING      = "scaling";
     public static final String EVT_WORKFLOW     = "Workflow";

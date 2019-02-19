@@ -31,7 +31,35 @@ public class WorkflowInformationService {
                 break;
             case Event.EVT_DEPLOYMENT:
                 processDeploymentEvent(event);
+            case Event.EVT_CUSTOMCMD:
+                processCustomCommandEvent(event);
             default:
+                log.warn("Unhandled status for event : {}", event);
+        }
+    }
+
+    private void processCustomCommandEvent(Event event) {
+        // alienTaskId is null in this event, but for a custom command, we can use the same id than executionId (1 single operation)
+        event.setAlienTaskId(event.getAlienExecutionId());
+        event.setWorkflowId("Custom Command");
+        switch(event.getStatus()) {
+            case "initial":
+                postWorkflowEvent(event, new PaaSWorkflowStartedEvent());
+                postTaskEvent(event, new TaskSentEvent());
+                break;
+            case "running":
+                postTaskEvent(event, new TaskStartedEvent());
+                break;
+            case "done":
+                postWorkflowEvent(event, new PaaSWorkflowSucceededEvent());
+                postTaskEvent(event, new TaskSucceededEvent());
+                break;
+            case "failed":
+                postWorkflowEvent(event, new PaaSWorkflowFailedEvent());
+                postTaskEvent(event, new TaskFailedEvent());
+                break;
+            default:
+                log.warn("Unhandled status for event : {}", event);
         }
     }
 
@@ -56,6 +84,7 @@ public class WorkflowInformationService {
             case "error":
                 postTaskEvent(event,new TaskFailedEvent());
             default:
+                log.warn("Unhandled status for event : {}", event);
         }
     }
 
@@ -69,6 +98,7 @@ public class WorkflowInformationService {
                 postWorkflowStepEvent(event,new WorkflowStepCompletedEvent());
                 break;
             default:
+                log.warn("Unhandled status for event : {}", event);
         }
     }
 
@@ -87,6 +117,7 @@ public class WorkflowInformationService {
                 postWorkflowEvent(event,new PaaSWorkflowFailedEvent());
                 break;
             default:
+                log.warn("Unhandled status for event : {}", event);
         }
     }
 
