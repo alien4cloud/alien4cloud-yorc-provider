@@ -31,8 +31,10 @@ public class WorkflowInformationService {
                 break;
             case Event.EVT_DEPLOYMENT:
                 processDeploymentEvent(event);
+                break;
             case Event.EVT_CUSTOMCMD:
                 processCustomCommandEvent(event);
+                break;
             default:
                 log.warn("Unhandled status for event : {}", event);
         }
