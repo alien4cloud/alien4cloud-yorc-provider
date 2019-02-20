@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Getter
 @Setter
 @NoArgsConstructor
-@FormProperties({"urlYorc", "insecureTLS", "connectionTimeout", "socketTimeout", "executorThreadPoolSize", "IOThreadCount", "eventPollingPeriod", "logPollingPeriod", "connectionMaxPoolSize", "connectionEvictionPeriod", "connectionTtl", "connectionMaxIdleTime" })
+@FormProperties({"urlYorc", "insecureTLS", "connectionTimeout", "socketTimeout", "executorThreadPoolSize", "IOThreadCount", "pollingRetryDelay", "connectionMaxPoolSize", "connectionEvictionPeriod", "connectionTtl", "connectionMaxIdleTime" })
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class ProviderConfiguration implements IPaaSProviderConfiguration {
@@ -73,16 +73,9 @@ public class ProviderConfiguration implements IPaaSProviderConfiguration {
     @FormPropertyDefinition(
             type = "integer",
             defaultValue = "2",
-            description = "eventPollingPeriod: in seconds, the period used to poll events"
+            description = "pollingRetryDelay: in seconds, the delay before reconnecting to poll events / log when long polling connection is in error."
     )
-    private Integer eventPollingPeriod = 2;
-
-    @FormPropertyDefinition(
-            type = "integer",
-            defaultValue = "2",
-            description = "logPollingPeriod: in seconds, the period used to poll logs"
-    )
-    private Integer logPollingPeriod = 2;
+    private Integer pollingRetryDelay = 2;
 
     @FormPropertyDefinition(
             type = "integer",

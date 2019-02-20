@@ -96,7 +96,7 @@ public class LogEventPollingService {
     private void processErrors(Throwable t) {
         if (!stopped) {
             log.error("Event polling Exception: {}", t.getMessage());
-            Single.timer(configuration.getLogPollingPeriod(),TimeUnit.SECONDS,scheduler)
+            Single.timer(configuration.getPollingRetryDelay(),TimeUnit.SECONDS,scheduler)
                     .flatMap(x -> client.get(index))
                     .subscribe(this::processEvents,this::processErrors);
         }

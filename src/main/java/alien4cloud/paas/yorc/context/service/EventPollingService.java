@@ -114,7 +114,7 @@ public class EventPollingService {
         if (!stopped) {
             if (log.isErrorEnabled())
                 log.error("Event polling Exception: {}", t.getMessage());
-            Single.timer(configuration.getEventPollingPeriod(),TimeUnit.SECONDS,scheduler)
+            Single.timer(configuration.getPollingRetryDelay(),TimeUnit.SECONDS,scheduler)
                 .flatMap(x -> client.get(index))
                 .subscribe(this::processEvents,this::processErrors);
         }
