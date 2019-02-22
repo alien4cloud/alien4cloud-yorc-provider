@@ -1,23 +1,21 @@
 package alien4cloud.paas.yorc.context.service;
 
-import java.util.Map;
-
+import alien4cloud.paas.yorc.context.rest.response.Event;
 import alien4cloud.paas.yorc.context.rest.response.LogEvent;
 import alien4cloud.paas.yorc.context.service.fsm.FsmEvents;
 import alien4cloud.paas.yorc.context.service.fsm.FsmMapper;
+import alien4cloud.paas.yorc.context.service.fsm.StateMachineService;
+import com.google.common.collect.Maps;
 import io.reactivex.Scheduler;
 import io.reactivex.functions.Consumer;
+import io.reactivex.subjects.PublishSubject;
 import io.reactivex.subjects.Subject;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.Message;
 import org.springframework.stereotype.Service;
 
-import com.google.common.collect.Maps;
-
-import alien4cloud.paas.yorc.context.rest.response.Event;
-import io.reactivex.subjects.PublishSubject;
-import lombok.extern.slf4j.Slf4j;
-
 import javax.inject.Inject;
+import java.util.Map;
 
 @Slf4j
 @Service
@@ -78,7 +76,7 @@ public class BusService {
     }
 
     public void publish(Message<FsmEvents> message) {
-        String deploymentId = (String) message.getHeaders().get("deploymentId");
+        String deploymentId = (String) message.getHeaders().get(StateMachineService.YORC_DEPLOYMENT_ID);
 
         Buses b = eventBuses.get(deploymentId);
         if (b != null) {

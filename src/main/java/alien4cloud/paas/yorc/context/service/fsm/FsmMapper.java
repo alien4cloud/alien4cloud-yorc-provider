@@ -1,9 +1,8 @@
 package alien4cloud.paas.yorc.context.service.fsm;
 
+import alien4cloud.paas.yorc.context.rest.response.Event;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
-
-import alien4cloud.paas.yorc.context.rest.response.Event;
 
 public class FsmMapper {
 
@@ -32,7 +31,7 @@ public class FsmMapper {
 
         return MessageBuilder
             .withPayload(payload)
-            .setHeader("deploymentId", event.getDeploymentId())
+            .setHeader(StateMachineService.YORC_DEPLOYMENT_ID, event.getDeploymentId())
             .build();
     }
 

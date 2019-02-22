@@ -1,29 +1,21 @@
 package alien4cloud.paas.yorc.context.service.fsm;
 
-import java.util.Map;
-
-import javax.inject.Inject;
-
+import alien4cloud.paas.IPaaSCallback;
+import alien4cloud.paas.model.DeploymentStatus;
+import alien4cloud.paas.model.PaaSDeploymentContext;
+import alien4cloud.paas.model.PaaSDeploymentStatusMonitorEvent;
+import alien4cloud.paas.yorc.context.YorcOrchestrator;
+import alien4cloud.paas.yorc.context.service.*;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.Maps;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.statemachine.StateMachine;
 import org.springframework.stereotype.Component;
 
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.Maps;
-
-import alien4cloud.paas.IPaaSCallback;
-import alien4cloud.paas.model.DeploymentStatus;
-import alien4cloud.paas.model.PaaSDeploymentContext;
-import alien4cloud.paas.model.PaaSDeploymentStatusMonitorEvent;
-import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
-import alien4cloud.paas.yorc.context.YorcOrchestrator;
-import alien4cloud.paas.yorc.context.service.BusService;
-import alien4cloud.paas.yorc.context.service.DeploymentRegistry;
-import alien4cloud.paas.yorc.context.service.InstanceInformationService;
-import alien4cloud.paas.yorc.context.service.LogEventService;
-import alien4cloud.paas.yorc.context.service.WorkflowInformationService;
-import lombok.extern.slf4j.Slf4j;
+import javax.inject.Inject;
+import java.util.Map;
 
 @Component
 @Slf4j
@@ -39,7 +31,7 @@ public class StateMachineService {
 	private DeploymentRegistry registry;
 
 	public static final String DEPLOYMENT_CONTEXT = "deploymentContext";
-	public static final String DEPLOYMENT_ID = "deploymentId";
+	public static final String YORC_DEPLOYMENT_ID = "yorcDeploymentId";
 	public static final String CALLBACK = "callback";
 	public static final String TASK_URL = "taskURL";
 
@@ -132,7 +124,7 @@ public class StateMachineService {
 	}
 
 	private void talk(Message<FsmEvents> message) {
-		String deploymentId = (String) message.getHeaders().get(DEPLOYMENT_ID);
+		String deploymentId = (String) message.getHeaders().get(YORC_DEPLOYMENT_ID);
 		StateMachine<FsmStates, FsmEvents> fsm = cache.get(deploymentId);
 		if (fsm != null) {
 			// Set up some necessary variables for each fsm
@@ -142,7 +134,7 @@ public class StateMachineService {
 				fsm.getExtendedState().getVariables().put(DEPLOYMENT_CONTEXT, context);
 			if (callback != null)
 				fsm.getExtendedState().getVariables().put(CALLBACK, callback);
-			fsm.getExtendedState().getVariables().put(DEPLOYMENT_ID, deploymentId);
+			fsm.getExtendedState().getVariables().put(YORC_DEPLOYMENT_ID, deploymentId);
 
 			fsm.sendEvent(message);
 		} else {
@@ -185,7 +177,7 @@ public class StateMachineService {
 	 */
 	public Message<FsmEvents> createMessage(FsmEvents event, String deploymentId) {
 		return MessageBuilder.withPayload(event)
-				.setHeader(StateMachineService.DEPLOYMENT_ID, deploymentId)
+				.setHeader(StateMachineService.YORC_DEPLOYMENT_ID, deploymentId)
 				.build();
 	}
 
@@ -198,7 +190,7 @@ public class StateMachineService {
 	protected Message<FsmEvents> createMessage(FsmEvents event, PaaSDeploymentContext deploymentContext) {
 		return MessageBuilder.withPayload(event)
 				.setHeader(StateMachineService.DEPLOYMENT_CONTEXT, deploymentContext)
-				.setHeader(StateMachineService.DEPLOYMENT_ID, deploymentContext.getDeploymentPaaSId())
+				.setHeader(StateMachineService.YORC_DEPLOYMENT_ID, deploymentContext.getDeploymentPaaSId())
 				.build();
 	}
 
@@ -213,7 +205,7 @@ public class StateMachineService {
 		return MessageBuilder.withPayload(event)
 				.setHeader(StateMachineService.CALLBACK, callback)
 				.setHeader(StateMachineService.DEPLOYMENT_CONTEXT, deploymentContext)
-				.setHeader(StateMachineService.DEPLOYMENT_ID, deploymentContext.getDeploymentPaaSId())
+				.setHeader(StateMachineService.YORC_DEPLOYMENT_ID, deploymentContext.getDeploymentPaaSId())
 				.build();
 	}
 
@@ -244,15 +236,13 @@ public class StateMachineService {
 	}
 
 	/**
-	 * Set the deployment context for the according fsm
-	 * @param context Deployment context
+	 * Set the deployment id for the according fsm.
 	 */
-	public void setDeploymentContext(PaaSTopologyDeploymentContext context) throws Exception {
-		if (!cache.containsKey(context.getDeploymentPaaSId())) {
-			throw new Exception(String.format("Fsm-%s does not exist", context.getDeploymentPaaSId()));
+	public void setYorcDeploymentId(String yorcDeploymentId) throws Exception {
+		if (!cache.containsKey(yorcDeploymentId)) {
+			throw new Exception(String.format("Fsm-%s does not exist", yorcDeploymentId));
 		}
-		Map<Object, Object> variables = cache.get(context.getDeploymentPaaSId()).getExtendedState().getVariables();
-		variables.put(DEPLOYMENT_CONTEXT, context);
-		variables.put(DEPLOYMENT_ID, context.getDeploymentPaaSId());
+		Map<Object, Object> variables = cache.get(yorcDeploymentId).getExtendedState().getVariables();
+		variables.put(YORC_DEPLOYMENT_ID, yorcDeploymentId);
 	}
 }

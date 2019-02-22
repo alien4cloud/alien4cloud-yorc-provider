@@ -1,20 +1,5 @@
 package alien4cloud.paas.yorc.context;
 
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-
-import javax.annotation.Resource;
-import javax.inject.Inject;
-
-import io.reactivex.disposables.Disposable;
-import org.springframework.context.ApplicationContext;
-import org.springframework.messaging.Message;
-import org.springframework.stereotype.Component;
-
-import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-
 import alien4cloud.orchestrators.plugin.ILocationConfiguratorPlugin;
 import alien4cloud.orchestrators.plugin.IOrchestratorPlugin;
 import alien4cloud.orchestrators.plugin.model.PluginArchive;
@@ -22,28 +7,30 @@ import alien4cloud.paas.IPaaSCallback;
 import alien4cloud.paas.exception.MaintenanceModeException;
 import alien4cloud.paas.exception.OperationExecutionException;
 import alien4cloud.paas.exception.PluginConfigurationException;
-import alien4cloud.paas.model.AbstractMonitorEvent;
-import alien4cloud.paas.model.DeploymentStatus;
-import alien4cloud.paas.model.InstanceInformation;
-import alien4cloud.paas.model.NodeOperationExecRequest;
-import alien4cloud.paas.model.PaaSDeploymentContext;
-import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
+import alien4cloud.paas.model.*;
 import alien4cloud.paas.yorc.configuration.ProviderConfiguration;
 import alien4cloud.paas.yorc.context.rest.DeploymentClient;
 import alien4cloud.paas.yorc.context.rest.TemplateManager;
-import alien4cloud.paas.yorc.context.service.BusService;
-import alien4cloud.paas.yorc.context.service.DeploymentRegistry;
-import alien4cloud.paas.yorc.context.service.EventPollingService;
-import alien4cloud.paas.yorc.context.service.InstanceInformationService;
-import alien4cloud.paas.yorc.context.service.LogEventPollingService;
+import alien4cloud.paas.yorc.context.service.*;
 import alien4cloud.paas.yorc.context.service.fsm.FsmEvents;
 import alien4cloud.paas.yorc.context.service.fsm.FsmMapper;
 import alien4cloud.paas.yorc.context.service.fsm.FsmStates;
 import alien4cloud.paas.yorc.context.service.fsm.StateMachineService;
 import alien4cloud.paas.yorc.location.AbstractLocationConfigurerFactory;
 import alien4cloud.paas.yorc.service.PluginArchiveService;
+import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationContext;
+import org.springframework.messaging.Message;
+import org.springframework.stereotype.Component;
+
+import javax.annotation.Resource;
+import javax.inject.Inject;
+import java.util.Date;
+import java.util.List;
+import java.util.Map;
 
 @Slf4j
 @Component
@@ -105,12 +92,11 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 
     @Override
     public void setConfiguration(String orchestratorId, ProviderConfiguration configuration) throws PluginConfigurationException {
-        // Store orchestrator Id
-//        this.orchestratorId = orchestratorId;
+        // nothing to do here, all is now handled by configuration.
     }
 
     @Override
-    public void init(Map<String, PaaSTopologyDeploymentContext> activeDeployments) {
+    public void init(Map<String, String> activeDeployments) {
         if (log.isInfoEnabled())
             log.info("Init Yorc plugin for " + activeDeployments.size() + " active deployments");
 
@@ -136,9 +122,7 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
         instanceInformationService.init(initialStates.keySet());
 
         // Register Ids
-        for (PaaSTopologyDeploymentContext context : activeDeployments.values()) {
-            registry.register(context);
-        }
+        activeDeployments.forEach((yorcDeploymentId, deploymentId) -> registry.register(yorcDeploymentId, deploymentId));
 
 		// Create the state machines for each deployment
         stateMachineService.newStateMachine(initialStates);
@@ -147,12 +131,12 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
         stateMachineService.setTaskUrl(taskURLs);
 
         // Set the deployment context for the active state machines
-        activeDeployments.values().forEach(context -> {
+        activeDeployments.keySet().forEach(yorcDeploymentId -> {
             try {
-                stateMachineService.setDeploymentContext(context);
+                stateMachineService.setYorcDeploymentId(yorcDeploymentId);
             } catch (Exception e) {
                 if (log.isErrorEnabled()) {
-                    log.error(String.format("Fsm not found when setting context in fsm for deployment %s", context.getDeploymentPaaSId()));
+                    log.error(String.format("Fsm not found when setting context in fsm for deployment %s", yorcDeploymentId));
                 }
             }
         });
@@ -176,7 +160,7 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
         stateMachineService.newStateMachine(deploymentContext.getDeploymentPaaSId());
 
         // Registering alienId to yorcId
-        registry.register(deploymentContext);
+        registry.register(deploymentContext.getDeploymentPaaSId(), deploymentContext.getDeploymentId());
 
         Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.DEPLOYMENT_STARTED, deploymentContext, callback);
         busService.publish(message);
