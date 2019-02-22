@@ -92,6 +92,7 @@ public class EventPollingService {
                 case Event.EVT_WORKFLOW:
                 case Event.EVT_WORKFLOWSTEP:
                 case Event.EVT_ALIENTASK:
+                case Event.EVT_ATTRIBUTE:
                     bus.publish(event);
                     break;
                 default:
