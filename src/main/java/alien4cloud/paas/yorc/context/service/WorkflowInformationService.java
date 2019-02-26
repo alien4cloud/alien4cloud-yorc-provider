@@ -36,7 +36,9 @@ public class WorkflowInformationService {
                 processCustomCommandEvent(event);
                 break;
             default:
-                log.warn("Unhandled status for event : {}", event);
+                if (log.isDebugEnabled()) {
+                    log.debug("Unhandled status for event : {}", event);
+                }
         }
     }
 
