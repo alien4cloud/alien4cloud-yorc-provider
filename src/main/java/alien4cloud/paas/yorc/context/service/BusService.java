@@ -25,11 +25,11 @@ public class BusService {
     private Scheduler scheduler;
 
     private static class Buses {
-        private final Subject<Event> events = PublishSubject.create();
-        private final Subject<LogEvent> logs = PublishSubject.create();
+        private Subject<Event> events = PublishSubject.create();
+        private Subject<LogEvent> logs = PublishSubject.create();
 
         // Synchronize this one because onNext can be called by multiple threads
-        private final Subject<Message<FsmEvents>> messages = PublishSubject.<Message<FsmEvents>>create().toSerialized();
+        private Subject<Message<FsmEvents>> messages = PublishSubject.<Message<FsmEvents>>create().toSerialized();
     }
 
     private Map<String, Buses> eventBuses = Maps.newConcurrentMap();
@@ -61,16 +61,30 @@ public class BusService {
         eventBuses.get(deploymentId).logs.subscribe(callback);
     }
 
+    public void unsubscribeEvents(String deploymentId) {
+        Buses b = eventBuses.get(deploymentId);
+        if (b != null) {
+            b.events = null;
+        }
+    }
+
+    public void unsubscribeLogs(String deploymentId) {
+        Buses b = eventBuses.get(deploymentId);
+        if (b != null) {
+            b.logs = null;
+        }
+    }
+
     public void publish(Event event) {
         Buses b = eventBuses.get(event.getDeploymentId());
-        if (b != null) {
+        if (b != null && b.events != null) {
             b.events.onNext(event);
         }
     }
 
     public void publish(LogEvent logEvent) {
         Buses b = eventBuses.get(logEvent.getDeploymentId());
-        if (b != null) {
+        if (b != null && b.logs != null) {
             b.logs.onNext(logEvent);
         }
     }
@@ -79,7 +93,7 @@ public class BusService {
         String deploymentId = (String) message.getHeaders().get(StateMachineService.YORC_DEPLOYMENT_ID);
 
         Buses b = eventBuses.get(deploymentId);
-        if (b != null) {
+        if (b != null && b.messages != null) {
             b.messages.onNext(message);
         }
     }

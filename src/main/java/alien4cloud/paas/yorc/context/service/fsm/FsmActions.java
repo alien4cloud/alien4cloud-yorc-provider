@@ -120,6 +120,9 @@ public class FsmActions {
 			// Send event
 			stateMachineService.sendEventToAlien(yorcDeploymentId, FsmStates.UNDEPLOYED);
 
+			// Delete Events Buses
+			busService.deleteEventBuses(yorcDeploymentId);
+
 			// Cleanup YorcId <-> AlienID
 			registry.unregister(yorcDeploymentId);
 
@@ -206,8 +209,9 @@ public class FsmActions {
 				if (log.isInfoEnabled())
 					log.info("Purging " + yorcDeploymentId);
 
-				// Cancel subscription
-				busService.deleteEventBuses(yorcDeploymentId);
+				// Cancel subscriptions
+				busService.unsubscribeEvents(yorcDeploymentId);
+				busService.unsubscribeLogs(yorcDeploymentId);
 
 				deploymentClient.purge(yorcDeploymentId).subscribe(this::onHttpOk, this::onHttpKo);
 			}
