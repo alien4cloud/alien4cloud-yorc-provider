@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Getter
 @Setter
 @NoArgsConstructor
-@FormProperties({"urlYorc", "insecureTLS", "connectionTimeout", "socketTimeout", "executorThreadPoolSize", "IOThreadCount", "pollingRetryDelay", "connectionMaxPoolSize", "connectionEvictionPeriod", "connectionTtl", "connectionMaxIdleTime" })
+@FormProperties({"urlYorc", "insecureTLS", "connectionTimeout", "socketTimeout", "executorThreadPoolSize", "IOThreadCount", "pollingRetryDelay", "connectionMaxPoolSize", "connectionEvictionPeriod", "connectionTtl", "connectionMaxIdleTime", "registryEvictionPerdiod", "registryEntryTtl" })
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class ProviderConfiguration implements IPaaSProviderConfiguration {
@@ -104,6 +104,20 @@ public class ProviderConfiguration implements IPaaSProviderConfiguration {
             description = "connectionMaxIdleTime: in seconds, the max time an IDLE connection is kept in the pool."
     )
     private Integer connectionMaxIdleTime = 120;
+
+    @FormPropertyDefinition(
+            type = "integer",
+            defaultValue = "120",
+            description = "registryEvictionPeriod: in seconds, the period used to run registry eviction."
+    )
+    private Integer registryEvictionPerdiod = 120;
+
+    @FormPropertyDefinition(
+            type = "integer",
+            defaultValue = "600",
+            description = "registryEntryTtl: in seconds, the max time to live for a registry entry."
+    )
+    private Integer registryEntryTtl = 600;
 
     private String orchestratorName;
     private String orchestratorId;

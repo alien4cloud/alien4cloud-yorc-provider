@@ -1,5 +1,7 @@
 package alien4cloud.paas.yorc.context.service;
 
+import alien4cloud.paas.model.PaaSDeploymentLog;
+import alien4cloud.paas.model.PaaSDeploymentLogLevel;
 import alien4cloud.paas.yorc.configuration.ProviderConfiguration;
 import alien4cloud.paas.yorc.context.YorcOrchestrator;
 import alien4cloud.paas.yorc.context.rest.LogEventClient;
@@ -32,6 +34,9 @@ public class LogEventPollingService {
 
     @Inject
     private LogEventClient client;
+
+    @Inject
+    private DeploymentRegistry registry;
 
     @Inject
     private BusService bus;
@@ -79,7 +84,15 @@ public class LogEventPollingService {
         LogEventDTO response = entity.getBody();
 
         for (LogEvent logEvent : response.getLogs()) {
-            bus.publish(logEvent);
+
+            if (log.isTraceEnabled()) {
+                log.trace("Log received : {}", logEvent);
+            }
+
+            PaaSDeploymentLog paasLog = toPaasDeploymentLog(logEvent);
+            if (paasLog != null) {
+                bus.publish(paasLog);
+            }
         }
 
         index = response.getLast_index();
@@ -123,5 +136,31 @@ public class LogEventPollingService {
 
     private void saveIndex() {
         dao.save(new LogEventIndex(configuration.getOrchestratorId(),index));
+    }
+
+
+    private PaaSDeploymentLog toPaasDeploymentLog(final LogEvent logEvent) {
+        String alienId = registry.toAlienId(logEvent.getDeploymentId());
+        if (alienId == null) {
+            return null;
+        }
+
+        PaaSDeploymentLog deploymentLog = new PaaSDeploymentLog();
+        deploymentLog.setDeploymentId(alienId);
+        deploymentLog.setDeploymentPaaSId(logEvent.getDeploymentId());
+        deploymentLog.setContent(logEvent.getContent());
+        deploymentLog.setExecutionId(logEvent.getExecutionId());
+        deploymentLog.setInstanceId(logEvent.getInstanceId());
+        deploymentLog.setInterfaceName(logEvent.getInterfaceName());
+        deploymentLog.setLevel(PaaSDeploymentLogLevel.fromLevel(logEvent.getLevel().toLowerCase()));
+        deploymentLog.setType(logEvent.getType());
+        deploymentLog.setNodeId(logEvent.getNodeId());
+        deploymentLog.setTimestamp(logEvent.getDate());
+        deploymentLog.setRawtimestamp(logEvent.getTimestamp());
+        deploymentLog.setWorkflowId(logEvent.getWorkflowId());
+        deploymentLog.setOperationName(logEvent.getOperationName());
+        deploymentLog.setTaskId(logEvent.getAlienTaskId());
+
+        return deploymentLog;
     }
 }

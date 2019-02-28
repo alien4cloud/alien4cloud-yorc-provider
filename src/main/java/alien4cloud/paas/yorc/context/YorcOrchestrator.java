@@ -118,6 +118,9 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
                 }
             });
 
+        // Start the deployementId registry
+        registry.init();
+
         // Initialize InstanceInformationService
         instanceInformationService.init(initialStates.keySet());
 
@@ -150,6 +153,9 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
         // Notify Pollers that they have to stop
         eventPollingService.term();
         logEventPollingService.term();
+
+        // Notify termination to Registry
+        registry.term();
 
         // TemplateManager shutdown
         templateManager.term();

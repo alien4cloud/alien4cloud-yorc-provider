@@ -1,5 +1,6 @@
 package alien4cloud.paas.yorc.context.service;
 
+import alien4cloud.paas.model.PaaSDeploymentLog;
 import alien4cloud.paas.yorc.context.rest.response.Event;
 import alien4cloud.paas.yorc.context.rest.response.LogEvent;
 import alien4cloud.paas.yorc.context.service.fsm.FsmEvents;
@@ -26,11 +27,12 @@ public class BusService {
 
     private static class Buses {
         private Subject<Event> events = PublishSubject.create();
-        private Subject<LogEvent> logs = PublishSubject.create();
 
         // Synchronize this one because onNext can be called by multiple threads
         private Subject<Message<FsmEvents>> messages = PublishSubject.<Message<FsmEvents>>create().toSerialized();
     }
+
+    private Subject<PaaSDeploymentLog> logs = PublishSubject.create();
 
     private Map<String, Buses> eventBuses = Maps.newConcurrentMap();
 
@@ -57,21 +59,14 @@ public class BusService {
         eventBuses.get(deploymentId).events.subscribe(callback);
     }
 
-    public void subscribeLogs(String deploymentId, Consumer<LogEvent> callback) {
-        eventBuses.get(deploymentId).logs.subscribe(callback);
+    public void subscribeLogs(Consumer<PaaSDeploymentLog> callback) {
+        logs.subscribe(callback);
     }
 
     public void unsubscribeEvents(String deploymentId) {
         Buses b = eventBuses.get(deploymentId);
         if (b != null) {
             b.events = null;
-        }
-    }
-
-    public void unsubscribeLogs(String deploymentId) {
-        Buses b = eventBuses.get(deploymentId);
-        if (b != null) {
-            b.logs = null;
         }
     }
 
@@ -82,11 +77,8 @@ public class BusService {
         }
     }
 
-    public void publish(LogEvent logEvent) {
-        Buses b = eventBuses.get(logEvent.getDeploymentId());
-        if (b != null && b.logs != null) {
-            b.logs.onNext(logEvent);
-        }
+    public void publish(PaaSDeploymentLog logEvent) {
+        logs.onNext(logEvent);
     }
 
     public void publish(Message<FsmEvents> message) {

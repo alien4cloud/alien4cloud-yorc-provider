@@ -211,7 +211,6 @@ public class FsmActions {
 
 				// Cancel subscriptions
 				busService.unsubscribeEvents(yorcDeploymentId);
-				busService.unsubscribeLogs(yorcDeploymentId);
 
 				deploymentClient.purge(yorcDeploymentId).subscribe(this::onHttpOk, this::onHttpKo);
 			}

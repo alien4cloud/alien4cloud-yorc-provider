@@ -104,9 +104,6 @@ public class StateMachineService {
 
 		// Subscribe events on the WorkflowInformationService
 		busService.subscribeEvents(id,workflowInformationService::onEvent);
-
-		// Subscribe logs events on the LogEventService
-		busService.subscribeLogs(id,logEventService::onEvent);
 	}
 
 	private StateMachine<FsmStates, FsmEvents> createFsm(String id, FsmStates initialState) {
