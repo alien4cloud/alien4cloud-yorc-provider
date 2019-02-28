@@ -43,11 +43,6 @@ import java.util.concurrent.atomic.AtomicBoolean;
 @Service
 public class TemplateManager {
 
-//    private static final int EVICTION_MAX_TIME = 5;
-//    private static final int EVICTION_MAX_IDLE = 2;
-//
-//    private static final int EVITION_FREQUENCY = 1;
-
     @Inject
     private Scheduler scheduler;
 
@@ -73,7 +68,7 @@ public class TemplateManager {
     @PostConstruct
     public void configure() throws PluginConfigurationException {
         log.info("Configuring connection manager using ConnectionMaxPoolSize: {}, ConnectionTtl: {}s", configuration.getConnectionMaxPoolSize(), configuration.getConnectionTtl());
-        log.info("Connectino eviction will be done each {} seconds, ConnectionMaxIdleTime: {}s", configuration.getConnectionEvictionPeriod(), configuration.getConnectionMaxIdleTime());
+        log.info("Connection eviction will be done each {} seconds, ConnectionMaxIdleTime: {}s", configuration.getConnectionEvictionPeriod(), configuration.getConnectionMaxIdleTime());
 
         AsyncClientHttpRequestFactory factory;
         HostnameVerifier verifier;
