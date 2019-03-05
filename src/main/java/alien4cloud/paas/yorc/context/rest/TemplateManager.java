@@ -22,10 +22,14 @@ import org.apache.http.nio.conn.NoopIOSessionStrategy;
 import org.apache.http.nio.conn.SchemeIOSessionStrategy;
 import org.apache.http.nio.conn.ssl.SSLIOSessionStrategy;
 import org.apache.http.nio.reactor.ConnectingIOReactor;
+import org.apache.http.pool.PoolStats;
 import org.apache.http.ssl.SSLContexts;
 
 import org.springframework.http.client.AsyncClientHttpRequestFactory;
 import org.springframework.http.client.HttpComponentsAsyncClientHttpRequestFactory;
+import org.springframework.jmx.export.annotation.ManagedAttribute;
+import org.springframework.jmx.export.annotation.ManagedResource;
+import org.springframework.jmx.export.naming.SelfNaming;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.AsyncRestTemplate;
 
@@ -33,15 +37,19 @@ import org.springframework.web.client.AsyncRestTemplate;
 import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import javax.inject.Inject;
+import javax.management.MalformedObjectNameException;
+import javax.management.ObjectName;
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLContext;
+import java.util.Hashtable;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 @Slf4j
 @Service
-public class TemplateManager {
+@ManagedResource
+public class TemplateManager implements SelfNaming {
 
     @Inject
     private Scheduler scheduler;
@@ -161,5 +169,34 @@ public class TemplateManager {
         } else {
             return new HttpHost(host, 8080);
         }
+    }
+
+    @ManagedAttribute
+    public int getAvailable() {
+        return manager.getTotalStats().getAvailable();
+    }
+
+    @ManagedAttribute
+    public int getMax() {
+        return manager.getTotalStats().getMax();
+    }
+
+    @ManagedAttribute
+    public int getLeased() {
+        return manager.getTotalStats().getLeased();
+    }
+
+    @ManagedAttribute
+    public int getPending() {
+        return manager.getTotalStats().getPending();
+    }
+
+    @Override
+    public ObjectName getObjectName() throws MalformedObjectNameException {
+        Hashtable<String,String> kv = new Hashtable();
+        kv.put("type","Orchestrators");
+        kv.put("orchestratorName",configuration.getOrchestratorName());
+        kv.put("name","TemplateManager");
+        return new ObjectName("alien4cloud.paas.yorc",kv);
     }
 }

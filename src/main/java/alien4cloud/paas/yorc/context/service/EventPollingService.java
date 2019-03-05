@@ -11,15 +11,23 @@ import io.reactivex.Scheduler;
 import io.reactivex.Single;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jmx.export.annotation.ManagedAttribute;
+import org.springframework.jmx.export.annotation.ManagedResource;
+import org.springframework.jmx.export.naming.SelfNaming;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import javax.inject.Inject;
+import javax.management.MalformedObjectNameException;
+import javax.management.ObjectName;
+import java.util.Hashtable;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 @Slf4j
 @Service
-public class EventPollingService {
+@ManagedResource
+public class EventPollingService implements SelfNaming {
 
     @Inject
     protected Scheduler scheduler;
@@ -48,6 +56,11 @@ public class EventPollingService {
      * Stopped flag
      */
     private boolean stopped = false;
+
+    /**
+     * Total event count
+     */
+    private AtomicLong totalCount = new AtomicLong(0);
 
     /**
      * Initialize the polling
@@ -93,6 +106,7 @@ public class EventPollingService {
                 case Event.EVT_WORKFLOWSTEP:
                 case Event.EVT_ALIENTASK:
                 case Event.EVT_ATTRIBUTE:
+                    totalCount.getAndIncrement();
                     bus.publish(event);
                     break;
                 default:
@@ -142,5 +156,19 @@ public class EventPollingService {
 
     private void saveIndex() {
         dao.save(new EventIndex(configuration.getOrchestratorId(),index));
+    }
+
+    @ManagedAttribute
+    public long getTotalEventCount() {
+        return totalCount.get();
+    }
+
+    @Override
+    public ObjectName getObjectName() throws MalformedObjectNameException {
+        Hashtable<String,String> kv = new Hashtable();
+        kv.put("type","Orchestrators");
+        kv.put("orchestratorName",configuration.getOrchestratorName());
+        kv.put("name","EventPollingService");
+        return new ObjectName("alien4cloud.paas.yorc",kv);
     }
 }

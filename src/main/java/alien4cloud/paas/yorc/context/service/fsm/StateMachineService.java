@@ -4,22 +4,34 @@ import alien4cloud.paas.IPaaSCallback;
 import alien4cloud.paas.model.DeploymentStatus;
 import alien4cloud.paas.model.PaaSDeploymentContext;
 import alien4cloud.paas.model.PaaSDeploymentStatusMonitorEvent;
+import alien4cloud.paas.yorc.configuration.ProviderConfiguration;
 import alien4cloud.paas.yorc.context.YorcOrchestrator;
 import alien4cloud.paas.yorc.context.service.*;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.jmx.export.annotation.ManagedAttribute;
+import org.springframework.jmx.export.annotation.ManagedResource;
+import org.springframework.jmx.export.naming.SelfNaming;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
 import org.springframework.statemachine.StateMachine;
 import org.springframework.stereotype.Component;
 
+import javax.annotation.Resource;
 import javax.inject.Inject;
+import javax.management.MalformedObjectNameException;
+import javax.management.ObjectName;
+import java.util.Hashtable;
 import java.util.Map;
 
 @Component
 @Slf4j
-public class StateMachineService {
+@ManagedResource
+public class StateMachineService implements SelfNaming {
+
+	@Resource
+	private ProviderConfiguration configuration;
 
 	@Inject
 	private FsmBuilder builder;
@@ -241,5 +253,19 @@ public class StateMachineService {
 		}
 		Map<Object, Object> variables = cache.get(yorcDeploymentId).getExtendedState().getVariables();
 		variables.put(YORC_DEPLOYMENT_ID, yorcDeploymentId);
+	}
+
+	@ManagedAttribute
+	public long getStateMachineCount() {
+		return cache.size();
+	}
+
+	@Override
+	public ObjectName getObjectName() throws MalformedObjectNameException {
+		Hashtable<String,String> kv = new Hashtable();
+		kv.put("type","Orchestrators");
+		kv.put("orchestratorName",configuration.getOrchestratorName());
+		kv.put("name","StateMachineService");
+		return new ObjectName("alien4cloud.paas.yorc",kv);
 	}
 }

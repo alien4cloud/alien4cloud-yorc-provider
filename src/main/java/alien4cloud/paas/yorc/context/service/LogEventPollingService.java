@@ -13,15 +13,23 @@ import io.reactivex.Scheduler;
 import io.reactivex.Single;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
+import org.springframework.jmx.export.annotation.ManagedAttribute;
+import org.springframework.jmx.export.annotation.ManagedResource;
+import org.springframework.jmx.export.naming.SelfNaming;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
 import javax.inject.Inject;
+import javax.management.MalformedObjectNameException;
+import javax.management.ObjectName;
+import java.util.Hashtable;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicLong;
 
 @Slf4j
 @Service
-public class LogEventPollingService {
+@ManagedResource
+public class LogEventPollingService implements SelfNaming {
 
     @Inject
     private Scheduler scheduler;
@@ -53,6 +61,11 @@ public class LogEventPollingService {
      * Stopped flag
      */
     private boolean stopped = false;
+
+    /**
+     * Total event count
+     */
+    private AtomicLong totalCount = new AtomicLong(0);
 
     /**
      * Initialize the polling
@@ -91,6 +104,7 @@ public class LogEventPollingService {
 
             PaaSDeploymentLog paasLog = toPaasDeploymentLog(logEvent);
             if (paasLog != null) {
+                totalCount.getAndIncrement();
                 bus.publish(paasLog);
             }
         }
@@ -162,5 +176,19 @@ public class LogEventPollingService {
         deploymentLog.setTaskId(logEvent.getAlienTaskId());
 
         return deploymentLog;
+    }
+
+    @ManagedAttribute
+    public long getTotalLogEventCount() {
+        return totalCount.get();
+    }
+
+    @Override
+    public ObjectName getObjectName() throws MalformedObjectNameException {
+        Hashtable<String,String> kv = new Hashtable();
+        kv.put("type","Orchestrators");
+        kv.put("orchestratorName",configuration.getOrchestratorName());
+        kv.put("name","LogEventPollingService");
+        return new ObjectName("alien4cloud.paas.yorc",kv);
     }
 }
