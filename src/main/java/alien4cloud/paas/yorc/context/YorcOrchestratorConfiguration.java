@@ -13,6 +13,7 @@ import org.apache.http.nio.reactor.IOReactorException;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.EnableMBeanExport;
 
 import javax.annotation.PreDestroy;
 import javax.annotation.Resource;
@@ -26,6 +27,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 @ComponentScan(basePackages = {
         "alien4cloud.paas.yorc.context"
 })
+@EnableMBeanExport
+
 public class YorcOrchestratorConfiguration {
 
     /**
