@@ -113,6 +113,14 @@ public class FsmActions {
 		};
 	}
 
+	protected Action<FsmStates, FsmEvents> forceRefreshAttributes() {
+		return stateContext -> {
+			String yorcDeploymentId = (String) stateContext.getExtendedState().getVariables().get(StateMachineService.YORC_DEPLOYMENT_ID);
+
+			instanceInformationService.forceRefresh(yorcDeploymentId);
+		};
+	}
+
 	protected Action<FsmStates, FsmEvents> cleanup() {
 		return stateContext -> {
 			String yorcDeploymentId = (String) stateContext.getExtendedState().getVariables().get(StateMachineService.YORC_DEPLOYMENT_ID);

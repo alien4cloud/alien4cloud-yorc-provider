@@ -300,4 +300,16 @@ public class InstanceInformationService {
         );
     }
 
+    public void forceRefresh(String deploymentId) {
+        Observable<String> links = Observable.just("/deployments/" + deploymentId);
+
+        Browser.browserFor(links, url -> client.queryUrl(url,DeploymentDTO.class),1)
+                .flatMap( agg -> agg.follow("node", url -> client.queryUrl(url,NodeDTO.class),5))
+                .flatMap( agg -> agg.follow("instance", url -> client.queryUrl(url,InstanceDTO.class), 5))
+                .flatMap( agg -> agg.follow("attribute", url -> client.queryUrl(url,AttributeDTO.class),10),true)
+                .doOnSubscribe( x -> log.info("INST/ATTR Queries started for {}",deploymentId))
+                .doOnError( x -> log.error("INST/ATTR Queries KO for {} : {}",deploymentId,x.getMessage()))
+                .doOnComplete( () -> log.info("INST/ATTR Queries OK for {}",deploymentId))
+                .subscribe(this::onAttribute,this::onError);
+    }
 }

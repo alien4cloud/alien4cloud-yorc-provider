@@ -60,6 +60,7 @@ public class FsmBuilder {
 			.withExternal()
 			.source(FsmStates.DEPLOYMENT_IN_PROGRESS).target(FsmStates.DEPLOYED)
 			.event(FsmEvents.DEPLOYMENT_SUCCESS)
+			.action(actions.forceRefreshAttributes())
 			.and()
 			.withExternal()
 			.source(FsmStates.DEPLOYMENT_IN_PROGRESS).target(FsmStates.FAILED)
