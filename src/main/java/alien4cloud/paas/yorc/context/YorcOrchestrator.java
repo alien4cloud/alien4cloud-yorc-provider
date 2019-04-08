@@ -31,6 +31,7 @@ import javax.inject.Inject;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Slf4j
 @Component
@@ -116,8 +117,12 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
                 String deploymentId = deployment.getId();
                 initialStates.put(deploymentId, FsmMapper.fromYorcToFsmState(deployment.getStatus()));
                 if (ifRunning(deployment.getStatus())) {
-                    String url = deploymentClient.getTaskURL(deploymentId).blockingGet();
-                    taskURLs.put(deploymentId, url);
+                    Optional<String> url = deploymentClient.getTaskURL(deploymentId).blockingGet();
+                    if (url.isPresent()) {
+                        taskURLs.put(deploymentId, url.get());
+                    } else {
+                        log.warn("Deployment {} in running state with no task",deploymentId);
+                    }
                 }
             });
 

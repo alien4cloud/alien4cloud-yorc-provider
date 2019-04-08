@@ -18,6 +18,8 @@ import io.reactivex.Observable;
 import io.reactivex.Single;
 import lombok.extern.slf4j.Slf4j;
 
+import java.util.Optional;
+
 @Slf4j
 @Component
 public class DeploymentClient extends AbstractClient {
@@ -149,16 +151,16 @@ public class DeploymentClient extends AbstractClient {
                 .map(RestUtil.extractHeader("Location"));
     }
 
-    public Single<String> getTaskURL(String deploymentId) {
+    public Single<Optional<String>> getTaskURL(String deploymentId) {
         String url = getYorcUrl() + "/deployments/" + deploymentId;
         return sendRequest(url, HttpMethod.GET, DeploymentDTO.class, buildHttpEntityWithDefaultHeader())
                 .map(RestUtil.extractBodyWithDefault(DeploymentDTO::new)).map(deployment -> {
                     for (Link link : deployment.getLinks()) {
                         if ("task".equals(link.getRel())) {
-                            return link.getHref();
+                            return Optional.of(link.getHref());
                         }
                     }
-                    return null;
+                    return Optional.empty();
                 });
     }
 
