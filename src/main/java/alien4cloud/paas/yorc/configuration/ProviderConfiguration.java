@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Getter
 @Setter
 @NoArgsConstructor
-@FormProperties({"urlYorc", "insecureTLS", "connectionTimeout", "socketTimeout", "executorThreadPoolSize", "IOThreadCount", "pollingRetryDelay", "connectionMaxPoolSize", "connectionEvictionPeriod", "connectionTtl", "connectionMaxIdleTime", "registryEvictionPerdiod", "registryEntryTtl" })
+@FormProperties({"urlYorc", "insecureTLS", "connectionTimeout", "socketTimeout", "executorThreadPoolSize", "IOThreadCount", "pollingRetryDelay", "connectionMaxPoolSize", "connectionEvictionPeriod", "connectionTtl", "connectionMaxIdleTime", "registryEvictionPerdiod", "registryEntryTtl", "cleanupDeploymentsPeriod" })
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class ProviderConfiguration implements IPaaSProviderConfiguration {
@@ -118,6 +118,13 @@ public class ProviderConfiguration implements IPaaSProviderConfiguration {
             description = "registryEntryTtl: in seconds, the max time to live for a registry entry."
     )
     private Integer registryEntryTtl = 600;
+
+    @FormPropertyDefinition(
+            type = "integer",
+            defaultValue = "300",
+            description = "cleanupDeploymentsPeriod: in seconds, the period used to check deployments."
+    )
+    private Integer cleanupDeploymentsPeriod = 300;
 
     private String orchestratorName;
     private String orchestratorId;

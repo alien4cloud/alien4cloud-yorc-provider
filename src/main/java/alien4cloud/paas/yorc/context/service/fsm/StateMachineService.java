@@ -24,6 +24,7 @@ import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 import java.util.Hashtable;
 import java.util.Map;
+import java.util.Set;
 
 @Component
 @Slf4j
@@ -166,6 +167,10 @@ public class StateMachineService implements SelfNaming {
 		} else {
 			return getState(fsm.getState().getId());
 		}
+	}
+
+	public Set<String> getDeploymentIds() {
+		return cache.keySet();
 	}
 
 	private DeploymentStatus getState(FsmStates state) {

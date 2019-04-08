@@ -10,4 +10,5 @@ public enum FsmEvents {
     DEPLOYMENT_NOT_EXISTING,
     DEPLOYMENT_CONFLICT,
     FAILURE,
+    EVICTION,
 }

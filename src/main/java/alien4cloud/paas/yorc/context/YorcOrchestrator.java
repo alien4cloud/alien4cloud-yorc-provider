@@ -70,6 +70,9 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 	@Inject
 	private DeploymentRegistry registry;
 
+	@Inject
+    private DeployementCheckService checker;
+
     @Resource
     private ProviderConfiguration configuration;
 
@@ -147,9 +150,15 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
         // Start Pollers
         eventPollingService.init();
         logEventPollingService.init();
+
+        // Start the deployment checker
+        checker.init();
     }
 
     public void term() {
+        // Notify checker termination
+        checker.term();
+
         // Notify Pollers that they have to stop
         eventPollingService.term();
         logEventPollingService.term();
