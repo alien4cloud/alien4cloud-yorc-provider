@@ -14,6 +14,7 @@ import org.springframework.stereotype.Service;
 import javax.inject.Inject;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -115,12 +116,12 @@ public class DeploymentRegistry {
     private synchronized void doEviction() {
         int ttl = configuration.getRegistryEntryTtl();
         Instant now = Instant.now();
-        for (DeploymentData data : yMap.values()) {
-            if (data.deleted != null) {
-                if (Duration.between(data.deleted,now).getSeconds() > ttl) {
-                    yMap.remove(data.yorcId);
-                    aMap.remove(data.alienId);
-                }
+
+        for (Iterator<DeploymentData> it = yMap.values().iterator();it.hasNext();) {
+            DeploymentData data = it.next();
+            if (data.deleted != null && (Duration.between(data.deleted,now).getSeconds() > ttl)) {
+                aMap.remove(data.alienId);
+                it.remove();
             }
         }
     }
