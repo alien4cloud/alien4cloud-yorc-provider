@@ -110,20 +110,11 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
         // - Build a Map deploymentId -> FsmStates
         // - Build a Map deploymentId -> taskUrl
         Map<String, FsmStates> initialStates = Maps.newHashMap();
-        Map<String, String> taskURLs = Maps.newHashMap();
         deploymentClient.get()
             .filter(deployment -> activeDeployments.containsKey(deployment.getId()))
             .blockingForEach(deployment -> {
                 String deploymentId = deployment.getId();
                 initialStates.put(deploymentId, FsmMapper.fromYorcToFsmState(deployment.getStatus()));
-                if (ifRunning(deployment.getStatus())) {
-                    Optional<String> url = deploymentClient.getTaskURL(deploymentId).blockingGet();
-                    if (url.isPresent()) {
-                        taskURLs.put(deploymentId, url.get());
-                    } else {
-                        log.warn("Deployment {} in running state with no task",deploymentId);
-                    }
-                }
             });
 
         // Start the deployementId registry
@@ -137,9 +128,6 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 
 		// Create the state machines for each deployment
         stateMachineService.newStateMachine(initialStates);
-
-        // Set the task url for the running deployment
-        stateMachineService.setTaskUrl(taskURLs);
 
         // Set the deployment context for the active state machines
         activeDeployments.keySet().forEach(yorcDeploymentId -> {

@@ -55,7 +55,8 @@ public class StateMachineService implements SelfNaming {
 			.put(FsmStates.DEPLOYMENT_INIT, DeploymentStatus.INIT_DEPLOYMENT)
 			.put(FsmStates.DEPLOYMENT_IN_PROGRESS, DeploymentStatus.DEPLOYMENT_IN_PROGRESS)
 			.put(FsmStates.DEPLOYED, DeploymentStatus.DEPLOYED)
-			.put(FsmStates.TASK_CANCELING, DeploymentStatus.UNDEPLOYMENT_IN_PROGRESS)
+            .put(FsmStates.CANCELLATION_REQUESTED, DeploymentStatus.DEPLOYMENT_IN_PROGRESS)
+			.put(FsmStates.TASK_CANCELLING, DeploymentStatus.UNDEPLOYMENT_IN_PROGRESS)
 			.put(FsmStates.UNDEPLOYMENT_IN_PROGRESS, DeploymentStatus.UNDEPLOYMENT_IN_PROGRESS)
 			.put(FsmStates.UNDEPLOYMENT_PURGING, DeploymentStatus.UNDEPLOYMENT_IN_PROGRESS)
 			.put(FsmStates.FAILED, DeploymentStatus.FAILURE)
@@ -238,16 +239,24 @@ public class StateMachineService implements SelfNaming {
 		}
 	}
 
-	public void setTaskUrl(String deploymentId, String url) throws Exception {
-		if (!cache.containsKey(deploymentId)) {
-			throw new Exception(String.format("Fsm-%s does not exist", deploymentId));
+	public void setTaskUrl(String deploymentId, String url) {
+		StateMachine<FsmStates, FsmEvents> fsm = cache.get(deploymentId);
+
+		if (fsm != null) {
+			fsm.getExtendedState().getVariables().put(TASK_URL, url);
+		} else {
+			log.warn("Fsm-{} does not exist", deploymentId);
 		}
-		cache.get(deploymentId).getExtendedState().getVariables().put(TASK_URL, url);
 	}
 
-	public void setTaskUrl(Map<String, String> map) {
-		map.entrySet().stream().filter(e -> cache.containsKey(e.getKey())).forEach(e -> cache.get(e.getKey()).getExtendedState().getVariables().put(TASK_URL, e.getValue()));
-	}
+	public String getTaskUrl(String deploymentId) {
+        StateMachine<FsmStates, FsmEvents> fsm = cache.get(deploymentId);
+        if (fsm != null) {
+            return (String) fsm.getExtendedState().getVariables().get(TASK_URL);
+        } else {
+            return null;
+        }
+    }
 
 	/**
 	 * Set the deployment id for the according fsm.

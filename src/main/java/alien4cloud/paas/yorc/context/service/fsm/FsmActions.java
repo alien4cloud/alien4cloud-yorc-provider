@@ -5,6 +5,8 @@ import alien4cloud.paas.model.PaaSDeploymentLog;
 import alien4cloud.paas.model.PaaSDeploymentLogLevel;
 import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
 import alien4cloud.paas.yorc.context.rest.DeploymentClient;
+import alien4cloud.paas.yorc.context.rest.response.DeploymentDTO;
+import alien4cloud.paas.yorc.context.rest.response.Link;
 import alien4cloud.paas.yorc.context.service.BusService;
 import alien4cloud.paas.yorc.context.service.DeploymentRegistry;
 import alien4cloud.paas.yorc.context.service.InstanceInformationService;
@@ -102,10 +104,49 @@ public class FsmActions {
 		};
 	}
 
+	protected Action<FsmStates, FsmEvents> requestCancelTask() {
+	    return new Action<FsmStates, FsmEvents>() {
+
+			private PaaSTopologyDeploymentContext context;
+
+			private void onHttpOk(DeploymentDTO deployment) {
+				for (Link link : deployment.getLinks()) {
+					if (link.getRel().equals("task")) {
+						stateMachineService.setTaskUrl(deployment.getId(),link.getHref());
+
+						Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.UNDEPLOYMENT_STARTED, deployment.getId());
+						busService.publish(message);
+
+						break;
+					}
+				}
+			}
+
+			private void onHttpKo(Throwable t) {
+				if (log.isErrorEnabled())
+					log.error("HTTP Request KO : {}", t.getMessage());
+			}
+
+			@Override
+			public void execute(StateContext<FsmStates, FsmEvents> stateContext) {
+				String yorcDeploymentId = (String) stateContext.getExtendedState().getVariables().get(StateMachineService.YORC_DEPLOYMENT_ID);
+				String taskUrl = stateMachineService.getTaskUrl(yorcDeploymentId);
+
+				if (taskUrl == null) {
+					deploymentClient.get(yorcDeploymentId).subscribe(this::onHttpOk, this::onHttpKo);
+				} else {
+					Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.UNDEPLOYMENT_STARTED, yorcDeploymentId);
+					busService.publish(message);
+				}
+			}
+		};
+    }
+
 	protected Action<FsmStates, FsmEvents> cancelTask() {
 		return stateContext -> {
 			String deploymentId = (String) stateContext.getExtendedState().getVariables().get(StateMachineService.YORC_DEPLOYMENT_ID);
-			String taskId = (String) stateContext.getExtendedState().getVariables().get(StateMachineService.TASK_URL);
+			String taskId = stateMachineService.getTaskUrl(deploymentId);
+
 			if (log.isInfoEnabled()) {
 				log.info(String.format("Cancelling the task %s for deployment %s", taskId, deploymentId));
 			}

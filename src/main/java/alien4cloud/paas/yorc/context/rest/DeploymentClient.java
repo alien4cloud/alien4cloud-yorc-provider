@@ -151,17 +151,4 @@ public class DeploymentClient extends AbstractClient {
                 .map(RestUtil.extractHeader("Location"));
     }
 
-    public Single<Optional<String>> getTaskURL(String deploymentId) {
-        String url = getYorcUrl() + "/deployments/" + deploymentId;
-        return sendRequest(url, HttpMethod.GET, DeploymentDTO.class, buildHttpEntityWithDefaultHeader())
-                .map(RestUtil.extractBodyWithDefault(DeploymentDTO::new)).map(deployment -> {
-                    for (Link link : deployment.getLinks()) {
-                        if ("task".equals(link.getRel())) {
-                            return Optional.of(link.getHref());
-                        }
-                    }
-                    return Optional.empty();
-                });
-    }
-
 }
