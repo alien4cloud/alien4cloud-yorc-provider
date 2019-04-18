@@ -12,6 +12,8 @@ import alien4cloud.paas.yorc.context.service.DeploymentRegistry;
 import alien4cloud.paas.yorc.context.service.InstanceInformationService;
 import alien4cloud.paas.yorc.context.service.LogEventService;
 import alien4cloud.paas.yorc.service.ZipBuilder;
+import alien4cloud.paas.yorc.util.RestUtil;
+import com.fasterxml.jackson.databind.JsonNode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -24,6 +26,7 @@ import org.springframework.web.client.HttpClientErrorException;
 import javax.inject.Inject;
 import java.io.IOException;
 import java.util.Date;
+import java.util.Iterator;
 
 @Slf4j
 @Service
@@ -64,6 +67,26 @@ public class FsmActions {
 			}
 
 			private void onHttpKo(Throwable t) {
+				if (t instanceof HttpClientErrorException) {
+					String body = ((HttpClientErrorException) t).getResponseBodyAsString();
+
+					try {
+						JsonNode node = RestUtil.toJson().apply(body);
+
+						for (Iterator<JsonNode> i = node.path("errors").elements() ; i.hasNext() ; ) {
+							JsonNode e = i.next();
+							String title = RestUtil.jsonAsText("title").apply(e);
+							String detail = RestUtil.jsonAsText("detail").apply(e);
+
+							sendHttpErrorToAlienLogs(context.getDeploymentPaaSId(),title,detail);
+						}
+					} catch(Exception e) {
+						// Cannot extract errors from body, we just log the exception
+						sendHttpErrorToAlienLogs(context.getDeploymentPaaSId(), "Error while sending zip to Yorc", t.getMessage());
+					}
+				}
+
+				// Notify failure
 				callback.onFailure(t);
 
 				// If 409 received, it means that the deployment has already existed in orchestrator
@@ -78,9 +101,6 @@ public class FsmActions {
 
 				Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.FAILURE, context);
 				busService.publish(message);
-				sendHttpErrorToAlienLogs(context.getDeploymentPaaSId(), "Error while sending zip to Yorc", t.getMessage());
-				if (log.isErrorEnabled())
-					log.error("HTTP Request KO : {}", t.getMessage());
 			}
 
 			@Override
