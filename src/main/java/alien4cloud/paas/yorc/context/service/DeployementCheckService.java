@@ -86,7 +86,7 @@ public class DeployementCheckService {
 
     private void reschedule() {
         // Reschedule eviction task
-        disposable = Completable.timer(30, TimeUnit.SECONDS, scheduler).subscribe(this::checkTask);
+        disposable = Completable.timer(configuration.getCleanupDeploymentsPeriod(), TimeUnit.SECONDS, scheduler).subscribe(this::checkTask);
     }
 
     private void cleanup(Set<String> deploymentIds) {
