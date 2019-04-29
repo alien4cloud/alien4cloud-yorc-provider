@@ -20,6 +20,7 @@ import alien4cloud.paas.yorc.location.AbstractLocationConfigurerFactory;
 import alien4cloud.paas.yorc.service.PluginArchiveService;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationContext;
@@ -28,10 +29,7 @@ import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
 import javax.inject.Inject;
-import java.util.Date;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 @Slf4j
 @Component
@@ -100,7 +98,7 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
     }
 
     @Override
-    public void init(Map<String, String> activeDeployments) {
+    public Set<String> init(Map<String, String> activeDeployments) {
         if (log.isInfoEnabled())
             log.info("Init Yorc plugin for " + activeDeployments.size() + " active deployments");
 
@@ -146,6 +144,8 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 
         // Start the deployment checker
         checker.init();
+
+        return initialStates.keySet();
     }
 
     public void term() {
