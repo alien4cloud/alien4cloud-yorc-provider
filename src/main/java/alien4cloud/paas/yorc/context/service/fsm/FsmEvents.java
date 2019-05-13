@@ -1,6 +1,7 @@
 package alien4cloud.paas.yorc.context.service.fsm;
 
 public enum FsmEvents {
+    DEPLOYMENT_INIT,
     DEPLOYMENT_STARTED,
     DEPLOYMENT_IN_PROGRESS,
     DEPLOYMENT_SUCCESS,

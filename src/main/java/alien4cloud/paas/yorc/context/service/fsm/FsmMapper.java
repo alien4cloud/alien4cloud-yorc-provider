@@ -42,6 +42,8 @@ public class FsmMapper {
      */
     private static FsmEvents fromYorcToFsmEvent(String status) throws Exception {
         switch (status.toUpperCase()) {
+            case "INITIAL":
+                return FsmEvents.DEPLOYMENT_INIT;
             case "DEPLOYED":
                 return FsmEvents.DEPLOYMENT_SUCCESS;
             case "UNDEPLOYED":
