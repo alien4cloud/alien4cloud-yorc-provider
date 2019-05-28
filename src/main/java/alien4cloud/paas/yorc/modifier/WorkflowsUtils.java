@@ -86,12 +86,14 @@ public class WorkflowsUtils {
             );
 
         }
-        step.getPrecedingSteps().forEach(s -> {
-            WorkflowStep wfs = workflow.getSteps().get(s);
-            if (wfs != null) {
-                wfs.getOnSuccess().remove(stepName);
-            }
+
+        // Remove links to our step
+        workflow.getSteps().values().forEach( s -> {
+            s.removeFollowing(stepName);
+            s.removePreceding(stepName);
         });
+
+        // Remove the step
         workflow.getSteps().remove(stepName);
     }
 
@@ -101,6 +103,7 @@ public class WorkflowsUtils {
         WorkflowStep ws = new NodeWorkflowStep(nodeTemplate.getName(), hostId, sswa);
         String stepName = nodeTemplate.getName() + "-" + state + "-yorc-generated";
         workflow.getSteps().put(stepName, ws);
+        ws.setName(stepName);
         return stepName;
     }
 
@@ -112,6 +115,7 @@ public class WorkflowsUtils {
             cowa.setOperationName(operationName);
             WorkflowStep ws = new NodeWorkflowStep(nodeTemplate.getName(), hostId, cowa);
             stepName = nodeTemplate.getName() + "-" + ToscaNodeLifecycleConstants.STANDARD_SHORT + "." + operationName + "-yorc-generated";
+            ws.setName(stepName);
             workflow.getSteps().put(stepName, ws);
         }
         return stepName;
@@ -139,16 +143,20 @@ public class WorkflowsUtils {
     }
 
     private static void linkToStep(Workflow workflow, Set<String> fromSteps, String toStep) {
+        WorkflowStep ts = workflow.getSteps().get(toStep);
+
         fromSteps.forEach(s -> {
             WorkflowStep wf = workflow.getSteps().get(s);
             if (wf != null) {
                 wf.addFollowing(toStep);
+                ts.addPreceding(wf.getName());
             }
         });
     }
 
     private static void linkFromStep(Workflow workflow, String fromStep, Set<String> toSteps) {
         workflow.getSteps().get(fromStep).addAllFollowings(toSteps);
+        toSteps.stream().map(name -> workflow.getSteps().get(name)).forEach(step -> step.addPreceding(fromStep));
     }
 
     private static boolean isOperationImplemented(NodeTemplate nodeTemplate, String interfaceName, String operationName) {
