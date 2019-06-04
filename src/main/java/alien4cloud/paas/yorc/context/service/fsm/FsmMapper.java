@@ -48,6 +48,8 @@ public class FsmMapper {
                 return FsmEvents.DEPLOYMENT_SUCCESS;
             case "UNDEPLOYED":
                 return FsmEvents.UNDEPLOYMENT_SUCCESS;
+            case "PURGED":
+                return FsmEvents.DEPLOYMENT_PURGED;
             case "DEPLOYMENT_IN_PROGRESS":
             case "SCALING_IN_PROGRESS":
                 return FsmEvents.DEPLOYMENT_IN_PROGRESS;

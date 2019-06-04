@@ -189,6 +189,9 @@ public class FsmActions {
 			// Send event
 			stateMachineService.sendEventToAlien(yorcDeploymentId, FsmStates.UNDEPLOYED);
 
+			// Cancel subscriptions
+			busService.unsubscribeEvents(yorcDeploymentId);
+
 			// Delete Events Buses
 			busService.deleteEventBuses(yorcDeploymentId);
 
@@ -254,8 +257,6 @@ public class FsmActions {
 			private void onHttpOk(String value) {
 				if (log.isDebugEnabled())
 					log.debug("HTTP Request OK : {}", value);
-				Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.DEPLOYMENT_PURGED, yorcDeploymentId);
-				busService.publish(message);
 			}
 
 			private void onHttpKo(Throwable t) {
@@ -277,9 +278,6 @@ public class FsmActions {
 
 				if (log.isInfoEnabled())
 					log.info("Purging " + yorcDeploymentId);
-
-				// Cancel subscriptions
-				busService.unsubscribeEvents(yorcDeploymentId);
 
 				deploymentClient.purge(yorcDeploymentId).subscribe(this::onHttpOk, this::onHttpKo);
 			}
