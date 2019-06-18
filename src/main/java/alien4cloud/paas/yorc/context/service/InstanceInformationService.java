@@ -280,6 +280,7 @@ public class InstanceInformationService {
             case "published":
             case "finished":
             case "done":
+            case "executed":
                 return InstanceStatus.SUCCESS;
             case "deleted":
                 return null;
