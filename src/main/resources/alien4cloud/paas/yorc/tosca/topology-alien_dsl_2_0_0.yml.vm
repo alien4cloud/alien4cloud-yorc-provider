@@ -195,12 +195,12 @@ ${utils.formatArtifact($operationEntry.value.implementationArtifact, 7)}
 #end## if doesInterfaceContainsImplementedOperation
 #end## of interfaces iteration
 #end## if doesInterfacesContainsImplementedOperation
-#set($nodeTopologyArtifacts = $utils.getTopologyArtifacts($template_name, $template_version, $nodeTemplateEntry.value.artifacts))
+#set($nodeTopologyArtifacts = $artifactUtils.getTopologyArtifacts($template_name, $template_version, $nodeTemplateEntry.value.artifacts))
 #if($utils.mapIsNotEmptyAndContainsNotnullValues($nodeTopologyArtifacts))
       artifacts:
 #foreach($artifactEntry in ${nodeTopologyArtifacts.entrySet()})
         $artifactEntry.key:
-${utils.formatArtifact($artifactEntry.value, 5)}
+${artifactUtils.formatArtifact($artifactEntry.value, 5)}
 #end## of $artifactEntry iteration
 #end## if has artifacts
 #end## of nodeTemplateEntry iteration
