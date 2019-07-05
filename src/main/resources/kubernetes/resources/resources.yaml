@@ -8,10 +8,6 @@ imports:
   - org.alien4cloud.kubernetes.api:${alien4cloud.kubernetes.api.version}
 
 artifact_types:
-  tosca.artifacts.Deployment.Image.Container.Docker.Kubernetes:
-    description: Docker Container Image to be deployed by Kubernetes
-    derived_from: tosca.artifacts.Deployment.Image.Container.Docker
-
   yorc.artifacts.Deployment.Kubernetes:
     description: Docker deployment descriptor
     derived_from: tosca.artifacts.Deployment
