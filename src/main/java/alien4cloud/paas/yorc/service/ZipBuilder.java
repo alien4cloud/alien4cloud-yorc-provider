@@ -1,17 +1,16 @@
 package alien4cloud.paas.yorc.service;
 
 import alien4cloud.component.ICSARRepositorySearchService;
-import alien4cloud.component.repository.ArtifactRepositoryConstants;
 import alien4cloud.model.components.CSARSource;
 import alien4cloud.model.deployment.DeploymentTopology;
 import alien4cloud.paas.model.PaaSNodeTemplate;
 import alien4cloud.paas.model.PaaSTopology;
 import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
 import alien4cloud.paas.yorc.tosca.model.templates.YorcServiceNodeTemplate;
-import alien4cloud.paas.yorc.util.ShowTopology;
 import alien4cloud.tosca.context.ToscaContext;
 import alien4cloud.tosca.model.ArchiveRoot;
 import alien4cloud.tosca.parser.*;
+import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import lombok.extern.slf4j.Slf4j;
 import org.alien4cloud.tosca.catalog.repository.CsarFileRepository;
@@ -97,11 +96,7 @@ public class ZipBuilder {
                 }
             }
 
-            // Copy overwritten artifacts for each node
-            PaaSTopology ptopo = context.getPaaSTopology();
-            for (PaaSNodeTemplate node : ptopo.getAllNodes().values()) {
-                copyArtifacts(node, zos);
-            }
+            Map<String,String> artifactMap = processArtifacts(context,zos);
 
             // Copy modified topology
             createZipEntries("topology.yml", zos);
@@ -110,7 +105,7 @@ public class ZipBuilder {
             DeploymentTopology dtopo = context.getDeploymentTopology();
             Csar myCsar = new Csar(context.getDeploymentPaaSId(), dtopo.getArchiveVersion());
             myCsar.setToscaDefinitionsVersion(ToscaParser.LATEST_DSL);
-            String yaml = toscaTopologyExporter.getYaml(myCsar, dtopo, true);
+            String yaml = toscaTopologyExporter.getYaml(myCsar, dtopo, true, artifactMap);
             zos.write(yaml.getBytes(Charset.forName("UTF-8")));
             zos.closeEntry();
         }
@@ -221,56 +216,53 @@ public class ZipBuilder {
     }
 
     /**
-     * Copy artifacts to archive
-     * @param node
-     * @param zout
+     * Process artifacts
      */
-    private void copyArtifacts(PaaSNodeTemplate node, ZipOutputStream zout) {
-        String name = node.getId();
+    private Map<String,String> processArtifacts(PaaSTopologyDeploymentContext context,ZipOutputStream zos) throws IOException {
+        Map<String,String> map = Maps.newHashMap();
 
-        // Check if this component has artifacts
-        Map<String, DeploymentArtifact> map = node.getTemplate().getArtifacts();
-        if (map == null) {
-            log.debug("Component with no artifact: " + name);
-            return;
-        }
+        PaaSTopology topology = context.getPaaSTopology();
 
-        // Process each artifact
-        for (Map.Entry<String, DeploymentArtifact> da : map.entrySet()) {
-            String aname =  name + "/" + da.getKey();
-            DeploymentArtifact artifact = da.getValue();
-            String artRepo = artifact.getArtifactRepository();
-            if (artRepo == null) {
-                continue;
-            }
-            ShowTopology.printArtifact(artifact);
-            if  (artRepo.equals(ArtifactRepositoryConstants.ALIEN_TOPOLOGY_REPOSITORY)) {
-                // Copy artifact from topology repository to the root of archive.
-                String from = artifact.getArtifactPath();
-                log.debug("Copying local artifact: " + aname + " path=" + from);
-                Path artifactPath = Paths.get(from);
-                try {
-                    String filename = artifact.getArtifactRef();
-                    recursivelyCopyArtifact(artifactPath, filename, zout);
-                } catch (Exception e) {
-                    log.error("Could not copy local artifact " + aname, e);
+        for (PaaSNodeTemplate node : topology.getAllNodes().values()) {
+            Map<String,DeploymentArtifact> artifacts = node.getTemplate().getArtifacts();
+            if (artifacts == null) continue;
+
+            for (DeploymentArtifact artifact : artifacts.values() ) {
+                // Skip local component stored in components
+                if (artifact.getArtifactRepository() == null) continue;
+
+                if (!map.containsKey(artifact.getArtifactPath())) {
+                    String targetName = doCopyArtifact(artifact,zos);
+                    map.put(artifact.getArtifactPath(), targetName);
                 }
-            } else {
-                // Copy remote artifact
-                String from = artifact.getArtifactPath();
-                log.debug("Copying remote artifact: " + aname + " path=" + from);
-                Path artifactPath = Paths.get(from);
-                try {
-                    String filename = artifact.getArtifactRef();
-                    recursivelyCopyArtifact(artifactPath, filename, zout);
-                } catch (Exception e) {
-                    log.error("Could not copy remote artifact " + aname, e);
-                }
-                // Workaround for a bug in a4c: artifact not added in topology.yml
-                // TODO Remove this when a4c bug SUPALIEN-926 is fixed.
-                addRemoteArtifactInTopology(name, da.getKey(), artifact);
             }
         }
+
+        for (Map.Entry<String,String> entry : map.entrySet()) {
+            log.info("Artifact Copy: {} -> {}", entry.getKey(), entry.getValue());
+        }
+
+        return map;
+    }
+
+    private String doCopyArtifact(DeploymentArtifact artifact,ZipOutputStream zos) throws IOException {
+        String targetName = UUID.randomUUID().toString();
+        Path artifactPath = Paths.get(artifact.getArtifactPath());
+
+        if (artifactPath.toFile().isDirectory()) {
+            targetName += "/";
+
+            createZipEntries(targetName,zos);
+            for (String file : artifactPath.toFile().list()) {
+                Path filePath = artifactPath.resolve(file);
+                recursivelyCopyArtifact(filePath, targetName + file,zos);
+            }
+        } else {
+            createZipEntries(targetName,zos);
+            copy(artifactPath.toFile(),zos);
+        }
+
+        return targetName;
     }
 
     private void recursivelyCopyArtifact(Path path, String baseTargetName, ZipOutputStream zos) throws IOException {
@@ -287,109 +279,4 @@ public class ZipBuilder {
         }
     }
 
-    /**
-     * Workaround for a4c issue: SUPALIEN-926
-     * TODO Remove this when a4c bug is fixed. (planned for 1.5)
-     * @param node Node Name
-     * @param key Name of the artifact
-     * @param da
-     */
-    private void addRemoteArtifactInTopology(String node, String key, DeploymentArtifact da) {
-        log.debug("");
-        String oldFileName = "topology.yml";
-        String tmpFileName = "tmp_topology.yml";
-
-        log.debug("Add remote artifact in topology (workaround for SUPALIEN-926)");
-        log.debug(node + " " + key + " : " + da.getArtifactRef() + " - " + da.getArtifactType());
-
-        BufferedReader br = null;
-        BufferedWriter bw = null;
-
-        try {
-            bw = new BufferedWriter(new FileWriter(tmpFileName));
-            br = new BufferedReader(new FileReader(oldFileName));
-            String line;
-            boolean inNode = false;
-            boolean done = false;
-            while ((line = br.readLine()) != null) {
-                if (! done) {
-                    if (line.startsWith("    " + node + ":")) {
-                        inNode = true;
-                        bw.append(line).append("\n");
-                        continue;
-                    }
-                    if (! inNode) {
-                        bw.append(line).append("\n");
-                        continue;
-                    }
-                    if (! line.startsWith("      ")) {
-                        bw.append("      artifacts:\n");
-                        // Add here the 3 lines to describe the remote artifact
-                        String l1 = "        " + key + ":\n";
-                        String l2 = "          file: " + da.getArtifactRef() + "\n";
-                        String l3 = "          type: " + da.getArtifactType() + "\n";
-                        bw.append(l1).append(l2).append(l3);
-                        done = true;
-                        bw.append(line).append("\n");
-                        continue;
-                    }
-                    if (line.startsWith("      artifacts:")) {
-                        bw.append(line).append("\n");
-                        // Add here the 3 lines to describe the remote artifact
-                        String l1 = "        " + key + ":\n";
-                        String l2 = "          file: " + da.getArtifactRef() + "\n";
-                        String l3 = "          type: " + da.getArtifactType() + "\n";
-                        bw.append(l1).append(l2).append(l3);
-                        done = true;
-                        continue;
-                    }
-                }
-                bw.append(line).append("\n");
-            }
-        } catch (Exception e) {
-            log.error("Error while modifying topology.yml");
-            return;
-        } finally {
-            try {
-                if (br != null)
-                    br.close();
-            } catch (IOException e) {
-                log.error("Error closing " + oldFileName, e);
-            }
-            try {
-                if (bw != null)
-                    bw.close();
-            } catch (IOException e) {
-                log.error("Error closing " + tmpFileName, e);
-            }
-        }
-        // Once everything is complete, delete old file..
-        File oldFile = new File(oldFileName);
-        oldFile.delete();
-
-        // And rename tmp file's name to old file name
-        File newFile = new File(tmpFileName);
-        newFile.renameTo(oldFile);
-    }
-
-    private void setNestedValue(Map<String, Object> map, String path, Object value) {
-        String[] parts = path.split(".");
-        Object v = map;
-        for (int i = 0; i < parts.length-1; i++) {
-            v = ((Map<String, Object>)v).get(parts[i]);
-        }
-        if (v != null) {
-            ((Map<String, Object>)v).put(parts[parts.length-1], value);
-        }
-    }
-
-    private Object getNestedValue(Map<String, Object> map, String path) {
-        String[] parts = path.split(".");
-        Object v = map;
-        for (String s : parts) {
-            if (v == null) return null;
-            v = ((Map<String, Object>)v).get(s);
-        }
-        return v;
-    }
 }

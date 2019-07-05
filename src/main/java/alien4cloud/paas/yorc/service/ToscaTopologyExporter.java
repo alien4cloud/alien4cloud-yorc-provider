@@ -5,6 +5,7 @@ import alien4cloud.model.components.CSARSource;
 import alien4cloud.security.AuthorizationUtil;
 import alien4cloud.security.model.User;
 import alien4cloud.tosca.serializer.VelocityUtil;
+import com.google.common.collect.Maps;
 import lombok.extern.slf4j.Slf4j;
 import org.alien4cloud.tosca.catalog.ArchiveDelegateType;
 import org.alien4cloud.tosca.model.CSARDependency;
@@ -44,6 +45,20 @@ public class ToscaTopologyExporter {
      * @return The TOSCA yaml file that describe the topology.
      */
     public String getYaml(Csar csar, Topology topology, boolean generateWorkflow) {
+        return getYaml(csar,topology,generateWorkflow, Maps.newHashMap());
+    }
+
+    /**
+     * Get the yaml string out of a cloud service archive and topology.
+     *
+     * @param csar             The csar that contains archive meta-data.
+     * @param topology         The topology template within the archive.
+     * @param generateWorkflow check if we generate the workflow
+     * @param artifactMap      map of artifacts
+     *
+     * @return The TOSCA yaml file that describe the topology.
+     */
+    public String getYaml(Csar csar, Topology topology, boolean generateWorkflow,Map<String,String> artifactMap) {
         Map<String, Object> velocityCtx = new HashMap<>();
         velocityCtx.put("topology", topology);
         velocityCtx.put("template_name", csar.getName());
@@ -73,6 +88,8 @@ public class ToscaTopologyExporter {
         }
         velocityCtx.put("importsUtils", new ToscaImportsUtils());
         velocityCtx.put("exportUtils", new ToscaExportUtils());
+        velocityCtx.put("artifactUtils", new ArtifactUtils(artifactMap));
+
         ClassLoader oldctccl = Thread.currentThread().getContextClassLoader();
         Thread.currentThread().setContextClassLoader(this.getClass().getClassLoader());
         try {

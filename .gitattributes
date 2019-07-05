@@ -1,0 +1,3 @@
+* text=auto
+*.vm -text
+*.yml.vm -text
