@@ -16,7 +16,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Getter
 @Setter
 @NoArgsConstructor
-@FormProperties({"urlYorc", "insecureTLS", "connectionTimeout", "socketTimeout", "executorThreadPoolSize", "IOThreadCount", "pollingRetryDelay", "connectionMaxPoolSize", "connectionEvictionPeriod", "connectionTtl", "connectionMaxIdleTime", "registryEvictionPerdiod", "registryEntryTtl", "cleanupDeploymentsPeriod" })
+@FormProperties({"urlYorc", "insecureTLS", "undeployStopOnError", "connectionTimeout", "socketTimeout", "executorThreadPoolSize", "IOThreadCount", "pollingRetryDelay", "connectionMaxPoolSize", "connectionEvictionPeriod", "connectionTtl", "connectionMaxIdleTime", "registryEvictionPerdiod", "registryEntryTtl", "cleanupDeploymentsPeriod" })
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class ProviderConfiguration implements IPaaSProviderConfiguration {
@@ -41,6 +41,12 @@ public class ProviderConfiguration implements IPaaSProviderConfiguration {
                 "and may expose to man in the middle attacks."
     )
     private Boolean insecureTLS;
+
+    @FormPropertyDefinition(
+            type = "boolean",
+            description = "Undeploy should stop when an error occurs."
+    )
+    private Boolean undeployStopOnError = Boolean.FALSE;
 
     @FormPropertyDefinition(
             type = "integer",

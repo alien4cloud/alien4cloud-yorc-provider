@@ -4,6 +4,7 @@ import alien4cloud.paas.IPaaSCallback;
 import alien4cloud.paas.model.PaaSDeploymentLog;
 import alien4cloud.paas.model.PaaSDeploymentLogLevel;
 import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
+import alien4cloud.paas.yorc.configuration.ProviderConfiguration;
 import alien4cloud.paas.yorc.context.rest.DeploymentClient;
 import alien4cloud.paas.yorc.context.rest.response.DeploymentDTO;
 import alien4cloud.paas.yorc.context.rest.response.Link;
@@ -23,6 +24,7 @@ import org.springframework.statemachine.action.Action;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.HttpClientErrorException;
 
+import javax.annotation.Resource;
 import javax.inject.Inject;
 import java.io.IOException;
 import java.util.Date;
@@ -52,6 +54,9 @@ public class FsmActions {
 
 	@Inject
 	private LogEventService logEventService;
+
+	@Resource
+	private ProviderConfiguration configuration;
 
 	protected Action<FsmStates, FsmEvents> buildAndSendZip() {
 		return new Action<FsmStates, FsmEvents>() {
@@ -244,7 +249,7 @@ public class FsmActions {
 				if (log.isInfoEnabled())
 					log.info("Undeploying " + yorcDeploymentId);
 
-				deploymentClient.undeploy(yorcDeploymentId).subscribe(this::onHttpOk, this::onHttpKo);
+				deploymentClient.undeploy(yorcDeploymentId,configuration.getUndeployStopOnError()).subscribe(this::onHttpOk, this::onHttpKo);
 			}
 		};
 	}
@@ -279,7 +284,7 @@ public class FsmActions {
 				if (log.isInfoEnabled())
 					log.info("Purging " + yorcDeploymentId);
 
-				deploymentClient.purge(yorcDeploymentId).subscribe(this::onHttpOk, this::onHttpKo);
+				deploymentClient.purge(yorcDeploymentId,configuration.getUndeployStopOnError()).subscribe(this::onHttpOk, this::onHttpKo);
 			}
 
 		};
