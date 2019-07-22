@@ -40,11 +40,26 @@ import javax.inject.Inject;
 import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 import javax.net.ssl.HostnameVerifier;
+import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManagerFactory;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.KeyManager;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.security.*;
+import java.security.Certificate;
+import java.security.cert.*;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.PKCS8EncodedKeySpec;
+import java.util.Base64;
 import java.util.Hashtable;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+
+import org.bouncycastle.asn1.ASN1InputStream;
+import org.bouncycastle.asn1.pkcs.PrivateKeyInfo;
 
 @Slf4j
 @Service
@@ -80,13 +95,38 @@ public class TemplateManager implements SelfNaming {
 
         AsyncClientHttpRequestFactory factory;
         HostnameVerifier verifier;
+        SSLContext context;
 
         HttpHost proxy = getProxy();
 
-        SSLContext context = SSLContexts.createSystemDefault();
+        if(!isSSLConfigProvided()) {
+            context = SSLContexts.createSystemDefault();
+        } else {
+            // In order to configure the SSLContext we need to create a keystore
+            KeyStore keystore;
+            try {
+                keystore = createKeystore();
+            } catch (NoSuchAlgorithmException | KeyStoreException | IOException | CertificateException | InvalidKeySpecException e) {
+                e.printStackTrace();
+                throw new PluginConfigurationException("Failed to create keystore", e);
+            }
+            try {
+                context = SSLContext.getInstance("TLS");
+                context.init(getKeyManagers(keystore), getTrustManagers(keystore), null);
+            } catch (NoSuchAlgorithmException | KeyStoreException | UnrecoverableKeyException
+                    | KeyManagementException e) {
+                e.printStackTrace();
+                throw new PluginConfigurationException("Failed to create SSL context", e);
+            }
+        }
 
         if (Boolean.TRUE.equals(configuration.getInsecureTLS())) {
             verifier = new NoopHostnameVerifier();
+            // TODO
+            // In the Yorc plugin code, here a custom SSLContext is created with SSLContexts.custom()
+            // Then a SSLContextFactory is created with a new AllowAllHostnameVerifier()
+            // Should we use AllowAllHostnameVerifier even if we didn't create a custom SSLContext ?
+            // verifier = new AllowAllHostnameVerifier() -- ??
         } else {
             verifier = new DefaultHostnameVerifier();
         }
@@ -125,6 +165,95 @@ public class TemplateManager implements SelfNaming {
 
         // Schedule eviction task
         disposable = Completable.timer(configuration.getConnectionEvictionPeriod(), TimeUnit.SECONDS, scheduler).subscribe(this::evictionTask);
+    }
+
+    private boolean isSSLConfigProvided() {
+        if(configuration.getUrlYorc().startsWith("https")) {
+            // If SSL configuration is not provided in the plugin, relying
+            // on system default keystore and truststore
+            String caCertif = configuration.getCaCertificate();
+            String clientCertif = configuration.getClientCertificate();
+            String clientKey = configuration.getClientKey();
+            if ((caCertif == null || caCertif.isEmpty())
+                    || (clientCertif == null || clientCertif.isEmpty())
+                    || (clientKey == null || clientKey.isEmpty())
+                    ) {
+                log.warn("Missing CA|Client certificate|Client key in plugin configuration, will use system defaults");
+                if (System.getProperty("javax.net.ssl.keyStore") == null || System.getProperty("javax.net.ssl.keyStorePassword") == null) {
+                    log.warn("Using SSL but you didn't provide client keystore and password. This means that if required by Yorc client authentication will fail.\n" +
+                            "Please use -Djavax.net.ssl.keyStore <keyStorePath> -Djavax.net.ssl.keyStorePassword <password> while starting java VM");
+                }
+                if (System.getProperty("javax.net.ssl.trustStore") == null || System.getProperty("javax.net.ssl.trustStorePassword") == null) {
+                    log.warn("You didn't provide client trustore and password. Using defalut one \n" +
+                            "Please use -Djavax.net.ssl.trustStore <trustStorePath> -Djavax.net.ssl.trustStorePassword <password> while starting java VM");
+                }
+                return false;
+            } else {
+                return true;
+            }
+        } else {
+            return false;
+        }
+    }
+
+    private KeyStore createKeystore() throws CertificateException, IOException, NoSuchAlgorithmException, InvalidKeySpecException, KeyStoreException {
+        // Create the CA certificate from its configuration string value
+        CertificateFactory certFactory = CertificateFactory.getInstance("X.509");
+        ByteArrayInputStream inputStream = new ByteArrayInputStream(
+                configuration.getCaCertificate().getBytes());
+        X509Certificate trustedCert = (X509Certificate)certFactory.generateCertificate(inputStream);
+        inputStream.close();
+
+        // Create the client private key from its configuration string value
+        String keyContent = configuration.getClientKey().
+                replaceFirst("-----BEGIN PRIVATE KEY-----\n", "").
+                replaceFirst("\n-----END PRIVATE KEY-----", "").trim();
+        PKCS8EncodedKeySpec clientKeySpec = new PKCS8EncodedKeySpec(
+                Base64.getMimeDecoder().decode(keyContent));
+        // Getting the key algorithm
+        ASN1InputStream bIn = new ASN1InputStream(new ByteArrayInputStream(clientKeySpec.getEncoded()));
+        PrivateKeyInfo pki = PrivateKeyInfo.getInstance(bIn.readObject());
+        bIn.close();
+        String algorithm = pki.getPrivateKeyAlgorithm().getAlgorithm().getId();
+        // Workaround for a missing algorithm OID in the list of default providers
+        if ("1.2.840.113549.1.1.1".equals(algorithm)) {
+            algorithm = "RSA";
+        }
+        KeyFactory keyFactory = KeyFactory.getInstance(algorithm);
+        PrivateKey clientKey = keyFactory.generatePrivate(clientKeySpec);
+
+        // Create the client certificate from its configuration string value
+        inputStream = new ByteArrayInputStream(
+                configuration.getClientCertificate().getBytes());
+        java.security.cert.Certificate clientCert = certFactory.generateCertificate(inputStream);
+        inputStream.close();
+
+        // Create an empty keystore
+        KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());
+        keystore.load(null);
+
+        // Add the certificate authority
+        keystore.setCertificateEntry(
+                trustedCert.getSubjectX500Principal().getName(),
+                trustedCert);
+
+        // Add client key/certificate and chain to the Key store
+        java.security.cert.Certificate[] chain = {clientCert, trustedCert};
+        keystore.setKeyEntry("Yorc Client", clientKey, "yorc".toCharArray(), chain);
+        return keystore;
+    }
+
+    private KeyManager[] getKeyManagers(KeyStore keystore) throws NoSuchAlgorithmException, KeyStoreException, UnrecoverableKeyException {
+        KeyManagerFactory kmf = KeyManagerFactory.getInstance("NewSunX509");
+        kmf.init(keystore, "yorc".toCharArray());
+        return kmf.getKeyManagers();
+    }
+
+    private TrustManager[] getTrustManagers(KeyStore keystore) throws NoSuchAlgorithmException, KeyStoreException {
+        TrustManagerFactory tmf = TrustManagerFactory.getInstance(
+                    TrustManagerFactory.getDefaultAlgorithm());
+        tmf.init(keystore);
+        return tmf.getTrustManagers();
     }
 
     public AsyncRestTemplate get() {
