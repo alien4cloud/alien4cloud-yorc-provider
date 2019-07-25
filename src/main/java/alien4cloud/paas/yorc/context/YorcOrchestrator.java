@@ -176,7 +176,8 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 
     @Override
     public void update(PaaSTopologyDeploymentContext deploymentContext, IPaaSCallback<?> callback) {
-        callback.onFailure(new UnsupportedOperationException("update topology not supported in Yorc"));
+        Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.UPDATE_STARTED, deploymentContext, callback);
+        busService.publish(message);
     }
 
     @Override

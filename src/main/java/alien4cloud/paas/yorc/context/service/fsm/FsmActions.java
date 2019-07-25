@@ -254,6 +254,81 @@ public class FsmActions {
 		};
 	}
 
+	protected Action<FsmStates, FsmEvents> update() {
+		return new Action<FsmStates, FsmEvents>() {
+
+			private IPaaSCallback<?> callback;
+			private PaaSTopologyDeploymentContext context;
+
+			private void onHttpOk(ResponseEntity<String> value) throws Exception {
+				if (log.isDebugEnabled())
+					log.debug("HTTP Request OK : {}", value);
+
+				// Update can generate task in some cases (add/remove nodes)
+				if (value.getHeaders().get("Location") != null) {
+					String taskURL = value.getHeaders().get("Location").get(0);
+					stateMachineService.setTaskUrl(context.getDeploymentPaaSId(), taskURL);
+				}
+			}
+
+			private void onHttpKo(Throwable t) {
+				if (t instanceof HttpClientErrorException) {
+					String body = ((HttpClientErrorException) t).getResponseBodyAsString();
+
+					try {
+						JsonNode node = RestUtil.toJson().apply(body);
+
+						for (Iterator<JsonNode> i = node.path("errors").elements() ; i.hasNext() ; ) {
+							JsonNode e = i.next();
+							String title = RestUtil.jsonAsText("title").apply(e);
+							String detail = RestUtil.jsonAsText("detail").apply(e);
+
+							sendHttpErrorToAlienLogs(context.getDeploymentPaaSId(),title,detail);
+						}
+					} catch(Exception e) {
+						// Cannot extract errors from body, we just log the exception
+						sendHttpErrorToAlienLogs(context.getDeploymentPaaSId(), "Error while sending zip to Yorc for updating topology", t.getMessage());
+					}
+				}
+
+				// Notify failure
+				callback.onFailure(t);
+
+				// If 409 received, it means that the dupdate is conflicting with another task
+				if (t instanceof HttpClientErrorException && ((HttpClientErrorException) t).getStatusCode().equals(HttpStatus.CONFLICT)) {
+					Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.DEPLOYMENT_CONFLICT, context);
+					busService.publish(message);
+					return;
+				}
+
+				// send manually an event to alien
+				stateMachineService.sendEventToAlien(context.getDeploymentPaaSId(), FsmStates.FAILED);
+
+				Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.FAILURE, context);
+				busService.publish(message);
+			}
+
+			@Override
+			public void execute(StateContext<FsmStates, FsmEvents> stateContext) {
+				byte[] bytes;
+				context = (PaaSTopologyDeploymentContext) stateContext.getExtendedState().getVariables().get(StateMachineService.DEPLOYMENT_CONTEXT);
+				callback = (IPaaSCallback<?>) stateContext.getExtendedState().getVariables().get(StateMachineService.CALLBACK);
+
+				if (log.isInfoEnabled())
+					log.info("Updating " + context.getDeploymentPaaSId() + " with id : " + context.getDeploymentId());
+
+				try {
+					bytes = zipBuilder.build(context);
+				} catch (IOException e) {
+					callback.onFailure(e);
+					return;
+				}
+
+				deploymentClient.sendTopology(context.getDeploymentPaaSId(), bytes).subscribe(this::onHttpOk, this::onHttpKo);
+			}
+		};
+	}
+
 	protected Action<FsmStates, FsmEvents> purge() {
 		return new Action<FsmStates, FsmEvents>() {
 			private String yorcDeploymentId;
