@@ -5,15 +5,14 @@ import alien4cloud.paas.yorc.configuration.ProviderConfiguration;
 import io.reactivex.Completable;
 import io.reactivex.Scheduler;
 import io.reactivex.disposables.Disposable;
-import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 
-import org.apache.http.HttpHost;
 import org.apache.http.config.Registry;
 import org.apache.http.config.RegistryBuilder;
 import org.apache.http.conn.ssl.DefaultHostnameVerifier;
 import org.apache.http.conn.ssl.NoopHostnameVerifier;
 
+import org.apache.http.impl.conn.SystemDefaultRoutePlanner;
 import org.apache.http.impl.nio.client.CloseableHttpAsyncClient;
 import org.apache.http.impl.nio.client.HttpAsyncClientBuilder;
 import org.apache.http.impl.nio.client.HttpAsyncClients;
@@ -22,7 +21,6 @@ import org.apache.http.nio.conn.NoopIOSessionStrategy;
 import org.apache.http.nio.conn.SchemeIOSessionStrategy;
 import org.apache.http.nio.conn.ssl.SSLIOSessionStrategy;
 import org.apache.http.nio.reactor.ConnectingIOReactor;
-import org.apache.http.pool.PoolStats;
 import org.apache.http.ssl.SSLContexts;
 
 import org.springframework.http.client.AsyncClientHttpRequestFactory;
@@ -41,6 +39,7 @@ import javax.management.MalformedObjectNameException;
 import javax.management.ObjectName;
 import javax.net.ssl.HostnameVerifier;
 import javax.net.ssl.SSLContext;
+import java.net.*;
 import java.util.Hashtable;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
@@ -81,8 +80,6 @@ public class TemplateManager implements SelfNaming {
         AsyncClientHttpRequestFactory factory;
         HostnameVerifier verifier;
 
-        HttpHost proxy = getProxy();
-
         SSLContext context = SSLContexts.createSystemDefault();
 
         if (Boolean.TRUE.equals(configuration.getInsecureTLS())) {
@@ -109,13 +106,9 @@ public class TemplateManager implements SelfNaming {
         manager.setMaxTotal(configuration.getConnectionMaxPoolSize());
 
         HttpAsyncClientBuilder builder = HttpAsyncClients.custom()
-                    .setConnectionManager(manager)
-                    .setThreadFactory(threadFactory);
-
-        if (proxy != null) {
-            log.info("Will use HTTP proxy {}", proxy);
-            builder = builder.setProxy(proxy);
-        }
+                .setConnectionManager(manager)
+                .setThreadFactory(threadFactory)
+                .setRoutePlanner(new SystemDefaultRoutePlanner(ProxySelector.getDefault()));
 
         CloseableHttpAsyncClient httpClient = builder.build();
 
@@ -154,21 +147,6 @@ public class TemplateManager implements SelfNaming {
 
         // Reschedule eviction task
         disposable = Completable.timer(configuration.getConnectionEvictionPeriod(), TimeUnit.SECONDS, scheduler).subscribe(this::evictionTask);
-    }
-
-    private HttpHost getProxy() {
-        String host = System.getProperty("http.proxyHost");
-        String port = System.getProperty("http.proxyPort");
-
-        if (host == null) {
-            return null;
-        }
-
-        if (port != null) {
-            return new HttpHost(host, Integer.valueOf(port));
-        } else {
-            return new HttpHost(host, 8080);
-        }
     }
 
     @ManagedAttribute
