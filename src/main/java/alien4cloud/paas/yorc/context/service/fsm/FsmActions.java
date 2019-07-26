@@ -302,7 +302,7 @@ public class FsmActions {
 				}
 
 				// send manually an event to alien
-				stateMachineService.sendEventToAlien(context.getDeploymentPaaSId(), FsmStates.FAILED);
+				stateMachineService.sendEventToAlien(context.getDeploymentPaaSId(), FsmStates.UPDATE_FAILED);
 
 				Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.FAILURE, context);
 				busService.publish(message);

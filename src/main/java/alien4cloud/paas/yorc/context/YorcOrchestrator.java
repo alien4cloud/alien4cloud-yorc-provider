@@ -289,6 +289,12 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
             case "DEPLOYMENT_FAILED":
             case "UNDEPLOYMENT_FAILED":
                 return DeploymentStatus.FAILURE;
+            case "UPDATE_IN_PROGRESS":
+                return DeploymentStatus.UPDATE_IN_PROGRESS;
+            case "UPDATED":
+                return DeploymentStatus.UPDATED;
+            case "UPDATE_FAILURE":
+                return DeploymentStatus.UPDATE_FAILURE;
             default:
                 return DeploymentStatus.UNKNOWN;
         }
@@ -304,6 +310,7 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
             case "DEPLOYMENT_IN_PROGRESS":
             case "SCALING_IN_PROGRESS":
             case "UNDEPLOYMENT_IN_PROGRESS":
+            case "UPDATE_IN_PROGRESS":
                 return true;
             default:
                 return false;

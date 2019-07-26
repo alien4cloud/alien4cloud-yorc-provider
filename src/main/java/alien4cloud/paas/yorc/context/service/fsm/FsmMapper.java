@@ -88,12 +88,12 @@ public class FsmMapper {
             case "DEPLOYMENT_IN_PROGRESS":
                 return FsmStates.DEPLOYMENT_IN_PROGRESS;
             case "DEPLOYMENT_FAILED":
-            case "UPDATE_FAILURE":
-                return FsmStates.FAILED;
             case "UPDATE_IN_PROGRESS":
                 return FsmStates.UPDATE_IN_PROGRESS;
             case "UPDATED":
                 return FsmStates.UPDATED;
+            case "UPDATE_FAILURE":
+                return FsmStates.UPDATE_FAILED;
             default:
                 throw new Exception(String.format("Unknown status from Yorc: %s", status));
 
