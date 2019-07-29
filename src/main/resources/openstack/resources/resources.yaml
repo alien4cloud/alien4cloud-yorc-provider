@@ -25,7 +25,7 @@ policy_types:
       Allows to apply a server group affinity placement policy to OpenStack compute instances
     metadata:
       # pluginId:pluginBean:phase
-      a4c_policy_impl: alien4cloud-yorc-plugin:yorc-openstack-server-group-modifier:post-node-match
+      a4c_policy_impl: alien4cloud-yorc-provider:yorc-openstack-server-group-modifier:post-node-match
     targets: [ tosca.nodes.Compute ]
     properties:
       strict:
@@ -42,7 +42,7 @@ policy_types:
       Allows to apply a server group anti-affinity placement policy to OpenStack compute instances
     metadata:
       # pluginId:pluginBean:phase
-      a4c_policy_impl: alien4cloud-yorc-plugin:yorc-openstack-server-group-modifier:post-node-match
+      a4c_policy_impl: alien4cloud-yorc-provider:yorc-openstack-server-group-modifier:post-node-match
     targets: [ tosca.nodes.Compute ]
     properties:
       strict:
