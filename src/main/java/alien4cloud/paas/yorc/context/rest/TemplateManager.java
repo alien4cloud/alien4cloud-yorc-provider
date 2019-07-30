@@ -48,7 +48,6 @@ import javax.net.ssl.KeyManager;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.security.*;
-import java.security.Certificate;
 import java.security.cert.*;
 import java.security.spec.InvalidKeySpecException;
 import java.security.spec.PKCS8EncodedKeySpec;
@@ -96,8 +95,6 @@ public class TemplateManager implements SelfNaming {
         AsyncClientHttpRequestFactory factory;
         HostnameVerifier verifier;
         SSLContext context;
-
-        HttpHost proxy = getProxy();
 
         if(!isSSLConfigProvided()) {
             context = SSLContexts.createSystemDefault();
@@ -279,21 +276,6 @@ public class TemplateManager implements SelfNaming {
 
         // Reschedule eviction task
         disposable = Completable.timer(configuration.getConnectionEvictionPeriod(), TimeUnit.SECONDS, scheduler).subscribe(this::evictionTask);
-    }
-
-    private HttpHost getProxy() {
-        String host = System.getProperty("http.proxyHost");
-        String port = System.getProperty("http.proxyPort");
-
-        if (host == null) {
-            return null;
-        }
-
-        if (port != null) {
-            return new HttpHost(host, Integer.valueOf(port));
-        } else {
-            return new HttpHost(host, 8080);
-        }
     }
 
     @ManagedAttribute
