@@ -104,7 +104,7 @@ public class TemplateManager implements SelfNaming {
             try {
                 keystore = createKeystore();
             } catch (NoSuchAlgorithmException | KeyStoreException | IOException | CertificateException | InvalidKeySpecException e) {
-                e.printStackTrace();
+                log.error("Failed to create keystore", e);
                 throw new PluginConfigurationException("Failed to create keystore", e);
             }
             try {
@@ -112,7 +112,7 @@ public class TemplateManager implements SelfNaming {
                 context.init(getKeyManagers(keystore), getTrustManagers(keystore), null);
             } catch (NoSuchAlgorithmException | KeyStoreException | UnrecoverableKeyException
                     | KeyManagementException e) {
-                e.printStackTrace();
+                log.error("Failed to create SSL context", e);
                 throw new PluginConfigurationException("Failed to create SSL context", e);
             }
         }
