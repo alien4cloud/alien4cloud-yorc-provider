@@ -88,6 +88,7 @@ public class FsmMapper {
             case "DEPLOYMENT_IN_PROGRESS":
                 return FsmStates.DEPLOYMENT_IN_PROGRESS;
             case "DEPLOYMENT_FAILED":
+                return FsmStates.FAILED;
             case "UPDATE_IN_PROGRESS":
                 return FsmStates.UPDATE_IN_PROGRESS;
             case "UPDATED":
