@@ -2,3 +2,11 @@ target
 /.idea/
 .tmp
 *.iml
+
+.project
+.classpath
+.settings
+
+# VS code IDE files
+**/.vscode/
+**/.factorypath
