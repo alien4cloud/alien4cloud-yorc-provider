@@ -55,8 +55,13 @@ public class FsmMapper {
                 return FsmEvents.DEPLOYMENT_IN_PROGRESS;
             case "UNDEPLOYMENT_IN_PROGRESS":
                 return FsmEvents.UNDEPLOYMENT_STARTED;
+            case "UPDATE_IN_PROGRESS":
+                return FsmEvents.UPDATE_IN_PROGRESS;
+            case "UPDATED":
+                return FsmEvents.UPDATE_SUCCESS;
             case "DEPLOYMENT_FAILED":
             case "UNDEPLOYMENT_FAILED":
+            case "UPDATE_FAILURE":
                 return FsmEvents.FAILURE;
             default:
                 throw new Exception(String.format("Unknown status from Yorc: %s", status));
@@ -84,6 +89,12 @@ public class FsmMapper {
                 return FsmStates.DEPLOYMENT_IN_PROGRESS;
             case "DEPLOYMENT_FAILED":
                 return FsmStates.FAILED;
+            case "UPDATE_IN_PROGRESS":
+                return FsmStates.UPDATE_IN_PROGRESS;
+            case "UPDATED":
+                return FsmStates.UPDATED;
+            case "UPDATE_FAILURE":
+                return FsmStates.UPDATE_FAILED;
             default:
                 throw new Exception(String.format("Unknown status from Yorc: %s", status));
 
