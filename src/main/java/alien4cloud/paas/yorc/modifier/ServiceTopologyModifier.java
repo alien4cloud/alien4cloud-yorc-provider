@@ -18,13 +18,14 @@ import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
 import java.util.HashSet;
-import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Set;
 
 import static alien4cloud.paas.plan.ToscaNodeLifecycleConstants.STARTED;
 
+
 /**
- * Modifies a Topology containing Service Node templates, to remove delegate
+ * Modifies a Topology containing Service Node templates, to remove delegate 
  * operations on these Service Nodes from Workflows.
  * A Service Node Template being an Abstract Node Template, it doesn't support
  * delegate operations.
@@ -39,7 +40,7 @@ public class ServiceTopologyModifier extends TopologyModifierSupport {
     @ToscaContextual
     public void process(Topology topology, FlowExecutionContext context) {
         log.debug("Modifying Workflows on Service Node Templates in topology " +
-                topology.getId());
+            topology.getId());
 
         try {
             WorkflowValidator.disableValidationThreadLocal.set(true);
@@ -54,12 +55,12 @@ public class ServiceTopologyModifier extends TopologyModifierSupport {
         // Names of workflows to modify if they contain delegate operations
         // on services
         Set<String> workflows = new HashSet<String>(Arrays.asList(
-                NormativeWorkflowNameConstants.INSTALL,
-                NormativeWorkflowNameConstants.UNINSTALL,
-                NormativeWorkflowNameConstants.STOP,
-                NormativeWorkflowNameConstants.START));
+            NormativeWorkflowNameConstants.INSTALL,
+            NormativeWorkflowNameConstants.UNINSTALL,
+            NormativeWorkflowNameConstants.STOP,
+            NormativeWorkflowNameConstants.START));
 
-        for (Map.Entry<String, NodeTemplate> nodeTemplateEntry : topology.getNodeTemplates().entrySet()) {
+        for (Entry<String, NodeTemplate> nodeTemplateEntry : topology.getNodeTemplates().entrySet()) {
 
             String nodeId = nodeTemplateEntry.getKey();
             NodeTemplate nodeTemplate = nodeTemplateEntry.getValue();
@@ -74,13 +75,13 @@ public class ServiceTopologyModifier extends TopologyModifierSupport {
                 // Adding a step to show the service state as started,
                 // or Alien4Cloud would show it forever as being installed
                 WorkflowUtils.addStateStep(
-                        topology.getWorkflows().get(NormativeWorkflowNameConstants.INSTALL),
-                        nodeId,
-                        STARTED);
+                    topology.getWorkflows().get(NormativeWorkflowNameConstants.INSTALL),
+                    nodeId,
+                    STARTED);
             }
 
         }
-    }
+     }
 
     private void removeServiceDelegateOperation(Topology topology, String nodeId, NodeTemplate nodeTemplate, String workflowName) {
 
@@ -88,18 +89,18 @@ public class ServiceTopologyModifier extends TopologyModifierSupport {
         if (workflow != null) {
             Set<String> stepsToRemove = new HashSet<String>();
 
-            for (Map.Entry<String, WorkflowStep> stepEntry : workflow.getSteps().entrySet()) {
+            for (Entry<String, WorkflowStep> stepEntry : workflow.getSteps().entrySet()) {
                 String currentStepId = stepEntry.getKey();
                 WorkflowStep step = stepEntry.getValue();
                 if (WorkflowUtils.isNodeStep(step, nodeId)) {
                     AbstractWorkflowActivity activity = step.getActivity();
                     if (activity instanceof DelegateWorkflowActivity &&
-                            workflowName.equals(((DelegateWorkflowActivity) activity).getDelegate())) {
+                        workflowName.equals(((DelegateWorkflowActivity) activity).getDelegate())) {
 
                         // Re-wire the workflow to remove this delegate operation
                         // on a Service Node Template
                         for (String precederId : step.getPrecedingSteps()) {
-
+                            
                             WorkflowStep preceder = workflow.getSteps().get(precederId);
                             if (preceder.getOnSuccess() == null) {
                                 preceder.setOnSuccess(new HashSet<String>());
@@ -124,5 +125,4 @@ public class ServiceTopologyModifier extends TopologyModifierSupport {
             workflow.getSteps().keySet().removeAll(stepsToRemove);
         }
     }
-
 }

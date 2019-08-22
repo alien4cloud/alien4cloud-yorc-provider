@@ -3,7 +3,6 @@ package alien4cloud.paas.yorc.service;
 import alien4cloud.component.ICSARRepositorySearchService;
 import alien4cloud.model.components.CSARSource;
 import alien4cloud.model.deployment.DeploymentTopology;
-import alien4cloud.model.orchestrators.locations.Location;
 import alien4cloud.paas.model.PaaSNodeTemplate;
 import alien4cloud.paas.model.PaaSTopology;
 import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
@@ -15,11 +14,8 @@ import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 import lombok.extern.slf4j.Slf4j;
 import org.alien4cloud.tosca.catalog.repository.CsarFileRepository;
-import org.alien4cloud.tosca.model.CSARDependency;
 import org.alien4cloud.tosca.model.Csar;
 import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
-import org.alien4cloud.tosca.model.definitions.Interface;
-import org.alien4cloud.tosca.model.definitions.Operation;
 import org.alien4cloud.tosca.model.templates.NodeTemplate;
 import org.alien4cloud.tosca.model.templates.ServiceNodeTemplate;
 import org.springframework.stereotype.Component;
@@ -31,7 +27,10 @@ import java.net.URI;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.*;
+import java.util.Deque;
+import java.util.LinkedList;
+import java.util.Map;
+import java.util.UUID;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipException;
 import java.util.zip.ZipOutputStream;
@@ -70,10 +69,6 @@ public class ZipBuilder {
      * @throws IOException
      */
     public byte[] build(PaaSTopologyDeploymentContext context) throws IOException {
-        Location loc = context.getLocations().get("_A4C_ALL");
-
-        final int location = getLocation(loc);
-
         final ByteArrayOutputStream bos = new ByteArrayOutputStream();
 
         try (ZipOutputStream zos = new ZipOutputStream(bos)) {
@@ -85,7 +80,7 @@ public class ZipBuilder {
                     // provided by another deployment
                     if (importSource == null || CSARSource.ORCHESTRATOR != CSARSource.valueOf(importSource)) {
                         try {
-                            csar2zip(zos, csar, location);
+                            csar2zip(zos, csar);
                         } catch (Exception e) {
                             throw new RuntimeException(e);
                         }
@@ -119,58 +114,11 @@ public class ZipBuilder {
         return bos.toByteArray();
     }
 
-    private int getLocation(Location loc) {
-        // Check location
-        int location = LOC_OPENSTACK;
-
-        for (CSARDependency dep : loc.getDependencies()) {
-            if (dep.getName().contains("kubernetes")) {
-                location = LOC_KUBERNETES;
-                break;
-            }
-            if (dep.getName().contains("slurm")) {
-                location = LOC_SLURM;
-                break;
-            }
-            if (dep.getName().contains("aws")) {
-                location = LOC_AWS;
-                break;
-            }
-        }
-
-        return location;
-    }
-
-    private void matchKubernetesImplementation(ArchiveRoot root) {
-        root.getNodeTypes().forEach((k, t) -> {
-            Map<String, Interface> interfaces = t.getInterfaces();
-            if (interfaces != null) {
-                Interface ifce = interfaces.get("tosca.interfaces.node.lifecycle.Standard");
-                if (ifce != null) {
-                    Operation start = ifce.getOperations().get("start");
-                    if (start != null && start.getImplementationArtifact() != null) {
-                        String implArtifactType = start.getImplementationArtifact().getArtifactType();
-                        // Check implementation artifact type Not null to avoid NPE
-                        if (implArtifactType != null) {
-                            if (implArtifactType.equals("tosca.artifacts.Deployment.Image.Container.Docker")) {
-                                start.getImplementationArtifact().setArtifactType("tosca.artifacts.Deployment.Image.Container.Docker.Kubernetes");
-                            }
-                        } //else {
-                        //System.out.println("Found start implementation artifcat with type NULL : " + start.getImplementationArtifact().toString());
-                        // The implementation artifact with type null was :
-                        // ImplementationArtifact{} AbstractArtifact{artifactType='null', artifactRef='scripts/kubectl_endpoint_start.sh', artifactRepository='null', archiveName='null', archiveVersion='null', repositoryURL='null', repositoryName='null', artifactPath=null}
-                        //}
-                    }
-                }
-            }
-        });
-    }
-
     /**
      * Get csar and add entries in zip file for it
      * @return relative path to the yml, ex: welcome-types/3.0-SNAPSHOT/welcome-types.yaml
      */
-    private String csar2zip(ZipOutputStream zos, Csar csar, int location) throws IOException, ParsingException {
+    private String csar2zip(ZipOutputStream zos, Csar csar) throws IOException, ParsingException {
         // Get path directory to the needed info:
         // should be something like: ...../runtime/csar/<module>/<version>/expanded
         // We should have a yml or a yaml here
@@ -217,10 +165,6 @@ public class ZipBuilder {
                             }
                         }
                         ArchiveRoot root = parsingResult.getResult();
-                        if (location == LOC_KUBERNETES) {
-                            matchKubernetesImplementation(root);
-                        }
-
                         String yaml;
                         if (root.hasToscaTopologyTemplate()) {
                             log.debug("File has topology template : " + name);

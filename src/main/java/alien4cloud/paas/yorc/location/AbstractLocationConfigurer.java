@@ -123,53 +123,10 @@ public abstract class AbstractLocationConfigurer implements ILocationConfigurato
             return Maps.newHashMap();
         }
         Map<String, MatchingConfiguration> ret = matchingConfigurations.getMatchingConfigurations();
-        printMatchingConfigurations(ret);
+        if (ret == null) {
+            return Maps.newHashMap();
+        }
         return ret;
-    }
-
-    private void printMatchingConfigurations(Map<String, MatchingConfiguration> mcm) {
-        for (String key : mcm.keySet()) {
-            log.debug("MatchingConfiguration for " + key);
-            MatchingConfiguration mc = mcm.get(key);
-            log.debug("Sort ordering: " + mc.getSortOrdering());
-            // capabilities
-            Map<String, MatchingFilterDefinition> cap = mc.getCapabilities();
-            if (cap != null) {
-                for (String kcap : cap.keySet()) {
-                    log.debug("Capability " + kcap);
-                    MatchingFilterDefinition mfd = cap.get(kcap);
-                    printProperties(mfd.getProperties());
-                }
-            }
-            log.debug("Properties");
-            printProperties(mc.getProperties());
-        }
-    }
-
-    private void printProperties(Map<String, List<IMatchPropertyConstraint>> props) {
-        for (String kprop : props.keySet()) {
-            List<IMatchPropertyConstraint> lc = props.get(kprop);
-            for (IMatchPropertyConstraint mpc : lc) {
-                if (mpc instanceof LessOrEqualConstraint) {
-                    LessOrEqualConstraint cons = (LessOrEqualConstraint) mpc;
-                    log.debug("  " + kprop + " <= " + cons.getLessOrEqual());
-                } else if (mpc instanceof EqualConstraint) {
-                    EqualConstraint cons = (EqualConstraint) mpc;
-                    log.debug("  " + kprop + " == " + cons.getEqual());
-                } else if (mpc instanceof GreaterOrEqualConstraint) {
-                    GreaterOrEqualConstraint cons = (GreaterOrEqualConstraint) mpc;
-                    log.debug("  " + kprop + " >= " + cons.getGreaterOrEqual());
-                } else if (mpc instanceof GreaterThanConstraint) {
-                    GreaterThanConstraint cons = (GreaterThanConstraint) mpc;
-                    log.debug("  " + kprop + " > " + cons.getGreaterThan());
-                } else if (mpc instanceof LessThanConstraint) {
-                    LessThanConstraint cons = (LessThanConstraint) mpc;
-                    log.debug("  " + kprop + " < " + cons.getLessThan());
-                } else {
-                    log.debug("  " + kprop + " " + mpc.toString());
-                }
-            }
-        }
     }
 
     protected abstract String[] getLocationArchivePaths();
