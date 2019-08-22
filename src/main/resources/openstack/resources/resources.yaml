@@ -6,7 +6,7 @@ template_version: ${yorc.os.types.version}
 
 imports:
   - tosca-normative-types:${tosca.normative.types.version}
-  - alien-base-types:${alien4cloud.version}
+  - alien-base-types:${project.version}
   - yorc-types:${yorc.types.version}
 
 artifact_types:
