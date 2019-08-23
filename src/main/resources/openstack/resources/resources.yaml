@@ -116,7 +116,7 @@ node_types:
       imageName:
         type: string
         description: >
-          Openstack VM Image Name, this property is required when 'image' is not set and not booting from a volume
+          Openstack VM Image Name, this property is required when 'image' is not set and not booting from a volume. This property can be used only if the image name is unique.
         required: false
       boot_volume:
         type: yorc.datatypes.openstack.BootVolume
