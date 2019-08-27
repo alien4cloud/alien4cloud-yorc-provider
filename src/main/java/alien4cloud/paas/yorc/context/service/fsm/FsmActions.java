@@ -194,20 +194,15 @@ public class FsmActions {
 			// Send event
 			stateMachineService.sendEventToAlien(yorcDeploymentId, FsmStates.UNDEPLOYED);
 
-			// Cancel subscriptions
-			busService.unsubscribeEvents(yorcDeploymentId);
+			doCleanup(yorcDeploymentId);
+		};
+	}
 
-			// Delete Events Buses
-			busService.deleteEventBuses(yorcDeploymentId);
+	protected Action<FsmStates, FsmEvents> cleanupNoEvt() {
+		return stateContext -> {
+			String yorcDeploymentId = (String) stateContext.getExtendedState().getVariables().get(StateMachineService.YORC_DEPLOYMENT_ID);
 
-			// Cleanup YorcId <-> AlienID
-			registry.unregister(yorcDeploymentId);
-
-			// Cleanup instance infos
-			instanceInformationService.remove(yorcDeploymentId);
-
-			// Remove the FSM
-			stateMachineService.deleteStateMachine(yorcDeploymentId);
+			doCleanup(yorcDeploymentId);
 		};
 	}
 
@@ -375,4 +370,20 @@ public class FsmActions {
 		logEventService.save(logEvent);
 	}
 
+	private void doCleanup(String yorcDeploymentId) {
+		// Cancel subscriptions
+		busService.unsubscribeEvents(yorcDeploymentId);
+
+		// Delete Events Buses
+		busService.deleteEventBuses(yorcDeploymentId);
+
+		// Cleanup YorcId <-> AlienID
+		registry.unregister(yorcDeploymentId);
+
+		// Cleanup instance infos
+		instanceInformationService.remove(yorcDeploymentId);
+
+		// Remove the FSM
+		stateMachineService.deleteStateMachine(yorcDeploymentId);
+	}
 }

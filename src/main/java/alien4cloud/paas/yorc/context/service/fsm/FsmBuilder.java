@@ -151,7 +151,7 @@ public class FsmBuilder {
 			.withExternal()
 			.source(FsmStates.UNDEPLOYMENT_PURGING).target(FsmStates.UNDEPLOYED)
 			.event(FsmEvents.DEPLOYMENT_PURGED)
-			.action(actions.cleanup())
+			.action(actions.cleanupNoEvt())
 		.and()
 			.withExternal()
 			.source(FsmStates.UPDATE_FAILED).target(FsmStates.UNDEPLOYED)
