@@ -275,6 +275,8 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
             case "DEPLOYED":
                 return DeploymentStatus.DEPLOYED;
             case "UNDEPLOYED":
+                return DeploymentStatus.UNDEPLOYMENT_IN_PROGRESS;
+            case "PURGED":
                 return DeploymentStatus.UNDEPLOYED;
             case "DEPLOYMENT_IN_PROGRESS":
             case "SCALING_IN_PROGRESS":
