@@ -90,6 +90,7 @@ public class FsmBuilder {
 			.withExternal()
 			.source(FsmStates.UPDATE_IN_PROGRESS).target(FsmStates.UPDATED)
 			.event(FsmEvents.UPDATE_SUCCESS)
+			.action(actions.notifyUpdateSucces())
 // Failure
 		.and()
 			.withExternal()

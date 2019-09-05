@@ -324,6 +324,13 @@ public class FsmActions {
 		};
 	}
 
+	protected Action<FsmStates, FsmEvents> notifyUpdateSucces() {
+		return stateContext -> {
+			IPaaSCallback<?> callback = (IPaaSCallback<?>) stateContext.getExtendedState().getVariables().get(StateMachineService.CALLBACK);
+			callback.onSuccess(null);
+		};
+	}
+
 	protected Action<FsmStates, FsmEvents> purge() {
 		return new Action<FsmStates, FsmEvents>() {
 			private String yorcDeploymentId;
