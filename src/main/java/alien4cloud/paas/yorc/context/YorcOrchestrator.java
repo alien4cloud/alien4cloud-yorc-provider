@@ -282,6 +282,7 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
             case "SCALING_IN_PROGRESS":
                 return DeploymentStatus.DEPLOYMENT_IN_PROGRESS;
             case "UNDEPLOYMENT_IN_PROGRESS":
+            case "PURGE_IN_PROGRESS":
                 return DeploymentStatus.UNDEPLOYMENT_IN_PROGRESS;
             case "INITIAL":
                 return DeploymentStatus.INIT_DEPLOYMENT;
@@ -309,6 +310,7 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
             case "DEPLOYMENT_IN_PROGRESS":
             case "SCALING_IN_PROGRESS":
             case "UNDEPLOYMENT_IN_PROGRESS":
+            case "PURGE_IN_PROGRESS":
             case "UPDATE_IN_PROGRESS":
                 return true;
             default:
