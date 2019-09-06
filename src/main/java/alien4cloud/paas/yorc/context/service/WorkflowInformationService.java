@@ -87,6 +87,10 @@ public class WorkflowInformationService {
                 break;
             case "error":
                 postTaskEvent(event,new TaskFailedEvent());
+                break;
+            case "canceled":
+                postTaskEvent(event,new TaskCancelledEvent());
+                break;
             default:
                 log.warn("Unhandled status for event : {}", event);
         }
@@ -99,7 +103,11 @@ public class WorkflowInformationService {
                 break;
             case "done":
             case "error":
+            case "canceled":
                 postWorkflowStepEvent(event,new WorkflowStepCompletedEvent());
+                break;
+            case "running":
+                // A4C Does nothing with this
                 break;
             default:
                 log.warn("Unhandled status for event : {}", event);
@@ -119,6 +127,9 @@ public class WorkflowInformationService {
                 break;
             case "failed":
                 postWorkflowEvent(event,new PaaSWorkflowFailedEvent());
+                break;
+            case "canceled":
+                postWorkflowEvent(event,new PaaSWorkflowCancelledEvent());
                 break;
             default:
                 log.warn("Unhandled status for event : {}", event);
