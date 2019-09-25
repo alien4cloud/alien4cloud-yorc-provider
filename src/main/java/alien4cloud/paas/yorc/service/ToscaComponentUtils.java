@@ -5,6 +5,7 @@ import alien4cloud.paas.plan.ToscaRelationshipLifecycleConstants;
 import alien4cloud.tosca.serializer.ToscaPropertySerializerUtils;
 import alien4cloud.tosca.serializer.VelocityUtil;
 import org.alien4cloud.tosca.model.definitions.*;
+import org.apache.commons.collections4.MapUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.IOException;
@@ -88,5 +89,17 @@ public class ToscaComponentUtils {
     public static boolean canUseShortNotationForOperationImplementation(Operation operation) {
         return StringUtils.isEmpty(operation.getImplementationArtifact().getArtifactType()) &&
                 StringUtils.isEmpty(operation.getImplementationArtifact().getRepositoryName());
+    }
+
+    /**
+     * Check if short notation can be used for implementation artifact
+     * ie if no inputs, no repository and no type provided as these information doesn't appear in short notation
+     * @param operation
+     * @return boolean true if short notation can be used
+     */
+    public static boolean canUseShortNotationForImplementationArtifact(Operation operation) {
+        return MapUtils.isEmpty(operation.getInputParameters()) &&
+                StringUtils.isEmpty(operation.getImplementationArtifact().getRepositoryName()) &&
+                StringUtils.isEmpty(operation.getImplementationArtifact().getArtifactType());
     }
 }

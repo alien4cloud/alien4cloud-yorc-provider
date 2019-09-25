@@ -2,6 +2,7 @@ package alien4cloud.paas.yorc.configuration;
 
 import alien4cloud.paas.IPaaSProviderConfiguration;
 import alien4cloud.ui.form.annotation.FormProperties;
+import alien4cloud.ui.form.annotation.FormLabel;
 import alien4cloud.ui.form.annotation.FormPropertyConstraint;
 import alien4cloud.ui.form.annotation.FormPropertyDefinition;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
@@ -16,7 +17,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Getter
 @Setter
 @NoArgsConstructor
-@FormProperties({"urlYorc", "insecureTLS", "connectionTimeout", "socketTimeout", "executorThreadPoolSize", "IOThreadCount", "pollingRetryDelay", "connectionMaxPoolSize", "connectionEvictionPeriod", "connectionTtl", "connectionMaxIdleTime", "registryEvictionPerdiod", "registryEntryTtl", "cleanupDeploymentsPeriod" })
+@FormProperties({"urlYorc", "insecureTLS", "caCertificate", "clientKey", "clientCertificate", "undeployStopOnError", "connectionTimeout", "socketTimeout", "executorThreadPoolSize", "IOThreadCount", "pollingRetryDelay", "connectionMaxPoolSize", "connectionEvictionPeriod", "connectionTtl", "connectionMaxIdleTime", "registryEvictionPerdiod", "registryEntryTtl", "cleanupDeploymentsPeriod" })
 @JsonIgnoreProperties(ignoreUnknown = true)
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class ProviderConfiguration implements IPaaSProviderConfiguration {
@@ -32,6 +33,7 @@ public class ProviderConfiguration implements IPaaSProviderConfiguration {
             description = "URL of a Yorc REST API instance.",
             constraints = @FormPropertyConstraint(pattern = "https?://.+")
     )
+    @FormLabel("Yorc URL")
     private String urlYorc = "http://127.0.0.1:8800";
 
     @FormPropertyDefinition(
@@ -40,7 +42,27 @@ public class ProviderConfiguration implements IPaaSProviderConfiguration {
                 "This is not recommended for production use " +
                 "and may expose to man in the middle attacks."
     )
+    @FormLabel("Insecure TLS")
     private Boolean insecureTLS;
+
+    @FormPropertyDefinition(
+            type = "string",
+            description = "Trusted Certificate Authority content"
+    )
+    @FormLabel("CA certificate")
+    private String caCertificate;
+
+    @FormPropertyDefinition(
+            type = "string",
+            description = "PKCS #8 encoded private key  content")
+    @FormLabel("Client key")
+    private String clientKey;
+
+    @FormPropertyDefinition(
+            type = "string",
+            description = "Client certificate content")
+    @FormLabel("Client certificate")
+    private String clientCertificate;
 
     @FormPropertyDefinition(
             type = "integer",
@@ -125,6 +147,12 @@ public class ProviderConfiguration implements IPaaSProviderConfiguration {
             description = "cleanupDeploymentsPeriod: in seconds, the period used to check deployments."
     )
     private Integer cleanupDeploymentsPeriod = 300;
+
+    @FormPropertyDefinition(
+            type = "boolean",
+            description = "Undeploy should stop when an error occurs."
+    )
+    private Boolean undeployStopOnError = Boolean.FALSE;
 
     private String orchestratorName;
     private String orchestratorId;

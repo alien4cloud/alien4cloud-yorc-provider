@@ -61,7 +61,7 @@ public class FipTopologyModifier extends TopologyModifierSupport {
         publicNetworksNodes.forEach(networkNodeTemplate -> {
             final AbstractPropertyValue networkName = networkNodeTemplate.getProperties().get("floating_network_name");
 
-            // For each Node Template requiring a connection to this Public
+            // For each Node Template requiring a connection to this Public 
             // Network, creating a new Floating IP Node Template
             for (NodeTemplate nodeTemplate : new ArrayList<>(topology.getNodeTemplates().values())) {
 
@@ -73,7 +73,7 @@ public class FipTopologyModifier extends TopologyModifierSupport {
 
                         Map<String, AbstractPropertyValue> properties = new LinkedHashMap<>();
                         properties.put("floating_network_name", networkName);
-
+                        
                         Map<String, Capability> capabilities = new LinkedHashMap<>();
                         Capability connectionCap = new Capability();
                         connectionCap.setType(fipConnectivityCap);
@@ -81,20 +81,20 @@ public class FipTopologyModifier extends TopologyModifierSupport {
 
                         if (fipType == null) {
                             context.log().error("Node type with name <{}> cannot be found in the catalog.",
-                                    fipNodeType);
+                            fipNodeType);
                             return;
                         }
 
                         // Creating a new Floating IP Node Template that will be
-                        // associated to this Node Template requiring a
+                        // associated to this Node Template requiring a 
                         // connection to the Public Network
                         String fipName = "FIP" + nodeTemplate.getName();
                         NodeTemplate fipNodeTemplate = addNodeTemplate(
-                                csar,
-                                topology,
-                                fipName,
-                                fipType.getElementId(),
-                                fipType.getArchiveVersion());
+                            csar,
+                            topology,
+                            fipName,
+                            fipType.getElementId(),
+                            fipType.getArchiveVersion());
 
                         fipNodeTemplate.setProperties(properties);
                         fipNodeTemplate.setCapabilities(capabilities);
@@ -109,16 +109,16 @@ public class FipTopologyModifier extends TopologyModifierSupport {
                         // foreach loops, as its creation modifies elements on
                         // which these loops are iterating.
                         relationshipsToAdd.add(new NetworkRelationshipConfig(
-                                nodeTemplate, // source
-                                fipNodeTemplate.getName(), // target
-                                relationshipTemplate.getRequirementName(),
-                                relationshipTemplate.getTargetedCapabilityName()));
+                            nodeTemplate, // source
+                            fipNodeTemplate.getName(), // target
+                            relationshipTemplate.getRequirementName(),
+                            relationshipTemplate.getTargetedCapabilityName()));
 
                         context.log().info(
-                                "<{}> created to provide a Floating IP address to <{}> on network <{}>",
-                                fipName,
-                                nodeTemplate.getName(),
-                                networkNodeTemplate.getName());
+                            "<{}> created to provide a Floating IP address to <{}> on network <{}>",
+                            fipName,
+                            nodeTemplate.getName(),
+                            networkNodeTemplate.getName());
                     }
                 });
             }
@@ -127,24 +127,24 @@ public class FipTopologyModifier extends TopologyModifierSupport {
             // required connectivity, removing this public network node
             nodesToRemove.add(networkNodeTemplate);
             context.log().info(
-                    "Public network <{}> removed as connectivity requirements are addressed by Floating IP Node Templates",
-                    networkNodeTemplate.getName());
+                "Public network <{}> removed as connectivity requirements are addressed by Floating IP Node Templates",
+                networkNodeTemplate.getName());
         });
 
-        // Removing Public Network nodes for which a new Floating IP Node
+        // Removing Public Network nodes for which a new Floating IP Node 
         // template was created
         nodesToRemove.forEach(pnn -> removeNode(topology, pnn));
 
         // Creating a relationship between each new Floating IP Node Template
-        // and the Source Node Template having a connectivity requirement
+        // and the Source Node Template having a connectivity requirement  
         relationshipsToAdd.forEach( rel -> addRelationshipTemplate(
-                csar,
-                topology,
-                rel.sourceNode,
-                rel.targetNodeName,
-                NormativeRelationshipConstants.NETWORK,
-                rel.requirementName,
-                rel.targetCapabilityName));
+            csar,
+            topology,
+            rel.sourceNode,
+            rel.targetNodeName,
+            NormativeRelationshipConstants.NETWORK,
+            rel.requirementName,
+            rel.targetCapabilityName));
     }
 
     @AllArgsConstructor
@@ -154,4 +154,5 @@ public class FipTopologyModifier extends TopologyModifierSupport {
         private String requirementName;
         private String targetCapabilityName;
     }
+
 }

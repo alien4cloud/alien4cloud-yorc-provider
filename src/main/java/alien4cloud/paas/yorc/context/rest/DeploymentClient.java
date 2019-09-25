@@ -84,19 +84,23 @@ public class DeploymentClient extends AbstractClient {
                 .flatMapIterable(AllDeploymentsDTO::getDeployments);
     }
 
-    public Single<String> purge(String deploymentId) {
-        return undeploy(deploymentId,true);
+    public Single<String> purge(String deploymentId,boolean stopOnError) {
+        return undeploy(deploymentId,stopOnError,true);
     }
 
-    public Single<String> undeploy(String deploymentId) {
-        return undeploy(deploymentId,false);
+    public Single<String> undeploy(String deploymentId,boolean stopOnError) {
+        return undeploy(deploymentId,stopOnError,false);
     }
 
-    public Single<String> undeploy(String deploymentId, boolean purge) {
+    public Single<String> undeploy(String deploymentId, boolean stopOnError, boolean purge) {
         String url = getYorcUrl() + "/deployments/" + deploymentId;
 
-        if (purge) {
+        if (purge && stopOnError) {
+            url += "?purge&stopOnError";
+        } else if (purge) {
             url += "?purge";
+        } else if (stopOnError) {
+            url += "?stopOnError";
         }
 
         return sendRequest(url, HttpMethod.DELETE, String.class, buildHttpEntityWithDefaultHeader())

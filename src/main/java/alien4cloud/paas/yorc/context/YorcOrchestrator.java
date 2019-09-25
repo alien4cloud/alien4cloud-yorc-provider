@@ -85,10 +85,7 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
     @Override
     public List<PluginArchive> pluginArchives() {
         List<PluginArchive> archives = Lists.newArrayList();
-
         archives.add(archiveService.parsePluginArchives("commons/resources"));
-        archives.add(archiveService.parsePluginArchives("docker/resources"));
-
         return archives;
     }
 
@@ -176,7 +173,8 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 
     @Override
     public void update(PaaSTopologyDeploymentContext deploymentContext, IPaaSCallback<?> callback) {
-        callback.onFailure(new UnsupportedOperationException("update topology not supported in Yorc"));
+        Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.UPDATE_STARTED, deploymentContext, callback);
+        busService.publish(message);
     }
 
     @Override
@@ -277,17 +275,26 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
             case "DEPLOYED":
                 return DeploymentStatus.DEPLOYED;
             case "UNDEPLOYED":
+                return DeploymentStatus.UNDEPLOYMENT_IN_PROGRESS;
+            case "PURGED":
                 return DeploymentStatus.UNDEPLOYED;
             case "DEPLOYMENT_IN_PROGRESS":
             case "SCALING_IN_PROGRESS":
                 return DeploymentStatus.DEPLOYMENT_IN_PROGRESS;
             case "UNDEPLOYMENT_IN_PROGRESS":
+            case "PURGE_IN_PROGRESS":
                 return DeploymentStatus.UNDEPLOYMENT_IN_PROGRESS;
             case "INITIAL":
                 return DeploymentStatus.INIT_DEPLOYMENT;
             case "DEPLOYMENT_FAILED":
             case "UNDEPLOYMENT_FAILED":
                 return DeploymentStatus.FAILURE;
+            case "UPDATE_IN_PROGRESS":
+                return DeploymentStatus.UPDATE_IN_PROGRESS;
+            case "UPDATED":
+                return DeploymentStatus.UPDATED;
+            case "UPDATE_FAILURE":
+                return DeploymentStatus.UPDATE_FAILURE;
             default:
                 return DeploymentStatus.UNKNOWN;
         }
@@ -303,6 +310,8 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
             case "DEPLOYMENT_IN_PROGRESS":
             case "SCALING_IN_PROGRESS":
             case "UNDEPLOYMENT_IN_PROGRESS":
+            case "PURGE_IN_PROGRESS":
+            case "UPDATE_IN_PROGRESS":
                 return true;
             default:
                 return false;
