@@ -1,11 +1,11 @@
 package alien4cloud.paas.yorc.modifier;
 
-import alien4cloud.component.ICSARRepositorySearchService;
-import alien4cloud.orchestrators.plugin.model.PluginArchive;
-import alien4cloud.paas.wf.validation.WorkflowValidator;
-import alien4cloud.paas.yorc.location.YorcKubernetesLocationConfigurer;
-import alien4cloud.tosca.context.ToscaContextual;
-import lombok.extern.slf4j.Slf4j;
+import java.util.Set;
+
+import javax.annotation.PostConstruct;
+import javax.annotation.Resource;
+import javax.inject.Inject;
+
 import org.alien4cloud.alm.deployment.configuration.flow.FlowExecutionContext;
 import org.alien4cloud.alm.deployment.configuration.flow.ITopologyModifier;
 import org.alien4cloud.alm.deployment.configuration.flow.TopologyModifierSupport;
@@ -15,10 +15,12 @@ import org.alien4cloud.tosca.model.templates.Topology;
 import org.alien4cloud.tosca.utils.TopologyNavigationUtil;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.PostConstruct;
-import javax.annotation.Resource;
-import javax.inject.Inject;
-import java.util.Set;
+import alien4cloud.component.ICSARRepositorySearchService;
+import alien4cloud.orchestrators.plugin.model.PluginArchive;
+import alien4cloud.paas.wf.validation.WorkflowValidator;
+import alien4cloud.paas.yorc.location.YorcKubernetesLocationConfigurer;
+import alien4cloud.tosca.context.ToscaContextual;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Created by danesa on 02/03/18.
@@ -39,12 +41,14 @@ public class KubernetesTopologyModifier extends TopologyModifierSupport {
 
     // Yorc K8S resource types
     protected static final String YORC_KUBERNETES_TYPES_DEPLOYMENT_RESOURCE = "yorc.nodes.kubernetes.api.types.DeploymentResource";
+    protected static final String YORC_KUBERNETES_TYPES_JOB_RESOURCE = "yorc.nodes.kubernetes.api.types.JobResource";
     protected static final String YORC_KUBERNETES_TYPES_STATEFULSET_RESOURCE = "yorc.nodes.kubernetes.api.types.StatefulSetResource";
     protected static final String YORC_KUBERNETES_TYPES_SERVICE_RESOURCE = "yorc.nodes.kubernetes.api.types.ServiceResource";
     protected static final String YORC_KUBERNETES_TYPES_SIMPLE_RESOURCE = "yorc.nodes.kubernetes.api.types.SimpleResource";
 
     // A4C K8S resource types defined in org.alien4cloud.plugin.kubernetes.modifier
     public static final String K8S_TYPES_DEPLOYMENT_RESOURCE = "org.alien4cloud.kubernetes.api.types.DeploymentResource";
+    public static final String K8S_TYPES_JOB_RESOURCE = "org.alien4cloud.kubernetes.api.types.JobResource";
     public static final String K8S_TYPES_SERVICE_RESOURCE = "org.alien4cloud.kubernetes.api.types.ServiceResource";
     public static final String K8S_TYPES_STATEFULSET_RESOURCE = "org.alien4cloud.kubernetes.api.types.StatefulSetResource";
     public static final String K8S_TYPES_SIMPLE_RESOURCE = "org.alien4cloud.kubernetes.api.types.SimpleResource";
@@ -95,6 +99,8 @@ public class KubernetesTopologyModifier extends TopologyModifierSupport {
         //
         // Treat deployment resource types
         transformKubernetesResourceTypes(topology,  csar, "deployment", yorcKubernetesTypesArchiveVersion);
+        // Treat job resource types
+        transformKubernetesResourceTypes(topology,  csar, "job", yorcKubernetesTypesArchiveVersion);
         // Treat service resource types
         transformKubernetesResourceTypes(topology,  csar, "service", yorcKubernetesTypesArchiveVersion);
         // Treat statefulset resource types
@@ -125,6 +131,10 @@ public class KubernetesTopologyModifier extends TopologyModifierSupport {
                 sourceResourceType = K8S_TYPES_DEPLOYMENT_RESOURCE;
                 targetResourceType = YORC_KUBERNETES_TYPES_DEPLOYMENT_RESOURCE;
                 break;
+            case "job" :
+                sourceResourceType = K8S_TYPES_JOB_RESOURCE;
+                targetResourceType = YORC_KUBERNETES_TYPES_JOB_RESOURCE;
+                break;
             case "statefulSet":
                 sourceResourceType = K8S_TYPES_STATEFULSET_RESOURCE;
                 targetResourceType = YORC_KUBERNETES_TYPES_STATEFULSET_RESOURCE;
@@ -134,7 +144,7 @@ public class KubernetesTopologyModifier extends TopologyModifierSupport {
                 targetResourceType = YORC_KUBERNETES_TYPES_SIMPLE_RESOURCE;
                 break;
             default:
-                log.info("Yorc K8S Plugin : currently supported K8S resources are " + "service" + " and " + "deployment");
+                log.info("Yorc K8S Plugin : currently supported K8S resources are service, job, statefulset and deployment");
                 break;
         }
 
