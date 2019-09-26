@@ -4,6 +4,10 @@ template_name: yorc-kubernetes-types
 template_author: Yorc
 template_version: ${yorc.k8s.types.version}
 
+
+# Note: If we reference a dependency using project.version then this component should
+#       be versioned as project.version too otherwise we will have issues on snapshots
+#       versions (our type not snapshot referencing a snapshot version)
 imports:
   - org.alien4cloud.kubernetes.api:${alien4cloud.kubernetes.api.version}
 

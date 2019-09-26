@@ -4,6 +4,10 @@ template_name: yorc-hostspool-types
 template_author: Yorc
 template_version: ${yorc.hp.types.version}
 
+
+# Note: If we reference a dependency using project.version then this component should
+#       be versioned as project.version too otherwise we will have issues on snapshots
+#       versions (our type not snapshot referencing a snapshot version)
 imports:
   - tosca-normative-types:${tosca.normative.types.version}
   - yorc-types:${yorc.types.version}

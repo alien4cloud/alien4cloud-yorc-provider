@@ -4,6 +4,10 @@ template_name: yorc-google-types
 template_author: Yorc
 template_version: ${yorc.google.types.version}
 
+
+# Note: If we reference a dependency using project.version then this component should
+#       be versioned as project.version too otherwise we will have issues on snapshots
+#       versions (our type not snapshot referencing a snapshot version)
 imports:
   - tosca-normative-types:${tosca.normative.types.version}
   - yorc-types:${yorc.types.version}
@@ -145,7 +149,7 @@ node_types:
         type: string
         description: >
           The family of the image from which to initialize the boot disk.
-          When a family is specified instead of an image, the latest non-deprecated 
+          When a family is specified instead of an image, the latest non-deprecated
           image associated with that family is used.
           At least one of the tuples image_project/image_family, image_project/image, family, image, should be defined.
         required: false
@@ -153,14 +157,14 @@ node_types:
         type: string
         description: >
           Image from which to initialize the boot disk.
-          If not specified, and an image family is specified, the latest 
+          If not specified, and an image family is specified, the latest
           non-deprecated image associated with that family is used.
           At least one of the tuples image_project/image_family, image_project/image, family, image, should be defined.
         required: false
       machine_type:
         type: string
         description: >
-          The machine type used for the Compute Node, defining the Compute Node 
+          The machine type used for the Compute Node, defining the Compute Node
           CPU and Memory resources.
         default: n1-standard-1
       zone:
@@ -175,7 +179,7 @@ node_types:
       labels:
         type: string
         description: >
-          Comma-separated list of label KEY=VALUE pairs to assign to the Compute Node. 
+          Comma-separated list of label KEY=VALUE pairs to assign to the Compute Node.
         required: false
       metadata:
         type: string
@@ -199,7 +203,7 @@ node_types:
         type: string
         description: >
           Comma-separated list of service scopes defining access to Google Cloud APIs.
-          A scope can be either the full URI of the scope or an alias, like default 
+          A scope can be either the full URI of the scope or an alias, like default
           or cloud-platform.
         required: false
       service_account:
@@ -207,7 +211,7 @@ node_types:
         description: >
           Service Account (e-mail or alias) to attach to the Compute Node.
           If not provided, the Compute Node will get the project default service
-          account. 
+          account.
         required: false
       tags:
         type: string
@@ -518,7 +522,7 @@ node_types:
     abstract: true
     derived_from: tosca.nodes.Root
     description: >
-      Google location configuration type representing a Machine type, which defines 
+      Google location configuration type representing a Machine type, which defines
       the Compute Node CPU and Memory resources.
     properties:
       id:

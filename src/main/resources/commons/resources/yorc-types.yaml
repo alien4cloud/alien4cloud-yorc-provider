@@ -6,6 +6,10 @@ template_version: ${yorc.types.version}
 
 description: "Defines resources for the Yorc plugin."
 
+
+# Note: If we reference a dependency using project.version then this component should
+#       be versioned as project.version too otherwise we will have issues on snapshots
+#       versions (our type not snapshot referencing a snapshot version)
 imports:
   - tosca-normative-types:${tosca.normative.types.version}
 
