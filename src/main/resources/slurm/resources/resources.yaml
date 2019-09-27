@@ -13,6 +13,7 @@ imports:
   - tosca-normative-types:${tosca.normative.types.version}
   - alien-base-types:${project.version}
   - yorc-types:${yorc.types.version}
+  - docker-types:${project.version}
 
 
 artifact_types:
@@ -227,3 +228,9 @@ node_types:
         description: Print all debug and verbose information during singularity execution
         required: false
         default: false
+
+  yorc.nodes.slurm.ContainerRuntime:
+    derived_from: org.alien4cloud.extended.container.types.ContainerRuntime
+
+  yorc.nodes.slurm.ContainerJobUnit:
+    derived_from: org.alien4cloud.extended.container.types.ContainerJobUnit
