@@ -125,12 +125,12 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
 
     private void linkDependsOn(Csar csar, FlowExecutionContext context, Topology topology,
             Map<String, String> containersDependencies, Map<String, NodeTemplate> replacementMap) {
-                containersDependencies.forEach((source, target) -> {
-                    NodeTemplate sourceNode = replacementMap.get(source);
-                    NodeTemplate targetNode = replacementMap.get(target);
-                    addRelationshipTemplate(csar, topology, sourceNode, targetNode.getName(),
+        containersDependencies.forEach((source, target) -> {
+            NodeTemplate sourceNode = replacementMap.get(source);
+            NodeTemplate targetNode = replacementMap.get(target);
+            addRelationshipTemplate(csar, topology, sourceNode, targetNode.getName(),
                     NormativeRelationshipConstants.DEPENDS_ON, "dependency", "feature");
-                });
+        });
     }
 
     private void removeNode(Csar csar, Topology topology, String nodeName) {
@@ -237,7 +237,8 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
 
         Map<String, String> containersDependencies = (Map<String, String>) context.getExecutionCache()
                 .get(A4C_NODES_DEPENDS_ON_CACHE_KEY);
-        Set<NodeTemplate> dependents = TopologyNavigationUtil.getSourceNodesByRelationshipType(topology, nodeTemplate, NormativeRelationshipConstants.DEPENDS_ON);
+        Set<NodeTemplate> dependents = TopologyNavigationUtil.getSourceNodesByRelationshipType(topology, nodeTemplate,
+                NormativeRelationshipConstants.DEPENDS_ON);
         dependents.forEach(sourceNode -> containersDependencies.put(sourceNode.getName(), nodeTemplate.getName()));
     }
 
