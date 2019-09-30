@@ -241,19 +241,26 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
                 AbstractPropertyValue v = InputsHelper.resolveInput(topology, container, functionEvaluatorContext,
                         inputName, (AbstractPropertyValue) iValue, context);
                 if (v != null) {
+                    String serializedValue = PropertyUtil.serializePropertyValue(v);
                     if (inputName.startsWith("ENV_")) {
                         String envKey = inputName.substring(4);
                         ListPropertyValue lpv = new ListPropertyValue(new ArrayList<>());
-                        lpv.getValue().add(envKey + "=" + PropertiesHelper.serializePropertyValue(v));
+                        lpv.getValue().add(envKey + "=" + serializedValue);
                         addToSingularityEnvVars(csar, topology, context, singularityNode, lpv);
                         context.getLog().info("Env variable <" + envKey + "> for container <" + container.getName()
-                                + "> set to value <" + PropertiesHelper.serializePropertyValue(v) + ">");
+                                + "> set to value <" + serializedValue + ">");
+                    } else if (inputName.startsWith("ARG_")) {
+                        ListPropertyValue lpv = new ListPropertyValue(new ArrayList<>());
+                        lpv.getValue().add(PropertyUtil.serializePropertyValue(v));
+                        addToSingularityCmdArgs(csar, topology, context, singularityNode, lpv);
+                        context.getLog().info("Argument variable <" + inputName + "> for container <" + container.getName()
+                                + "> set to value <" + serializedValue+ ">");
                     }
                 } else {
                     context.log()
                             .warn("Not able to define value for input <" + inputName + "> ("
-                                    + PropertiesHelper.serializePropertyValue((AbstractPropertyValue) iValue) + ") of container <"
-                                    + container.getName() + ">");
+                                    + PropertiesHelper.serializePropertyValue((AbstractPropertyValue) iValue)
+                                    + ") of container <" + container.getName() + ">");
                 }
             } else {
                 context.log()
@@ -296,9 +303,10 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
             setNodePropertyPathValue(csar, topology, singularityNode, "execution_options.command", dockerRunCmdProp);
         }
         AbstractPropertyValue dockerRunArgsProp = PropertyUtil.getPropertyValueFromPath(properties, "docker_run_args");
-        if (dockerRunArgsProp != null) {
-            // Should be both of the same type "scalar"
-            setNodePropertyPathValue(csar, topology, singularityNode, "execution_options.args", dockerRunArgsProp);
+        if (dockerRunArgsProp instanceof ListPropertyValue) {
+            // Should be both of the same type "List"
+            addToSingularityCmdArgs(csar, topology, context, singularityNode,
+                    (ListPropertyValue) dockerRunArgsProp);
         }
     }
 
@@ -327,6 +335,19 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
         mergedList.addAll(envVars.getValue());
         envVars.setValue(mergedList);
         setNodePropertyPathValue(csar, topology, singularityNode, "execution_options.env_vars", envVars);
+    }
+
+    private void addToSingularityCmdArgs(Csar csar, Topology topology, FlowExecutionContext context,
+            NodeTemplate singularityNode, ListPropertyValue cmdArgs) {
+                List<Object> mergedList = new ArrayList<>();
+        AbstractPropertyValue singCmdArgsProp = PropertyUtil
+                .getPropertyValueFromPath(safe(singularityNode.getProperties()), "execution_options.args");
+        if (singCmdArgsProp instanceof ListPropertyValue) {
+            mergedList.addAll(safe(((ListPropertyValue) singCmdArgsProp).getValue()));
+        }
+        mergedList.addAll(cmdArgs.getValue());
+        cmdArgs.setValue(mergedList);
+        setNodePropertyPathValue(csar, topology, singularityNode, "execution_options.args", cmdArgs);
     }
 
 }
