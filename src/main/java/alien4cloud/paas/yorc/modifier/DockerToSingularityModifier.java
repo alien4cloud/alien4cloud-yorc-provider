@@ -8,8 +8,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import java.util.Optional;
 import java.util.Set;
 
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 
 import org.alien4cloud.alm.deployment.configuration.flow.FlowExecutionContext;
@@ -23,14 +25,17 @@ import org.alien4cloud.tosca.model.definitions.ImplementationArtifact;
 import org.alien4cloud.tosca.model.definitions.Interface;
 import org.alien4cloud.tosca.model.definitions.ListPropertyValue;
 import org.alien4cloud.tosca.model.definitions.Operation;
+import org.alien4cloud.tosca.model.templates.AbstractTemplate;
 import org.alien4cloud.tosca.model.templates.NodeTemplate;
 import org.alien4cloud.tosca.model.templates.Topology;
 import org.alien4cloud.tosca.model.types.NodeType;
+import org.alien4cloud.tosca.normative.constants.NormativeRelationshipConstants;
 import org.alien4cloud.tosca.utils.FunctionEvaluatorContext;
 import org.alien4cloud.tosca.utils.InterfaceUtils;
 import org.alien4cloud.tosca.utils.TopologyNavigationUtil;
 import org.springframework.stereotype.Component;
 
+import alien4cloud.model.common.Tag;
 import alien4cloud.paas.plan.ToscaNodeLifecycleConstants;
 import alien4cloud.paas.wf.validation.WorkflowValidator;
 import alien4cloud.paas.yorc.modifier.util.InputsHelper;
@@ -57,6 +62,7 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
     public static final String A4C_SLURM_JOB_IMAGE_ARTIFACT_TYPE = "yorc.artifacts.Deployment.SlurmJobImage";
 
     public static final String A4C_NODES_REPLACEMENT_CACHE_KEY = "a4c_docker2singularity_nodes_replacement_key";
+    public static final String A4C_NODES_DEPENDS_ON_CACHE_KEY = "a4c_docker2singularity_nodes_dependsOn_key";
 
     @Override
     public void process(Topology topology, FlowExecutionContext context) {
@@ -79,6 +85,9 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
         if (context.getEnvironmentContext().isPresent()) {
             csar.setName(csar.getName() + "-" + context.getEnvironmentContext().get().getEnvironment().getName());
         }
+
+        Map<String, String> containersDependencies = Maps.newHashMap();
+        context.getExecutionCache().put(A4C_NODES_DEPENDS_ON_CACHE_KEY, containersDependencies);
 
         // A function evaluator context will be usefull
         // FIXME: use topology inputs ?
@@ -109,7 +118,19 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
         Map<String, NodeTemplate> replacementMap = (Map<String, NodeTemplate>) context.getExecutionCache()
                 .get(A4C_NODES_REPLACEMENT_CACHE_KEY);
 
+        linkDependsOn(csar, context, topology, containersDependencies, replacementMap);
+
         safe(replacementMap.keySet()).forEach(nodeName -> removeNode(csar, topology, nodeName));
+    }
+
+    private void linkDependsOn(Csar csar, FlowExecutionContext context, Topology topology,
+            Map<String, String> containersDependencies, Map<String, NodeTemplate> replacementMap) {
+                containersDependencies.forEach((source, target) -> {
+                    NodeTemplate sourceNode = replacementMap.get(source);
+                    NodeTemplate targetNode = replacementMap.get(target);
+                    addRelationshipTemplate(csar, topology, sourceNode, targetNode.getName(),
+                    NormativeRelationshipConstants.DEPENDS_ON, "dependency", "feature");
+                });
     }
 
     private void removeNode(Csar csar, Topology topology, String nodeName) {
@@ -171,6 +192,20 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
 
     }
 
+    public static void setNodeTagValue(AbstractTemplate template, String name, String value) {
+        List<Tag> tags = template.getTags();
+        if (tags == null) {
+            tags = Lists.newArrayList();
+            template.setTags(tags);
+        }
+        Optional<Tag> ot = tags.stream().filter(t -> t.getName().equals(name)).findFirst();
+        if (ot.isPresent()) {
+            ot.get().setValue(value);
+        } else {
+            tags.add(new Tag(name, value));
+        }
+    }
+
     /**
      * Replace this node of type DockerContainer by a node of type
      * yorc.nodes.slurm.SingularityJob.
@@ -200,6 +235,10 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
         transformContainerOperation(csar, context, functionEvaluatorContext, topology, nodeTemplate, singularityNode);
         transformContainerProperties(csar, topology, context, nodeTemplate, singularityNode);
 
+        Map<String, String> containersDependencies = (Map<String, String>) context.getExecutionCache()
+                .get(A4C_NODES_DEPENDS_ON_CACHE_KEY);
+        Set<NodeTemplate> dependents = TopologyNavigationUtil.getSourceNodesByRelationshipType(topology, nodeTemplate, NormativeRelationshipConstants.DEPENDS_ON);
+        dependents.forEach(sourceNode -> containersDependencies.put(sourceNode.getName(), nodeTemplate.getName()));
     }
 
     private void transformContainerOperation(Csar csar, FlowExecutionContext context,
@@ -253,8 +292,8 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
                         ListPropertyValue lpv = new ListPropertyValue(new ArrayList<>());
                         lpv.getValue().add(PropertyUtil.serializePropertyValue(v));
                         addToSingularityCmdArgs(csar, topology, context, singularityNode, lpv);
-                        context.getLog().info("Argument variable <" + inputName + "> for container <" + container.getName()
-                                + "> set to value <" + serializedValue+ ">");
+                        context.getLog().info("Argument variable <" + inputName + "> for container <"
+                                + container.getName() + "> set to value <" + serializedValue + ">");
                     }
                 } else {
                     context.log()
@@ -305,8 +344,7 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
         AbstractPropertyValue dockerRunArgsProp = PropertyUtil.getPropertyValueFromPath(properties, "docker_run_args");
         if (dockerRunArgsProp instanceof ListPropertyValue) {
             // Should be both of the same type "List"
-            addToSingularityCmdArgs(csar, topology, context, singularityNode,
-                    (ListPropertyValue) dockerRunArgsProp);
+            addToSingularityCmdArgs(csar, topology, context, singularityNode, (ListPropertyValue) dockerRunArgsProp);
         }
     }
 
@@ -339,7 +377,7 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
 
     private void addToSingularityCmdArgs(Csar csar, Topology topology, FlowExecutionContext context,
             NodeTemplate singularityNode, ListPropertyValue cmdArgs) {
-                List<Object> mergedList = new ArrayList<>();
+        List<Object> mergedList = new ArrayList<>();
         AbstractPropertyValue singCmdArgsProp = PropertyUtil
                 .getPropertyValueFromPath(safe(singularityNode.getProperties()), "execution_options.args");
         if (singCmdArgsProp instanceof ListPropertyValue) {
