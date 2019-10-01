@@ -26,6 +26,7 @@ import org.alien4cloud.tosca.model.definitions.ImplementationArtifact;
 import org.alien4cloud.tosca.model.definitions.Interface;
 import org.alien4cloud.tosca.model.definitions.ListPropertyValue;
 import org.alien4cloud.tosca.model.definitions.Operation;
+import org.alien4cloud.tosca.model.definitions.ScalarPropertyValue;
 import org.alien4cloud.tosca.model.templates.AbstractTemplate;
 import org.alien4cloud.tosca.model.templates.NodeTemplate;
 import org.alien4cloud.tosca.model.templates.Topology;
@@ -87,6 +88,9 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
             csar.setName(csar.getName() + "-" + context.getEnvironmentContext().get().getEnvironment().getName());
         }
 
+        Map<String, NodeTemplate> replacementMap = Maps.newHashMap();
+        context.getExecutionCache().put(A4C_NODES_REPLACEMENT_CACHE_KEY, replacementMap);
+
         Map<String, Set<String>> containersDependencies = Maps.newHashMap();
         context.getExecutionCache().put(A4C_NODES_DEPENDS_ON_CACHE_KEY, containersDependencies);
 
@@ -115,12 +119,9 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
         containerNodes.forEach(
                 nodeTemplate -> transformContainer(csar, topology, context, functionEvaluatorContext, nodeTemplate));
 
-        // Remove replaced nodes
-        Map<String, NodeTemplate> replacementMap = (Map<String, NodeTemplate>) context.getExecutionCache()
-                .get(A4C_NODES_REPLACEMENT_CACHE_KEY);
-
         linkDependsOn(csar, context, topology, containersDependencies, replacementMap);
 
+        // Remove replaced nodes
         safe(replacementMap.keySet()).forEach(nodeName -> removeNode(csar, topology, nodeName));
     }
 
@@ -146,10 +147,6 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
             NodeTemplate replacementNode) {
         Map<String, NodeTemplate> replacementMap = (Map<String, NodeTemplate>) context.getExecutionCache()
                 .get(A4C_NODES_REPLACEMENT_CACHE_KEY);
-        if (replacementMap == null) {
-            replacementMap = new HashMap<>();
-            context.getExecutionCache().put(A4C_NODES_REPLACEMENT_CACHE_KEY, replacementMap);
-        }
         replacementMap.put(initialNode.getName(), replacementNode);
 
     }
@@ -165,7 +162,6 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
         addToReplacementMap(context, nodeTemplate, singularityNode);
         setNodeTagValue(singularityNode, A4C_D2S_MODIFIER_TAG + "_created_from", nodeTemplate.getName());
 
-        // TODO take into account transformation
     }
 
     /**
@@ -190,8 +186,6 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
         setNodeTagValue(singularityNode, A4C_D2S_MODIFIER_TAG + "_created_from", tagValue);
         // Mark as replaced by the singularity job
         addToReplacementMap(context, nodeTemplate, singularityNode);
-
-        // TODO take into account transformation
 
     }
 
@@ -342,6 +336,44 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
         }
         transformContainerCommand(csar, topology, context, properties, singularityNode);
         transformContainerEnv(csar, topology, context, properties, singularityNode);
+        transformContainerLimits(csar, topology, context, properties, singularityNode);
+    }
+
+    private void transformContainerLimits(Csar csar, Topology topology, FlowExecutionContext context,
+            Map<String, AbstractPropertyValue> properties, NodeTemplate singularityNode) {
+
+        AbstractPropertyValue cpu_share = PropertyUtil.getPropertyValueFromPath(properties, "cpu_share");
+        if (cpu_share instanceof ScalarPropertyValue) {
+            String sValue = ((ScalarPropertyValue) cpu_share).getValue();
+            if (sValue != null) {
+                float value = Float.parseFloat(sValue);
+                // 1024 is = to one CPU
+                value /= 1024;
+                ScalarPropertyValue cpuPerTask = new ScalarPropertyValue(
+                        Integer.toString(Math.max(Math.round(value), 1)));
+                setNodePropertyPathValue(csar, topology, singularityNode, "slurm_options.cpus_per_task", cpuPerTask);
+            }
+        }
+        AbstractPropertyValue cpu_share_limit = PropertyUtil.getPropertyValueFromPath(properties, "cpu_share_limit");
+        if (cpu_share_limit instanceof ScalarPropertyValue) {
+            String sValue = ((ScalarPropertyValue) cpu_share_limit).getValue();
+            if (sValue != null) {
+                float value = Float.parseFloat(sValue);
+                // 1024 is = to one CPU
+                value /= 1024;
+                ScalarPropertyValue cpuPerTask = new ScalarPropertyValue(
+                        Integer.toString(Math.max(Math.round(value), 1)));
+                setNodePropertyPathValue(csar, topology, singularityNode, "slurm_options.cpus_per_task", cpuPerTask);
+            }
+        }
+        AbstractPropertyValue mem_share = PropertyUtil.getPropertyValueFromPath(properties, "mem_share");
+        if (mem_share != null) {
+            setNodePropertyPathValue(csar, topology, singularityNode, "slurm_options.mem_per_node", mem_share);
+        }
+        AbstractPropertyValue mem_share_limit = PropertyUtil.getPropertyValueFromPath(properties, "mem_share_limit");
+        if (mem_share_limit != null) {
+            setNodePropertyPathValue(csar, topology, singularityNode, "slurm_options.mem_per_node", mem_share_limit);
+        }
     }
 
     private void transformContainerCommand(Csar csar, Topology topology, FlowExecutionContext context,
