@@ -29,6 +29,7 @@ import org.alien4cloud.tosca.model.definitions.Operation;
 import org.alien4cloud.tosca.model.definitions.ScalarPropertyValue;
 import org.alien4cloud.tosca.model.templates.AbstractTemplate;
 import org.alien4cloud.tosca.model.templates.NodeTemplate;
+import org.alien4cloud.tosca.model.templates.RelationshipTemplate;
 import org.alien4cloud.tosca.model.templates.Topology;
 import org.alien4cloud.tosca.model.types.NodeType;
 import org.alien4cloud.tosca.normative.constants.NormativeRelationshipConstants;
@@ -57,6 +58,7 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
 
     public static final String SLURM_TYPES_CONTAINER_RUNTIME = "yorc.nodes.slurm.ContainerRuntime";
     public static final String SLURM_TYPES_CONTAINER_JOB_UNIT = "yorc.nodes.slurm.ContainerJobUnit";
+    public static final String SLURM_TYPES_HOST_TO_CONTAINER_VOLUME = "yorc.nodes.slurm.HostToContainerVolume";
     public static final String SLURM_TYPES_SINGULARITY_JOB = "yorc.nodes.slurm.SingularityJob";
 
     public static final String A4C_RUNNABLE_INTERFACE_NAME = "tosca.interfaces.node.lifecycle.Runnable";
@@ -118,6 +120,12 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
                 A4C_TYPES_APPLICATION_DOCKER_CONTAINER, true);
         containerNodes.forEach(
                 nodeTemplate -> transformContainer(csar, topology, context, functionEvaluatorContext, nodeTemplate));
+
+        // for each volume node, populate the 'volumes' property of the corresponding
+        // deployment resource
+        Set<NodeTemplate> volumeNodes = TopologyNavigationUtil.getNodesOfType(topology,
+                SLURM_TYPES_HOST_TO_CONTAINER_VOLUME, true);
+        volumeNodes.forEach(nodeTemplate -> transformContainerVolume(csar, topology, context, nodeTemplate));
 
         linkDependsOn(csar, context, topology, containersDependencies, replacementMap);
 
@@ -186,6 +194,51 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
         setNodeTagValue(singularityNode, A4C_D2S_MODIFIER_TAG + "_created_from", tagValue);
         // Mark as replaced by the singularity job
         addToReplacementMap(context, nodeTemplate, singularityNode);
+
+    }
+
+    /**
+     * Replace this node of type HostToContainerVolume by a node of type
+     * yorc.nodes.slurm.SingularityJob.
+     */
+    private void transformContainerVolume(Csar csar, Topology topology, FlowExecutionContext context,
+            NodeTemplate nodeTemplate) {
+
+        // FIXME : doesn't support many attachement (1 volume -> many containers) ?)
+        Optional<RelationshipTemplate> relationshipTemplate = TopologyNavigationUtil
+                .getTargetRelationships(nodeTemplate, "attachment").stream().findFirst();
+        if (!relationshipTemplate.isPresent()) {
+            log.debug("Ignoring DockerExtVolume node <{}> not linked to a Container", nodeTemplate.getName());
+            return;
+        }
+        Map<String, NodeTemplate> replacementMap = (Map<String, NodeTemplate>) context.getExecutionCache()
+                .get(A4C_NODES_REPLACEMENT_CACHE_KEY);
+        NodeTemplate targetContainer = topology.getNodeTemplates().get(relationshipTemplate.get().getTarget());
+        NodeTemplate singularityNode = replacementMap.get(targetContainer.getName());
+        String tagValue = getNodeTagValueOrNull(singularityNode, A4C_D2S_MODIFIER_TAG + "_created_from");
+        tagValue += "," + nodeTemplate.getName();
+        setNodeTagValue(singularityNode, A4C_D2S_MODIFIER_TAG + "_created_from", tagValue);
+        // Mark as replaced by the singularity job
+        addToReplacementMap(context, nodeTemplate, singularityNode);
+
+        String cPath=null;
+        String hPath=null;
+        AbstractPropertyValue containerPath =  relationshipTemplate.get().getProperties().get("container_path");
+        if (containerPath instanceof ScalarPropertyValue){
+            cPath= ((ScalarPropertyValue)containerPath).getValue();
+        }
+        AbstractPropertyValue hostPath = nodeTemplate.getProperties().get("path");
+        if (hostPath instanceof ScalarPropertyValue){
+            hPath= ((ScalarPropertyValue)hostPath).getValue();
+        }
+        if(hPath==null || cPath==null) {
+            return;
+        }
+
+        ListPropertyValue cmdOpts = new ListPropertyValue(Lists.newArrayList());
+        // FIXEME(loicalbertin) check that they are actual paths (prevent injecting code)
+        cmdOpts.getValue().add("--bind="+hPath+":"+cPath);
+        addToSingularityCmdOptions(csar, topology, context, singularityNode, cmdOpts);
 
     }
 
@@ -429,6 +482,19 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
         mergedList.addAll(cmdArgs.getValue());
         cmdArgs.setValue(mergedList);
         setNodePropertyPathValue(csar, topology, singularityNode, "execution_options.args", cmdArgs);
+    }
+
+    private void addToSingularityCmdOptions(Csar csar, Topology topology, FlowExecutionContext context,
+            NodeTemplate singularityNode, ListPropertyValue cmdOpts) {
+        List<Object> mergedList = new ArrayList<>();
+        AbstractPropertyValue singCmdOptsProp = PropertyUtil
+                .getPropertyValueFromPath(safe(singularityNode.getProperties()), "singularity_command_options");
+        if (singCmdOptsProp instanceof ListPropertyValue) {
+            mergedList.addAll(safe(((ListPropertyValue) singCmdOptsProp).getValue()));
+        }
+        mergedList.addAll(cmdOpts.getValue());
+        cmdOpts.setValue(mergedList);
+        setNodePropertyPathValue(csar, topology, singularityNode, "singularity_command_options", cmdOpts);
     }
 
 }

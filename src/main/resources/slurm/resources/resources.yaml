@@ -234,3 +234,11 @@ node_types:
 
   yorc.nodes.slurm.ContainerJobUnit:
     derived_from: org.alien4cloud.extended.container.types.ContainerJobUnit
+
+  yorc.nodes.slurm.HostToContainerVolume:
+    derived_from: org.alien4cloud.nodes.DockerExtVolume
+    properties:
+      path:
+        type: string
+        description: |
+          Path of the directory on the host.
