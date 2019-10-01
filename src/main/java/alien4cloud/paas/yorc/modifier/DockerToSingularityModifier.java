@@ -13,6 +13,7 @@ import java.util.Set;
 
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
 
 import org.alien4cloud.alm.deployment.configuration.flow.FlowExecutionContext;
 import org.alien4cloud.alm.deployment.configuration.flow.TopologyModifierSupport;
@@ -86,7 +87,7 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
             csar.setName(csar.getName() + "-" + context.getEnvironmentContext().get().getEnvironment().getName());
         }
 
-        Map<String, String> containersDependencies = Maps.newHashMap();
+        Map<String, Set<String>> containersDependencies = Maps.newHashMap();
         context.getExecutionCache().put(A4C_NODES_DEPENDS_ON_CACHE_KEY, containersDependencies);
 
         // A function evaluator context will be usefull
@@ -124,12 +125,14 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
     }
 
     private void linkDependsOn(Csar csar, FlowExecutionContext context, Topology topology,
-            Map<String, String> containersDependencies, Map<String, NodeTemplate> replacementMap) {
-        containersDependencies.forEach((source, target) -> {
+            Map<String, Set<String>> containersDependencies, Map<String, NodeTemplate> replacementMap) {
+        containersDependencies.forEach((source, targets) -> {
             NodeTemplate sourceNode = replacementMap.get(source);
-            NodeTemplate targetNode = replacementMap.get(target);
-            addRelationshipTemplate(csar, topology, sourceNode, targetNode.getName(),
-                    NormativeRelationshipConstants.DEPENDS_ON, "dependency", "feature");
+            safe(targets).forEach(target -> {
+                NodeTemplate targetNode = replacementMap.get(target);
+                addRelationshipTemplate(csar, topology, sourceNode, targetNode.getName(),
+                        NormativeRelationshipConstants.DEPENDS_ON, "dependency", "feature");
+            });
         });
     }
 
@@ -235,11 +238,18 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
         transformContainerOperation(csar, context, functionEvaluatorContext, topology, nodeTemplate, singularityNode);
         transformContainerProperties(csar, topology, context, nodeTemplate, singularityNode);
 
-        Map<String, String> containersDependencies = (Map<String, String>) context.getExecutionCache()
+        Map<String, Set<String>> containersDependencies = (Map<String, Set<String>>) context.getExecutionCache()
                 .get(A4C_NODES_DEPENDS_ON_CACHE_KEY);
         Set<NodeTemplate> dependents = TopologyNavigationUtil.getSourceNodesByRelationshipType(topology, nodeTemplate,
                 NormativeRelationshipConstants.DEPENDS_ON);
-        dependents.forEach(sourceNode -> containersDependencies.put(sourceNode.getName(), nodeTemplate.getName()));
+        dependents.forEach(sourceNode -> {
+            Set<String> d = containersDependencies.get(sourceNode.getName());
+            if (d == null) {
+                d = Sets.newHashSet();
+                containersDependencies.put(sourceNode.getName(), d);
+            }
+            d.add(nodeTemplate.getName());
+        });
     }
 
     private void transformContainerOperation(Csar csar, FlowExecutionContext context,
