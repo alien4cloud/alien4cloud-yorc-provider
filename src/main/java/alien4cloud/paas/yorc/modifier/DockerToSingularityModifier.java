@@ -86,9 +86,6 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
 
     private void doProcess(Topology topology, FlowExecutionContext context) {
         Csar csar = new Csar(topology.getArchiveName(), topology.getArchiveVersion());
-        if (context.getEnvironmentContext().isPresent()) {
-            csar.setName(csar.getName() + "-" + context.getEnvironmentContext().get().getEnvironment().getName());
-        }
 
         Map<String, NodeTemplate> replacementMap = Maps.newHashMap();
         context.getExecutionCache().put(A4C_NODES_REPLACEMENT_CACHE_KEY, replacementMap);
@@ -234,10 +231,18 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
         if(hPath==null || cPath==null) {
             return;
         }
+        String mountDirective = "--bind="+hPath+":"+cPath;
+        AbstractPropertyValue readOnlyVal = nodeTemplate.getProperties().get("readOnly");
+        if (readOnlyVal instanceof ScalarPropertyValue) {
+            boolean readOnly= Boolean.parseBoolean(((ScalarPropertyValue)readOnlyVal).getValue());
+            if (readOnly) {
+                mountDirective+=":ro";
+            }
+        }
 
         ListPropertyValue cmdOpts = new ListPropertyValue(Lists.newArrayList());
-        // FIXEME(loicalbertin) check that they are actual paths (prevent injecting code)
-        cmdOpts.getValue().add("--bind="+hPath+":"+cPath);
+        // FIXME(loicalbertin) check that they are actual paths (prevent injecting code)
+        cmdOpts.getValue().add(mountDirective);
         addToSingularityCmdOptions(csar, topology, context, singularityNode, cmdOpts);
 
     }

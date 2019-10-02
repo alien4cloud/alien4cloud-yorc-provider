@@ -242,3 +242,9 @@ node_types:
         type: string
         description: |
           Path of the directory on the host.
+      readOnly:
+        type: boolean
+        description: |
+          Mounted read-only if true, read-write otherwise (false or unspecified). Defaults to false.
+        default: false
+        required: false
