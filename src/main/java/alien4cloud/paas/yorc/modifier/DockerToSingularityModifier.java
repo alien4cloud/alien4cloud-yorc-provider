@@ -192,6 +192,8 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
         // Mark as replaced by the singularity job
         addToReplacementMap(context, nodeTemplate, singularityNode);
 
+
+
     }
 
     /**
@@ -285,7 +287,7 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
         // Mark as replaced by the singularity job
         addToReplacementMap(context, nodeTemplate, singularityNode);
 
-        // TODO take into account transformation
+        setNodePropertyPathValue(csar, topology, singularityNode, "slurm_options.name", new ScalarPropertyValue(singularityNode.getName()));
 
         transformContainerOperation(csar, context, functionEvaluatorContext, topology, nodeTemplate, singularityNode);
         transformContainerProperties(csar, topology, context, nodeTemplate, singularityNode);
