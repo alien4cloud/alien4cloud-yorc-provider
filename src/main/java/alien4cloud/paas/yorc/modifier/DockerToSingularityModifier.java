@@ -28,6 +28,7 @@ import org.alien4cloud.tosca.model.definitions.ListPropertyValue;
 import org.alien4cloud.tosca.model.definitions.Operation;
 import org.alien4cloud.tosca.model.definitions.ScalarPropertyValue;
 import org.alien4cloud.tosca.model.templates.AbstractTemplate;
+import org.alien4cloud.tosca.model.templates.Capability;
 import org.alien4cloud.tosca.model.templates.NodeTemplate;
 import org.alien4cloud.tosca.model.templates.RelationshipTemplate;
 import org.alien4cloud.tosca.model.templates.Topology;
@@ -192,8 +193,35 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
         // Mark as replaced by the singularity job
         addToReplacementMap(context, nodeTemplate, singularityNode);
 
+        transformContainerRuntimeLimits(csar, topology, context, nodeTemplate, singularityNode);
 
+    }
 
+    private void transformContainerRuntimeLimits(Csar csar, Topology topology, FlowExecutionContext context,
+            NodeTemplate containerRuntime, NodeTemplate singularityNode) {
+
+        Optional<Capability> capOpt = safe(containerRuntime.getCapabilities()).values().stream()
+                .filter(cap -> cap.getType().equals("org.alien4cloud.extended.container.capabilities.ApplicationHost"))
+                .findFirst();
+        if (!capOpt.isPresent()) {
+            return;
+        }
+        Map<String, AbstractPropertyValue> properties= safe(capOpt.get().getProperties());
+
+        AbstractPropertyValue numCpus = PropertyUtil.getPropertyValueFromPath(properties, "num_cpus");
+        if (numCpus instanceof ScalarPropertyValue) {
+            String sValue = ((ScalarPropertyValue) numCpus).getValue();
+            if (sValue != null) {
+                float value = Float.parseFloat(sValue);
+                ScalarPropertyValue cpuPerTask = new ScalarPropertyValue(
+                        Integer.toString(Math.round(value)));
+                setNodePropertyPathValue(csar, topology, singularityNode, "slurm_options.cpus_per_task", cpuPerTask);
+            }
+        }
+        AbstractPropertyValue memSize = PropertyUtil.getPropertyValueFromPath(properties, "mem_size");
+        if (memSize != null) {
+            setNodePropertyPathValue(csar, topology, singularityNode, "slurm_options.mem_per_node", memSize);
+        }
     }
 
     /**
@@ -220,25 +248,25 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
         // Mark as replaced by the singularity job
         addToReplacementMap(context, nodeTemplate, singularityNode);
 
-        String cPath=null;
-        String hPath=null;
-        AbstractPropertyValue containerPath =  relationshipTemplate.get().getProperties().get("container_path");
-        if (containerPath instanceof ScalarPropertyValue){
-            cPath= ((ScalarPropertyValue)containerPath).getValue();
+        String cPath = null;
+        String hPath = null;
+        AbstractPropertyValue containerPath = relationshipTemplate.get().getProperties().get("container_path");
+        if (containerPath instanceof ScalarPropertyValue) {
+            cPath = ((ScalarPropertyValue) containerPath).getValue();
         }
         AbstractPropertyValue hostPath = nodeTemplate.getProperties().get("path");
-        if (hostPath instanceof ScalarPropertyValue){
-            hPath= ((ScalarPropertyValue)hostPath).getValue();
+        if (hostPath instanceof ScalarPropertyValue) {
+            hPath = ((ScalarPropertyValue) hostPath).getValue();
         }
-        if(hPath==null || cPath==null) {
+        if (hPath == null || cPath == null) {
             return;
         }
-        String mountDirective = "--bind="+hPath+":"+cPath;
+        String mountDirective = "--bind=" + hPath + ":" + cPath;
         AbstractPropertyValue readOnlyVal = nodeTemplate.getProperties().get("readOnly");
         if (readOnlyVal instanceof ScalarPropertyValue) {
-            boolean readOnly= Boolean.parseBoolean(((ScalarPropertyValue)readOnlyVal).getValue());
+            boolean readOnly = Boolean.parseBoolean(((ScalarPropertyValue) readOnlyVal).getValue());
             if (readOnly) {
-                mountDirective+=":ro";
+                mountDirective += ":ro";
             }
         }
 
@@ -287,7 +315,8 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
         // Mark as replaced by the singularity job
         addToReplacementMap(context, nodeTemplate, singularityNode);
 
-        setNodePropertyPathValue(csar, topology, singularityNode, "slurm_options.name", new ScalarPropertyValue(singularityNode.getName()));
+        setNodePropertyPathValue(csar, topology, singularityNode, "slurm_options.name",
+                new ScalarPropertyValue(singularityNode.getName()));
 
         transformContainerOperation(csar, context, functionEvaluatorContext, topology, nodeTemplate, singularityNode);
         transformContainerProperties(csar, topology, context, nodeTemplate, singularityNode);
@@ -396,44 +425,6 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
         }
         transformContainerCommand(csar, topology, context, properties, singularityNode);
         transformContainerEnv(csar, topology, context, properties, singularityNode);
-        transformContainerLimits(csar, topology, context, properties, singularityNode);
-    }
-
-    private void transformContainerLimits(Csar csar, Topology topology, FlowExecutionContext context,
-            Map<String, AbstractPropertyValue> properties, NodeTemplate singularityNode) {
-
-        AbstractPropertyValue cpu_share = PropertyUtil.getPropertyValueFromPath(properties, "cpu_share");
-        if (cpu_share instanceof ScalarPropertyValue) {
-            String sValue = ((ScalarPropertyValue) cpu_share).getValue();
-            if (sValue != null) {
-                float value = Float.parseFloat(sValue);
-                // 1024 is = to one CPU
-                value /= 1024;
-                ScalarPropertyValue cpuPerTask = new ScalarPropertyValue(
-                        Integer.toString(Math.max(Math.round(value), 1)));
-                setNodePropertyPathValue(csar, topology, singularityNode, "slurm_options.cpus_per_task", cpuPerTask);
-            }
-        }
-        AbstractPropertyValue cpu_share_limit = PropertyUtil.getPropertyValueFromPath(properties, "cpu_share_limit");
-        if (cpu_share_limit instanceof ScalarPropertyValue) {
-            String sValue = ((ScalarPropertyValue) cpu_share_limit).getValue();
-            if (sValue != null) {
-                float value = Float.parseFloat(sValue);
-                // 1024 is = to one CPU
-                value /= 1024;
-                ScalarPropertyValue cpuPerTask = new ScalarPropertyValue(
-                        Integer.toString(Math.max(Math.round(value), 1)));
-                setNodePropertyPathValue(csar, topology, singularityNode, "slurm_options.cpus_per_task", cpuPerTask);
-            }
-        }
-        AbstractPropertyValue mem_share = PropertyUtil.getPropertyValueFromPath(properties, "mem_share");
-        if (mem_share != null) {
-            setNodePropertyPathValue(csar, topology, singularityNode, "slurm_options.mem_per_node", mem_share);
-        }
-        AbstractPropertyValue mem_share_limit = PropertyUtil.getPropertyValueFromPath(properties, "mem_share_limit");
-        if (mem_share_limit != null) {
-            setNodePropertyPathValue(csar, topology, singularityNode, "slurm_options.mem_per_node", mem_share_limit);
-        }
     }
 
     private void transformContainerCommand(Csar csar, Topology topology, FlowExecutionContext context,
