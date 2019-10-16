@@ -20,8 +20,9 @@ public class FsmMapper {
             case Event.EVT_DEPLOYMENT:
                 return true;
             case Event.EVT_WORKFLOW:
-                if (event.getWorkflowId().equals(NormativeWorkflowNameConstants.POST_UPDATE)) {
-                    // since we manage post_update workflow here, we need to handle such kind of events
+                if (event.getWorkflowId().equals(NormativeWorkflowNameConstants.POST_UPDATE)
+                        || event.getWorkflowId().equals(NormativeWorkflowNameConstants.PRE_UPDATE)) {
+                    // since we manage post_update and pre_update workflow here, we need to handle such kind of events
                     return true;
                 }
             default:
@@ -40,7 +41,7 @@ public class FsmMapper {
                 payload = fromYorcToFsmEvent(event.getStatus());
                 break;
             case Event.EVT_WORKFLOW:
-                payload = fromYorcWorkflowToFsmEvent(event.getStatus());
+                payload = fromYorcWorkflowToFsmEvent(event.getWorkflowId(), event.getStatus());
                 break;
             default:
                 throw new Exception("Event mapping not handled");
@@ -92,20 +93,40 @@ public class FsmMapper {
      * @param status
      * @return
      */
-    private static FsmEvents fromYorcWorkflowToFsmEvent(String status) throws Exception {
-        switch (status.toUpperCase()) {
-            case "INITIAL":
-                return FsmEvents.POST_UPDATE_IN_PROGRESS;
-            case "RUNNING":
-                return FsmEvents.POST_UPDATE_IN_PROGRESS;
-            case "DONE":
-                return FsmEvents.POST_UPDATE_SUCCESS;
-            case "FAILED":
-                return FsmEvents.POST_UPDATE_FAILURE;
-            case "CANCELED":
-                return FsmEvents.POST_UPDATE_CANCELED;
+    private static FsmEvents fromYorcWorkflowToFsmEvent(String workflowId, String status) throws Exception {
+        switch (workflowId) {
+            case NormativeWorkflowNameConstants.PRE_UPDATE:
+                switch (status.toUpperCase()) {
+                    case "INITIAL":
+                        return FsmEvents.PRE_UPDATE_RUNNING;
+                    case "RUNNING":
+                        return FsmEvents.PRE_UPDATE_RUNNING;
+                    case "DONE":
+                        return FsmEvents.PRE_UPDATE_SUCCESS;
+                    case "FAILED":
+                        return FsmEvents.PRE_UPDATE_FAILURE;
+                    case "CANCELED":
+                        return FsmEvents.PRE_UPDATE_CANCELED;
+                    default:
+                        throw new Exception(String.format("Unknown workflow event from Yorc: %s", status));
+                }
+            case NormativeWorkflowNameConstants.POST_UPDATE:
+                switch (status.toUpperCase()) {
+                    case "INITIAL":
+                        return FsmEvents.POST_UPDATE_IN_PROGRESS;
+                    case "RUNNING":
+                        return FsmEvents.POST_UPDATE_IN_PROGRESS;
+                    case "DONE":
+                        return FsmEvents.POST_UPDATE_SUCCESS;
+                    case "FAILED":
+                        return FsmEvents.POST_UPDATE_FAILURE;
+                    case "CANCELED":
+                        return FsmEvents.POST_UPDATE_CANCELED;
+                    default:
+                        throw new Exception(String.format("Unknown workflow event from Yorc: %s", status));
+                }
             default:
-                throw new Exception(String.format("Unknown workflow event from Yorc: %s", status));
+                throw new Exception(String.format("Unknown workflowId from Yorc: %s", workflowId));
         }
     }
 

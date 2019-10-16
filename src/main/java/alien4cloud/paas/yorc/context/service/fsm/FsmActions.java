@@ -261,6 +261,86 @@ public class FsmActions {
 		};
 	}
 
+	protected Action<FsmStates, FsmEvents> preUpdate() {
+		return new Action<FsmStates, FsmEvents>() {
+			private String yorcDeploymentId;
+			private IPaaSCallback<?> callback;
+			private PaaSTopologyDeploymentContext context;
+
+			private void onHttpOk(String value) {
+				if (log.isDebugEnabled()) {
+					log.debug("Workflow pre_update launched for deployment {} : {}", yorcDeploymentId, value);
+				}
+				// store the taskUrl for eventually undeploy during update
+				stateMachineService.setTaskUrl(context.getDeploymentPaaSId(), value);
+
+				Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.PRE_UPDATE_STARTED, yorcDeploymentId);
+				busService.publish(message);
+			}
+
+			private void onHttpKo(Throwable t) {
+				if (log.isDebugEnabled()) {
+					log.debug("Workflow pre_update launched for deployment {} throws errors", yorcDeploymentId, t);
+				}
+
+				if (t instanceof HttpClientErrorException && ((HttpClientErrorException)t).getStatusCode() == HttpStatus.NOT_FOUND) {
+					if (log.isWarnEnabled()) {
+						log.warn("Workflow pre_update launched for deployment {} throws a 404 errors : the initial topology doesn't have a pre_update workflow but the new one has, just ignore and continue the update", yorcDeploymentId, t);
+					}
+					// this can occur when the new updated topology has a pre_update workflow but not the old one
+					// in the case, just ignore the exception
+					Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.PRE_UPDATE_SKIPPED, yorcDeploymentId);
+					busService.publish(message);
+					return;
+				}
+
+				if (callback != null) {
+					callback.onFailure(t);
+				}
+
+				// we need to publish a deployment event
+				Event event = new Event();
+				event.setType(Event.EVT_DEPLOYMENT);
+				event.setDeploymentId(yorcDeploymentId);
+				event.setStatus("UPDATE_FAILURE");
+				busService.publish(event);
+
+				Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.PRE_UPDATE_FAILURE, yorcDeploymentId);
+				busService.publish(message);
+			}
+
+			@Override
+			public void execute(StateContext<FsmStates, FsmEvents> stateContext) {
+				yorcDeploymentId = (String) stateContext.getExtendedState().getVariables().get(StateMachineService.YORC_DEPLOYMENT_ID);
+				callback = (IPaaSCallback<?>) stateContext.getExtendedState().getVariables().get(StateMachineService.CALLBACK);
+				if (log.isDebugEnabled()) {
+					log.debug("Executing preUpdate action for deployment {}", yorcDeploymentId);
+				}
+				context = (PaaSTopologyDeploymentContext) stateContext.getExtendedState().getVariables().get(StateMachineService.DEPLOYMENT_CONTEXT);
+				if (!context.getDeploymentTopology().getWorkflows().containsKey(NormativeWorkflowNameConstants.PRE_UPDATE)) {
+					if (log.isDebugEnabled()) {
+						log.info("no pre_update workflow for deployment {}", yorcDeploymentId);
+					}
+					Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.PRE_UPDATE_SKIPPED, yorcDeploymentId);
+					busService.publish(message);
+					return;
+				}
+				// we need to publish a deployment event
+				Event event = new Event();
+				event.setType(Event.EVT_DEPLOYMENT);
+				event.setDeploymentId(yorcDeploymentId);
+				event.setStatus("UPDATE_IN_PROGRESS");
+				busService.publish(event);
+
+				if (log.isInfoEnabled()) {
+					log.info("Launching pre_update workflow for deployment {}", yorcDeploymentId);
+				}
+				deploymentClient.executeWorkflow(yorcDeploymentId, NormativeWorkflowNameConstants.PRE_UPDATE, false).subscribe(this::onHttpOk, this::onHttpKo);
+			}
+
+		};
+	}
+
 	protected Action<FsmStates, FsmEvents> update() {
 		return new Action<FsmStates, FsmEvents>() {
 
@@ -336,7 +416,7 @@ public class FsmActions {
 		};
 	}
 
-	protected Action<FsmStates, FsmEvents> launchPostUpdateWorkflow() {
+	protected Action<FsmStates, FsmEvents> postUpdate() {
 		return new Action<FsmStates, FsmEvents>() {
 			private String yorcDeploymentId;
 			private IPaaSCallback<?> callback;
@@ -355,6 +435,13 @@ public class FsmActions {
 					callback.onFailure(t);
 				}
 
+				// we need to publish a deployment event
+				Event event = new Event();
+				event.setType(Event.EVT_DEPLOYMENT);
+				event.setDeploymentId(yorcDeploymentId);
+				event.setStatus("UPDATE_FAILURE");
+				busService.publish(event);
+
 				Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.POST_UPDATE_FAILURE, yorcDeploymentId);
 				busService.publish(message);
 			}
@@ -364,12 +451,12 @@ public class FsmActions {
 				yorcDeploymentId = (String) stateContext.getExtendedState().getVariables().get(StateMachineService.YORC_DEPLOYMENT_ID);
 				callback = (IPaaSCallback<?>) stateContext.getExtendedState().getVariables().get(StateMachineService.CALLBACK);
 				if (log.isDebugEnabled()) {
-					log.debug("Executing launchPostUpdateWorkflow action for deployment {}", yorcDeploymentId);
+					log.debug("Executing postUpdate action for deployment {}", yorcDeploymentId);
 				}
 				context = (PaaSTopologyDeploymentContext) stateContext.getExtendedState().getVariables().get(StateMachineService.DEPLOYMENT_CONTEXT);
 				if (!context.getDeploymentTopology().getWorkflows().containsKey(NormativeWorkflowNameConstants.POST_UPDATE)) {
 					if (log.isDebugEnabled()) {
-						log.info("no post update workflow for deployment {}", yorcDeploymentId);
+						log.info("no post_update workflow for deployment {}", yorcDeploymentId);
 					}
 					Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.POST_UPDATE_SUCCESS, yorcDeploymentId);
 					busService.publish(message);
@@ -391,7 +478,7 @@ public class FsmActions {
 		};
 	}
 
-	protected Action<FsmStates, FsmEvents> notifyPostUpdateSucces() {
+	protected Action<FsmStates, FsmEvents> notifyUpdateSucces() {
 		return stateContext -> {
 
 			IPaaSCallback<?> callback = (IPaaSCallback<?>) stateContext.getExtendedState().getVariables().get(StateMachineService.CALLBACK);
@@ -414,7 +501,7 @@ public class FsmActions {
 		};
 	}
 
-	protected Action<FsmStates, FsmEvents> notifyPostUpdateFailure() {
+	protected Action<FsmStates, FsmEvents> notifyPrePostUpdateFailure() {
 		return stateContext -> {
 
 			String yorcDeploymentId = (String) stateContext.getExtendedState().getVariables().get(StateMachineService.YORC_DEPLOYMENT_ID);
