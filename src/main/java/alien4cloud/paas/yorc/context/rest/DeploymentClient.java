@@ -2,6 +2,7 @@ package alien4cloud.paas.yorc.context.rest;
 
 import alien4cloud.paas.model.NodeOperationExecRequest;
 
+import io.reactivex.Completable;
 import org.json.JSONObject;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -107,11 +108,16 @@ public class DeploymentClient extends AbstractClient {
             .map(RestUtil.extractHeader("Location"));
     }
 
-    public Single<String> cancelTask(String taskUrl) {
+
+    public Completable cancelTask(String deploymentId, String taskId) {
+        String taskUrl = String.format("/deployments/%s/tasks/%s",deploymentId,taskId);
+        return cancelTask(taskUrl);
+    }
+
+    public Completable cancelTask(String taskUrl) {
         String url = getYorcUrl() + taskUrl;
 
-        return sendRequest(url,HttpMethod.DELETE,String.class,buildHttpEntityWithDefaultHeader())
-            .map(RestUtil.extractHeader("Location"));
+        return sendRequest(url,HttpMethod.DELETE,String.class,buildHttpEntityWithDefaultHeader()).ignoreElement();
     }
 
     public <T> Observable<T> queryUrl(String url,Class<T> clazz) {

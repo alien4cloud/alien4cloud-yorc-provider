@@ -206,6 +206,19 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
     }
 
     @Override
+    public void cancelTask(PaaSDeploymentContext deploymentContext, String taskId, IPaaSCallback<String> callback) {
+        if (log.isDebugEnabled()) {
+            log.debug(String.format("Cancelling task %s for deployment %s", taskId, deploymentContext.getDeploymentPaaSId()));
+        }
+
+        deploymentClient.cancelTask(deploymentContext.getDeploymentPaaSId(),taskId).subscribe(
+                () -> {
+                    log.debug(String.format("Task %s for deployment %s cancelled", taskId, deploymentContext.getDeploymentPaaSId()));
+                    callback.onSuccess(taskId);
+            },callback::onFailure);
+    }
+
+    @Override
     public void getStatus(PaaSDeploymentContext deploymentContext, IPaaSCallback<DeploymentStatus> callback) {
         DeploymentStatus status = stateMachineService.getState(deploymentContext.getDeploymentPaaSId());
         callback.onSuccess(status);
