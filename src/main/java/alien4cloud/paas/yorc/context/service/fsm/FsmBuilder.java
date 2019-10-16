@@ -93,6 +93,13 @@ public class FsmBuilder {
 			.withExternal()
 			.source(FsmStates.PRE_UPDATE_IN_PROGRESS).target(FsmStates.PRE_UPDATE_IN_PROGRESS)
 			.event(FsmEvents.PRE_UPDATE_RUNNING)
+		// pre_update can be cancelled manually
+		.and()
+			.withExternal()
+			.source(FsmStates.PRE_UPDATE_IN_PROGRESS).target(FsmStates.UPDATE_FAILED)
+			.event(FsmEvents.PRE_UPDATE_CANCELED)
+			.action(actions.notifyPrePostUpdateFailure())
+		// undeploy during pre_update
 		.and()
 			.withExternal()
 			.source(FsmStates.PRE_UPDATE_IN_PROGRESS).target(FsmStates.CANCELLATION_REQUESTED)
@@ -133,6 +140,13 @@ public class FsmBuilder {
 			.source(FsmStates.POST_UPDATE_IN_PROGRESS).target(FsmStates.UPDATE_FAILED)
 			.event(FsmEvents.POST_UPDATE_FAILURE)
 			.action(actions.notifyPrePostUpdateFailure())
+		// The post_update workflow can be cancelled manually
+		.and()
+			.withExternal()
+			.source(FsmStates.POST_UPDATE_IN_PROGRESS).target(FsmStates.UPDATE_FAILED)
+			.event(FsmEvents.POST_UPDATE_CANCELED)
+			.action(actions.notifyPrePostUpdateFailure())
+		// undeploy during post_update
 		.and()
 			.withExternal()
 			.source(FsmStates.POST_UPDATE_IN_PROGRESS).target(FsmStates.CANCELLATION_REQUESTED)
