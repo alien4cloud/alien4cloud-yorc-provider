@@ -1,29 +1,46 @@
 package alien4cloud.paas.yorc.context.service.fsm;
 
 import alien4cloud.paas.yorc.context.rest.response.Event;
+import lombok.extern.slf4j.Slf4j;
+import org.alien4cloud.tosca.normative.constants.NormativeWorkflowNameConstants;
 import org.springframework.messaging.Message;
 import org.springframework.messaging.support.MessageBuilder;
 
+@Slf4j
 public class FsmMapper {
 
     private FsmMapper() {
     }
 
+    /**
+     * When changing this, you should also consider changing {@link #map(Event)}.
+     */
     public static boolean shouldMap(Event event) {
         switch (event.getType()) {
             case Event.EVT_DEPLOYMENT:
                 return true;
+            case Event.EVT_WORKFLOW:
+                if (event.getWorkflowId().equals(NormativeWorkflowNameConstants.POST_UPDATE)) {
+                    // since we manage post_update workflow here, we need to handle such kind of events
+                    return true;
+                }
             default:
                 return false;
         }
     }
 
+    /**
+     * When changing this, you should also consider changing {@link #shouldMap(Event)}.
+     */
     public static Message<FsmEvents> map(Event event) throws Exception {
         FsmEvents payload;
 
         switch(event.getType()) {
             case Event.EVT_DEPLOYMENT:
                 payload = fromYorcToFsmEvent(event.getStatus());
+                break;
+            case Event.EVT_WORKFLOW:
+                payload = fromYorcWorkflowToFsmEvent(event.getStatus());
                 break;
             default:
                 throw new Exception("Event mapping not handled");
@@ -55,6 +72,8 @@ public class FsmMapper {
                 return FsmEvents.DEPLOYMENT_IN_PROGRESS;
             case "UNDEPLOYMENT_IN_PROGRESS":
                 return FsmEvents.UNDEPLOYMENT_STARTED;
+            case "PURGE_IN_PROGRESS":
+                return FsmEvents.UNDEPLOYMENT_STARTED;
             case "UPDATE_IN_PROGRESS":
                 return FsmEvents.UPDATE_IN_PROGRESS;
             case "UPDATED":
@@ -65,6 +84,28 @@ public class FsmMapper {
                 return FsmEvents.FAILURE;
             default:
                 throw new Exception(String.format("Unknown status from Yorc: %s", status));
+        }
+    }
+
+    /**
+     * A mapping between Yorc workflow event and the Fsm input events
+     * @param status
+     * @return
+     */
+    private static FsmEvents fromYorcWorkflowToFsmEvent(String status) throws Exception {
+        switch (status.toUpperCase()) {
+            case "INITIAL":
+                return FsmEvents.POST_UPDATE_IN_PROGRESS;
+            case "RUNNING":
+                return FsmEvents.POST_UPDATE_IN_PROGRESS;
+            case "DONE":
+                return FsmEvents.POST_UPDATE_SUCCESS;
+            case "FAILED":
+                return FsmEvents.POST_UPDATE_FAILURE;
+            case "CANCELED":
+                return FsmEvents.POST_UPDATE_CANCELED;
+            default:
+                throw new Exception(String.format("Unknown workflow event from Yorc: %s", status));
         }
     }
 
