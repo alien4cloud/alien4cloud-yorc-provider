@@ -1,28 +1,10 @@
 package alien4cloud.paas.yorc.service;
 
-import alien4cloud.component.ICSARRepositorySearchService;
-import alien4cloud.model.components.CSARSource;
-import alien4cloud.model.deployment.DeploymentTopology;
-import alien4cloud.paas.model.PaaSNodeTemplate;
-import alien4cloud.paas.model.PaaSTopology;
-import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
-import alien4cloud.paas.yorc.tosca.model.templates.YorcServiceNodeTemplate;
-import alien4cloud.tosca.context.ToscaContext;
-import alien4cloud.tosca.model.ArchiveRoot;
-import alien4cloud.tosca.parser.*;
-import com.google.common.collect.Maps;
-import com.google.common.collect.Sets;
-import lombok.extern.slf4j.Slf4j;
-import org.alien4cloud.tosca.catalog.repository.CsarFileRepository;
-import org.alien4cloud.tosca.model.Csar;
-import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
-import org.alien4cloud.tosca.model.templates.NodeTemplate;
-import org.alien4cloud.tosca.model.templates.ServiceNodeTemplate;
-import org.springframework.stereotype.Component;
+import static com.google.common.io.Files.copy;
 
-import javax.annotation.Resource;
-import javax.inject.Inject;
-import java.io.*;
+import java.io.ByteArrayOutputStream;
+import java.io.File;
+import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.Charset;
 import java.nio.file.Path;
@@ -35,7 +17,34 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipException;
 import java.util.zip.ZipOutputStream;
 
-import static com.google.common.io.Files.copy;
+import javax.annotation.Resource;
+import javax.inject.Inject;
+
+import com.google.common.collect.Maps;
+import com.google.common.collect.Sets;
+
+import org.alien4cloud.tosca.catalog.repository.CsarFileRepository;
+import org.alien4cloud.tosca.model.Csar;
+import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
+import org.alien4cloud.tosca.model.templates.NodeTemplate;
+import org.alien4cloud.tosca.model.templates.ServiceNodeTemplate;
+import org.springframework.stereotype.Component;
+
+import alien4cloud.component.ICSARRepositorySearchService;
+import alien4cloud.model.components.CSARSource;
+import alien4cloud.model.deployment.DeploymentTopology;
+import alien4cloud.paas.model.PaaSNodeTemplate;
+import alien4cloud.paas.model.PaaSTopology;
+import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
+import alien4cloud.paas.yorc.tosca.model.templates.YorcServiceNodeTemplate;
+import alien4cloud.tosca.context.ToscaContext;
+import alien4cloud.tosca.model.ArchiveRoot;
+import alien4cloud.tosca.parser.ParsingError;
+import alien4cloud.tosca.parser.ParsingErrorLevel;
+import alien4cloud.tosca.parser.ParsingException;
+import alien4cloud.tosca.parser.ParsingResult;
+import alien4cloud.tosca.parser.ToscaParser;
+import lombok.extern.slf4j.Slf4j;
 
 
 @Slf4j
@@ -104,7 +113,7 @@ public class ZipBuilder {
 
             // Get the yaml of the application as built by from a4c
             DeploymentTopology dtopo = context.getDeploymentTopology();
-            Csar myCsar = new Csar(context.getDeploymentPaaSId(), dtopo.getArchiveVersion());
+            Csar myCsar = new Csar(dtopo.getArchiveName(), dtopo.getArchiveVersion());
             myCsar.setToscaDefinitionsVersion(ToscaParser.LATEST_DSL);
             String yaml = toscaTopologyExporter.getYaml(myCsar, dtopo, true, artifactMap);
             zos.write(yaml.getBytes(Charset.forName("UTF-8")));

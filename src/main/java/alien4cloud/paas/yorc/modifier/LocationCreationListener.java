@@ -1,5 +1,13 @@
 package alien4cloud.paas.yorc.modifier;
 
+import javax.annotation.PostConstruct;
+import javax.annotation.Resource;
+import javax.inject.Inject;
+
+import org.alien4cloud.alm.deployment.configuration.flow.modifiers.FlowPhases;
+import org.springframework.context.ApplicationListener;
+import org.springframework.stereotype.Component;
+
 import alien4cloud.model.orchestrators.Orchestrator;
 import alien4cloud.model.orchestrators.locations.LocationModifierReference;
 import alien4cloud.orchestrators.locations.events.AfterLocationCreated;
@@ -8,13 +16,6 @@ import alien4cloud.orchestrators.services.OrchestratorService;
 import alien4cloud.paas.yorc.YorcPluginFactory;
 import alien4cloud.plugin.model.ManagedPlugin;
 import lombok.extern.slf4j.Slf4j;
-import org.alien4cloud.alm.deployment.configuration.flow.modifiers.FlowPhases;
-import org.springframework.context.ApplicationListener;
-import org.springframework.stereotype.Component;
-
-import javax.annotation.PostConstruct;
-import javax.annotation.Resource;
-import javax.inject.Inject;
 
 /**
  * A {@code LocationCreationListener} is used to register internal modifiers when a location is created.
@@ -42,6 +43,7 @@ public class LocationCreationListener implements ApplicationListener<AfterLocati
     private LocationModifierReference yorcKubernetesTopologyModifierRef;
     private LocationModifierReference googleAddressModifierRef;
     private LocationModifierReference googlePrivateNetworkModifierRef;
+    private LocationModifierReference dockerToSingularityModifierRef;
 
     @PostConstruct
     public synchronized void init() {
@@ -84,6 +86,11 @@ public class LocationCreationListener implements ApplicationListener<AfterLocati
         googlePrivateNetworkModifierRef.setPluginId(selfContext.getPlugin().getId());
         googlePrivateNetworkModifierRef.setBeanName(GooglePrivateNetworkTopologyModifier.YORC_GOOGLE_PRIVATE_NETWORK_MODIFIER_TAG);
         googlePrivateNetworkModifierRef.setPhase(FlowPhases.POST_NODE_MATCH);
+
+        dockerToSingularityModifierRef = new LocationModifierReference();
+        dockerToSingularityModifierRef.setPluginId(selfContext.getPlugin().getId());
+        dockerToSingularityModifierRef.setBeanName(DockerToSingularityModifier.D2S_MODIFIER_TAG);
+        dockerToSingularityModifierRef.setPhase(FlowPhases.POST_NODE_MATCH);
     }
 
 
@@ -102,6 +109,8 @@ public class LocationCreationListener implements ApplicationListener<AfterLocati
             } else if (YorcPluginFactory.GOOGLE.equals(event.getLocation().getInfrastructureType())) {
                 locationModifierService.add(event.getLocation(), googleAddressModifierRef);
                 locationModifierService.add(event.getLocation(), googlePrivateNetworkModifierRef);
+            } else if (YorcPluginFactory.SLURM.equals(event.getLocation().getInfrastructureType())) {
+                locationModifierService.add(event.getLocation(), dockerToSingularityModifierRef);
             }
             locationModifierService.add(event.getLocation(), wfOperationHostModifierRef);
             locationModifierService.add(event.getLocation(), serviceTopologyModifierRef);
