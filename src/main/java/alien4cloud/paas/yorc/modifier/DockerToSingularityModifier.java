@@ -85,7 +85,7 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
 
     }
 
-    private void doProcess(Topology topology, FlowExecutionContext context) {
+    protected void doProcess(Topology topology, FlowExecutionContext context) {
         Csar csar = new Csar(topology.getArchiveName(), topology.getArchiveVersion());
 
         Map<String, NodeTemplate> replacementMap = Maps.newHashMap();
@@ -131,7 +131,7 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
         safe(replacementMap.keySet()).forEach(nodeName -> removeNode(csar, topology, nodeName));
     }
 
-    private void linkDependsOn(Csar csar, FlowExecutionContext context, Topology topology,
+    protected void linkDependsOn(Csar csar, FlowExecutionContext context, Topology topology,
             Map<String, Set<String>> containersDependencies, Map<String, NodeTemplate> replacementMap) {
         containersDependencies.forEach((source, targets) -> {
             NodeTemplate sourceNode = replacementMap.get(source);
@@ -143,13 +143,13 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
         });
     }
 
-    private void removeNode(Csar csar, Topology topology, String nodeName) {
+    protected void removeNode(Csar csar, Topology topology, String nodeName) {
         DeleteNodeOperation deleteNodeOperation = new DeleteNodeOperation();
         deleteNodeOperation.setNodeName(nodeName);
         deleteNodeProcessor.process(csar, topology, deleteNodeOperation);
     }
 
-    private void addToReplacementMap(FlowExecutionContext context, NodeTemplate initialNode,
+    protected void addToReplacementMap(FlowExecutionContext context, NodeTemplate initialNode,
             NodeTemplate replacementNode) {
         Map<String, NodeTemplate> replacementMap = (Map<String, NodeTemplate>) context.getExecutionCache()
                 .get(A4C_NODES_REPLACEMENT_CACHE_KEY);
@@ -157,14 +157,22 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
 
     }
 
+    protected String getTargetJobType() {
+        return SLURM_TYPES_SINGULARITY_JOB;
+    }
+
+    protected String getTargetJobTypeVersion() {
+        return SLURM_CSAR_VERSION;
+    }
+
     /**
      * Replace this node of type ContainerJobUnit by a node of type
      * yorc.nodes.slurm.SingularityJob.
      */
-    private void transformContainerJobUnit(Csar csar, Topology topology, FlowExecutionContext context,
+    protected void transformContainerJobUnit(Csar csar, Topology topology, FlowExecutionContext context,
             NodeTemplate nodeTemplate) {
         NodeTemplate singularityNode = addNodeTemplate(csar, topology, nodeTemplate.getName() + "_Singularity",
-                SLURM_TYPES_SINGULARITY_JOB, SLURM_CSAR_VERSION);
+                getTargetJobType(), getTargetJobTypeVersion());
         addToReplacementMap(context, nodeTemplate, singularityNode);
         setNodeTagValue(singularityNode, A4C_D2S_MODIFIER_TAG + "_created_from", nodeTemplate.getName());
 
@@ -174,7 +182,7 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
      * Replace this node of type ContainerRuntime by a node of type
      * yorc.nodes.slurm.SingularityJob.
      */
-    private void transformContainerRuntime(Csar csar, Topology topology, FlowExecutionContext context,
+    protected void transformContainerRuntime(Csar csar, Topology topology, FlowExecutionContext context,
             NodeTemplate nodeTemplate) {
 
         NodeTemplate jobUnitNode = TopologyNavigationUtil.getHostOfTypeInHostingHierarchy(topology, nodeTemplate,
@@ -197,7 +205,7 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
 
     }
 
-    private void transformContainerRuntimeLimits(Csar csar, Topology topology, FlowExecutionContext context,
+    protected void transformContainerRuntimeLimits(Csar csar, Topology topology, FlowExecutionContext context,
             NodeTemplate containerRuntime, NodeTemplate singularityNode) {
 
         Optional<Capability> capOpt = safe(containerRuntime.getCapabilities()).values().stream()
@@ -206,15 +214,14 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
         if (!capOpt.isPresent()) {
             return;
         }
-        Map<String, AbstractPropertyValue> properties= safe(capOpt.get().getProperties());
+        Map<String, AbstractPropertyValue> properties = safe(capOpt.get().getProperties());
 
         AbstractPropertyValue numCpus = PropertyUtil.getPropertyValueFromPath(properties, "num_cpus");
         if (numCpus instanceof ScalarPropertyValue) {
             String sValue = ((ScalarPropertyValue) numCpus).getValue();
             if (sValue != null) {
                 float value = Float.parseFloat(sValue);
-                ScalarPropertyValue cpuPerTask = new ScalarPropertyValue(
-                        Integer.toString(Math.round(value)));
+                ScalarPropertyValue cpuPerTask = new ScalarPropertyValue(Integer.toString(Math.round(value)));
                 setNodePropertyPathValue(csar, topology, singularityNode, "slurm_options.cpus_per_task", cpuPerTask);
             }
         }
@@ -228,7 +235,7 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
      * Replace this node of type HostToContainerVolume by a node of type
      * yorc.nodes.slurm.SingularityJob.
      */
-    private void transformContainerVolume(Csar csar, Topology topology, FlowExecutionContext context,
+    protected void transformContainerVolume(Csar csar, Topology topology, FlowExecutionContext context,
             NodeTemplate nodeTemplate) {
 
         // FIXME : doesn't support many attachement (1 volume -> many containers) ?)
@@ -261,20 +268,27 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
         if (hPath == null || cPath == null) {
             return;
         }
-        String mountDirective = "--bind=" + hPath + ":" + cPath;
+        boolean readOnly = false;
         AbstractPropertyValue readOnlyVal = nodeTemplate.getProperties().get("readOnly");
         if (readOnlyVal instanceof ScalarPropertyValue) {
-            boolean readOnly = Boolean.parseBoolean(((ScalarPropertyValue) readOnlyVal).getValue());
-            if (readOnly) {
-                mountDirective += ":ro";
-            }
+            readOnly = Boolean.parseBoolean(((ScalarPropertyValue) readOnlyVal).getValue());
         }
 
-        ListPropertyValue cmdOpts = new ListPropertyValue(Lists.newArrayList());
         // FIXME(loicalbertin) check that they are actual paths (prevent injecting code)
-        cmdOpts.getValue().add(mountDirective);
-        addToSingularityCmdOptions(csar, topology, context, singularityNode, cmdOpts);
 
+        transformVolumeProperties(csar, topology, context, singularityNode, hPath, cPath, readOnly);
+    }
+
+    protected void transformVolumeProperties(Csar csar, Topology topology, FlowExecutionContext context,
+            NodeTemplate singularityNode, String hostPath, String containerPath, boolean readOnly) {
+
+        String mountDirective = "--bind=" + hostPath + ":" + containerPath;
+        if (readOnly) {
+            mountDirective += ":ro";
+        }
+        ListPropertyValue cmdOpts = new ListPropertyValue(Lists.newArrayList());
+        cmdOpts.getValue().add(mountDirective);
+        addToListPropertyValue(csar, topology, context, singularityNode, "singularity_command_options", cmdOpts);
     }
 
     public static void setNodeTagValue(AbstractTemplate template, String name, String value) {
@@ -335,7 +349,7 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
         });
     }
 
-    private void transformContainerOperation(Csar csar, FlowExecutionContext context,
+    protected void transformContainerOperation(Csar csar, FlowExecutionContext context,
             FunctionEvaluatorContext functionEvaluatorContext, Topology topology, NodeTemplate container,
             NodeTemplate singularityNode) {
         Operation op = getContainerImageOperation(container);
@@ -345,6 +359,16 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
             return;
         }
 
+        createContainerOperation(csar, context, functionEvaluatorContext, topology, container, singularityNode, op);
+
+        transformContainerInputs(csar, context, topology, container, singularityNode, functionEvaluatorContext,
+                safe(op.getInputParameters()));
+
+    }
+
+    protected void createContainerOperation(Csar csar, FlowExecutionContext context,
+            FunctionEvaluatorContext functionEvaluatorContext, Topology topology, NodeTemplate container,
+            NodeTemplate singularityNode, Operation op) {
         Interface runnable = new Interface(A4C_RUNNABLE_INTERFACE_NAME);
         ImplementationArtifact dockerImageImpl = new ImplementationArtifact(
                 "docker://" + op.getImplementationArtifact().getArtifactRef());
@@ -360,15 +384,11 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
         runnable.getOperations().put(A4C_SUBMIT_OPERATION_NAME, submit);
         singularityNode.setInterfaces(new HashMap<>());
         singularityNode.getInterfaces().put(A4C_RUNNABLE_INTERFACE_NAME, runnable);
-
-        transformContainerInputs(csar, context, topology, container, singularityNode, functionEvaluatorContext,
-                safe(op.getInputParameters()), submit);
-
     }
 
-    private void transformContainerInputs(Csar csar, FlowExecutionContext context, Topology topology,
+    protected void transformContainerInputs(Csar csar, FlowExecutionContext context, Topology topology,
             NodeTemplate container, NodeTemplate singularityNode, FunctionEvaluatorContext functionEvaluatorContext,
-            Map<String, IValue> inputParameters, Operation targetOperation) {
+            Map<String, IValue> inputParameters) {
         inputParameters.forEach((inputName, iValue) -> {
             if (iValue instanceof AbstractPropertyValue) {
                 AbstractPropertyValue v = InputsHelper.resolveInput(topology, container, functionEvaluatorContext,
@@ -379,13 +399,14 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
                         String envKey = inputName.substring(4);
                         ListPropertyValue lpv = new ListPropertyValue(new ArrayList<>());
                         lpv.getValue().add(envKey + "=" + serializedValue);
-                        addToSingularityEnvVars(csar, topology, context, singularityNode, lpv);
+                        addToListPropertyValue(csar, topology, context, singularityNode, "execution_options.env_vars",
+                                lpv);
                         context.getLog().info("Env variable <" + envKey + "> for container <" + container.getName()
                                 + "> set to value <" + serializedValue + ">");
                     } else if (inputName.startsWith("ARG_")) {
                         ListPropertyValue lpv = new ListPropertyValue(new ArrayList<>());
                         lpv.getValue().add(PropertyUtil.serializePropertyValue(v));
-                        addToSingularityCmdArgs(csar, topology, context, singularityNode, lpv);
+                        addToListPropertyValue(csar, topology, context, singularityNode, "execution_options.args", lpv);
                         context.getLog().info("Argument variable <" + inputName + "> for container <"
                                 + container.getName() + "> set to value <" + serializedValue + ">");
                     }
@@ -417,7 +438,7 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
         return imageOperation;
     }
 
-    private void transformContainerProperties(Csar csar, Topology topology, FlowExecutionContext context,
+    protected void transformContainerProperties(Csar csar, Topology topology, FlowExecutionContext context,
             NodeTemplate container, NodeTemplate singularityNode) {
         Map<String, AbstractPropertyValue> properties = container.getProperties();
         if (properties == null) {
@@ -438,11 +459,12 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
         AbstractPropertyValue dockerRunArgsProp = PropertyUtil.getPropertyValueFromPath(properties, "docker_run_args");
         if (dockerRunArgsProp instanceof ListPropertyValue) {
             // Should be both of the same type "List"
-            addToSingularityCmdArgs(csar, topology, context, singularityNode, (ListPropertyValue) dockerRunArgsProp);
+            addToListPropertyValue(csar, topology, context, singularityNode, "execution_options.args",
+                    (ListPropertyValue) dockerRunArgsProp);
         }
     }
 
-    private void transformContainerEnv(Csar csar, Topology topology, FlowExecutionContext context,
+    protected void transformContainerEnv(Csar csar, Topology topology, FlowExecutionContext context,
             Map<String, AbstractPropertyValue> properties, NodeTemplate singularityNode) {
         AbstractPropertyValue dockerEnvVarsProp = PropertyUtil.getPropertyValueFromPath(properties, "docker_env_vars");
         if (dockerEnvVarsProp instanceof ComplexPropertyValue) {
@@ -452,47 +474,37 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
             for (Entry<String, Object> varEntry : safe(mapProps.getValue()).entrySet()) {
                 singEnvVarsProp.getValue().add(varEntry.getKey() + "=" + varEntry.getValue().toString());
             }
-            addToSingularityEnvVars(csar, topology, context, singularityNode, singEnvVarsProp);
+            addToListPropertyValue(csar, topology, context, singularityNode, "execution_options.env_vars",
+                    singEnvVarsProp);
         }
     }
 
-    private void addToSingularityEnvVars(Csar csar, Topology topology, FlowExecutionContext context,
-            NodeTemplate singularityNode, ListPropertyValue envVars) {
-        List<Object> mergedList = new ArrayList<>();
-        AbstractPropertyValue singEnvVarsProp = PropertyUtil
-                .getPropertyValueFromPath(safe(singularityNode.getProperties()), "execution_options.env_vars");
-        if (singEnvVarsProp instanceof ListPropertyValue) {
-            mergedList.addAll(safe(((ListPropertyValue) singEnvVarsProp).getValue()));
-        }
-        mergedList.addAll(envVars.getValue());
-        envVars.setValue(mergedList);
-        setNodePropertyPathValue(csar, topology, singularityNode, "execution_options.env_vars", envVars);
+    protected void addToListPropertyValue(Csar csar, Topology topology, FlowExecutionContext context,
+            NodeTemplate nodeTemplate, String propertyName, ListPropertyValue listValue) {
+        appendOrPrependToListPropertyValue(csar, topology, context, nodeTemplate, propertyName, listValue, true);
     }
 
-    private void addToSingularityCmdArgs(Csar csar, Topology topology, FlowExecutionContext context,
-            NodeTemplate singularityNode, ListPropertyValue cmdArgs) {
-        List<Object> mergedList = new ArrayList<>();
-        AbstractPropertyValue singCmdArgsProp = PropertyUtil
-                .getPropertyValueFromPath(safe(singularityNode.getProperties()), "execution_options.args");
-        if (singCmdArgsProp instanceof ListPropertyValue) {
-            mergedList.addAll(safe(((ListPropertyValue) singCmdArgsProp).getValue()));
-        }
-        mergedList.addAll(cmdArgs.getValue());
-        cmdArgs.setValue(mergedList);
-        setNodePropertyPathValue(csar, topology, singularityNode, "execution_options.args", cmdArgs);
+    protected void prependToListPropertyValue(Csar csar, Topology topology, FlowExecutionContext context,
+            NodeTemplate nodeTemplate, String propertyName, ListPropertyValue listValue) {
+        appendOrPrependToListPropertyValue(csar, topology, context, nodeTemplate, propertyName, listValue, false);
     }
 
-    private void addToSingularityCmdOptions(Csar csar, Topology topology, FlowExecutionContext context,
-            NodeTemplate singularityNode, ListPropertyValue cmdOpts) {
+    private void appendOrPrependToListPropertyValue(Csar csar, Topology topology, FlowExecutionContext context,
+            NodeTemplate nodeTemplate, String propertyName, ListPropertyValue listValue, boolean append) {
         List<Object> mergedList = new ArrayList<>();
-        AbstractPropertyValue singCmdOptsProp = PropertyUtil
-                .getPropertyValueFromPath(safe(singularityNode.getProperties()), "singularity_command_options");
-        if (singCmdOptsProp instanceof ListPropertyValue) {
-            mergedList.addAll(safe(((ListPropertyValue) singCmdOptsProp).getValue()));
+        if (!append) {
+            mergedList.addAll(listValue.getValue());
         }
-        mergedList.addAll(cmdOpts.getValue());
-        cmdOpts.setValue(mergedList);
-        setNodePropertyPathValue(csar, topology, singularityNode, "singularity_command_options", cmdOpts);
+        AbstractPropertyValue existingPropValue = PropertyUtil
+                .getPropertyValueFromPath(safe(nodeTemplate.getProperties()), propertyName);
+        if (existingPropValue instanceof ListPropertyValue) {
+            mergedList.addAll(safe(((ListPropertyValue) existingPropValue).getValue()));
+        }
+        if (append) {
+            mergedList.addAll(listValue.getValue());
+        }
+        listValue.setValue(mergedList);
+        setNodePropertyPathValue(csar, topology, nodeTemplate, propertyName, listValue);
     }
 
 }

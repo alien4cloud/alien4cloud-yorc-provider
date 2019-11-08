@@ -75,7 +75,8 @@ public class LocationCreationListener implements ApplicationListener<AfterLocati
         kubernetesTopologyModifierRef = new LocationModifierReference();
         kubernetesTopologyModifierRef.setPluginId("alien4cloud-kubernetes-plugin");
         kubernetesTopologyModifierRef.setBeanName("kubernetes-modifier");
-        kubernetesTopologyModifierRef.setPhase(FlowPhases.POST_LOCATION_MATCH);
+        // Set this modifier to PRE_POLICY_MATCH in order to trigger it after having replaced get_input functions
+        kubernetesTopologyModifierRef.setPhase(FlowPhases.PRE_POLICY_MATCH);
 
         googleAddressModifierRef = new LocationModifierReference();
         googleAddressModifierRef.setPluginId(selfContext.getPlugin().getId());
