@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:mockito="http://www.mockito.org/spring/mockito"
+       xsi:schemaLocation="
+        http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-3.1.xsd
+        http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-3.1.xsd
+        http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-3.0.xsd
+        http://www.mockito.org/spring/mockito http://www.mockito.org/spring/mockito.xsd">
+
+    <context:annotation-config/>
+    <aop:aspectj-autoproxy proxy-target-class="true"/>
+    <context:component-scan
+            base-package="alien4cloud.paas.yorc.modifier">
+        <context:exclude-filter type="regex"
+                                expression="alien4cloud.paas.yorc.context.*"/>
+        <context:exclude-filter type="assignable"
+                                expression="alien4cloud.paas.yorc.modifier.LocationCreationListener"/>
+
+    </context:component-scan>
+
+<mockito:mock id="upPropProcessor" class="org.alien4cloud.tosca.editor.processors.nodetemplate.UpdateNodePropertyValueProcessor"/>
+<mockito:mock id="upCapPropProcessor" class="org.alien4cloud.tosca.editor.processors.nodetemplate.UpdateCapabilityPropertyValueProcessor"/>
+<mockito:mock id="addNodeProcessor" class="org.alien4cloud.tosca.editor.processors.nodetemplate.AddNodeProcessor"/>
+<mockito:mock id="replaceNodeProcessor" class="org.alien4cloud.tosca.editor.processors.nodetemplate.ReplaceNodeProcessor"/>
+<mockito:mock id="deleteNodeProcessor" class="org.alien4cloud.tosca.editor.processors.nodetemplate.DeleteNodeProcessor"/>
+<mockito:mock id="addRelProcessor" class="org.alien4cloud.tosca.editor.processors.relationshiptemplate.AddRelationshipProcessor"/>
+<mockito:mock id="deleteRelProcessor" class="org.alien4cloud.tosca.editor.processors.relationshiptemplate.DeleteRelationshipProcessor"/>
+<mockito:mock id="removeEdgeProcessor" class="org.alien4cloud.tosca.editor.processors.workflow.RemoveEdgeProcessor"/>
+<mockito:mock id="connectStepFromProcessor" class="org.alien4cloud.tosca.editor.processors.workflow.ConnectStepFromProcessor"/>
+<mockito:mock id="propertyService" class="alien4cloud.utils.services.PropertyService"/>
+
+<mockito:mock id="toscaTypeSearchService" class="org.alien4cloud.tosca.catalog.index.IToscaTypeSearchService"/>
+<mockito:mock id="yorcKubernetesLocationConfigurer" class="alien4cloud.paas.yorc.location.YorcKubernetesLocationConfigurer"/>
+
+
+</beans>
