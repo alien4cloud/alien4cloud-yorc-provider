@@ -1,8 +1,5 @@
 package alien4cloud.paas.yorc.context.rest;
 
-import alien4cloud.paas.model.NodeOperationExecRequest;
-
-import io.reactivex.Completable;
 import org.json.JSONObject;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -11,15 +8,14 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
 
+import alien4cloud.paas.model.NodeOperationExecRequest;
 import alien4cloud.paas.yorc.context.rest.response.AllDeploymentsDTO;
 import alien4cloud.paas.yorc.context.rest.response.DeploymentDTO;
-import alien4cloud.paas.yorc.context.rest.response.Link;
 import alien4cloud.paas.yorc.util.RestUtil;
+import io.reactivex.Completable;
 import io.reactivex.Observable;
 import io.reactivex.Single;
 import lombok.extern.slf4j.Slf4j;
-
-import java.util.Optional;
 
 @Slf4j
 @Component
@@ -30,9 +26,10 @@ public class DeploymentClient extends AbstractClient {
      *
      * @param deploymentId
      * @param bytes zip file as bytes
+     * @param isUpdate if true perform an update on an existing deployment, otherwise submit a new one
      * @return
      */
-    public Single<ResponseEntity<String>> sendTopology(String deploymentId, byte[] bytes) {
+    public Single<ResponseEntity<String>> sendTopology(String deploymentId, byte[] bytes, boolean isUpdate) {
         String url = getYorcUrl() + "/deployments/" + deploymentId;
 
         HttpHeaders headers = new HttpHeaders();
@@ -40,7 +37,12 @@ public class DeploymentClient extends AbstractClient {
         headers.add(HttpHeaders.CONTENT_TYPE, "application/zip");
         HttpEntity<byte[]> entity = new HttpEntity<>(bytes, headers);
 
-        return sendRequest(url,HttpMethod.PUT,String.class,entity);
+        HttpMethod method = HttpMethod.PUT;
+        if (isUpdate) {
+            method = HttpMethod.PATCH;
+        }
+
+        return sendRequest(url, method, String.class, entity);
     }
 
     /**
