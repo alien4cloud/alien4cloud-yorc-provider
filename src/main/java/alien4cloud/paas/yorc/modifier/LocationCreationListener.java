@@ -44,6 +44,7 @@ public class LocationCreationListener implements ApplicationListener<AfterLocati
     private LocationModifierReference googleAddressModifierRef;
     private LocationModifierReference googlePrivateNetworkModifierRef;
     private LocationModifierReference dockerToSingularityModifierRef;
+    private LocationModifierReference yorcLocationModifierRef;
 
     @PostConstruct
     public synchronized void init() {
@@ -92,6 +93,11 @@ public class LocationCreationListener implements ApplicationListener<AfterLocati
         dockerToSingularityModifierRef.setPluginId(selfContext.getPlugin().getId());
         dockerToSingularityModifierRef.setBeanName(DockerToSingularityModifier.D2S_MODIFIER_TAG);
         dockerToSingularityModifierRef.setPhase(FlowPhases.POST_NODE_MATCH);
+
+        yorcLocationModifierRef = new LocationModifierReference();
+        yorcLocationModifierRef.setPluginId(selfContext.getPlugin().getId());
+        yorcLocationModifierRef.setBeanName(YorcLocationModifier.YORC_LOCATION_MODIFIER_TAG);
+        yorcLocationModifierRef.setPhase(FlowPhases.POST_MATCHED_NODE_SETUP);
     }
 
 
@@ -116,6 +122,7 @@ public class LocationCreationListener implements ApplicationListener<AfterLocati
             locationModifierService.add(event.getLocation(), wfOperationHostModifierRef);
             locationModifierService.add(event.getLocation(), serviceTopologyModifierRef);
             locationModifierService.add(event.getLocation(), blockStorageWFModifierRef);
+            locationModifierService.add(event.getLocation(), yorcLocationModifierRef);
         }
     }
 }

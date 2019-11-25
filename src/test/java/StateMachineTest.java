@@ -1,17 +1,11 @@
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.context.junit4.SpringJUnit4ClassRunner;
 
-import alien4cloud.paas.yorc.context.service.fsm.StateMachineService;
-
-@RunWith(SpringJUnit4ClassRunner.class)
-@ContextConfiguration(classes = { FSMTestConfiguration.class })
+//@RunWith(SpringJUnit4ClassRunner.class)
+//@ContextConfiguration(classes = { FSMTestConfiguration.class })
 public class StateMachineTest {
 
-	@Autowired
-	private StateMachineService smService;
+	// @Autowired
+	// private StateMachineService smService;
 
 	@Test
 	public void test_normal_deploy_and_then_undeploy() {
