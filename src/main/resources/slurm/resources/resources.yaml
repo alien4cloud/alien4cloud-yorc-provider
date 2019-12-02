@@ -170,6 +170,8 @@ node_types:
 
   yorc.nodes.slurm.Job:
     derived_from: org.alien4cloud.nodes.Job
+    metadata:
+      icon: /images/slurm.png
     properties:
       slurm_options:
         type: yorc.datatypes.slurm.JobOptions
@@ -229,6 +231,8 @@ node_types:
 
   yorc.nodes.slurm.SingularityJob:
     derived_from: yorc.nodes.slurm.Job
+    tags:
+      icon: /images/slurm.SingularityJob.png
     properties:
       singularity_command_options:
         type: list
@@ -244,9 +248,13 @@ node_types:
         default: false
 
   yorc.nodes.slurm.ContainerRuntime:
+    metadata:
+      icon: /images/slurm.SingularityJob.png
     derived_from: org.alien4cloud.extended.container.types.ContainerRuntime
 
   yorc.nodes.slurm.ContainerJobUnit:
+    metadata:
+      icon: /images/slurm.SingularityJob.png
     derived_from: org.alien4cloud.extended.container.types.ContainerJobUnit
 
   yorc.nodes.slurm.HostToContainerVolume:
