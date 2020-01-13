@@ -55,7 +55,7 @@ public class LogEventPollingService implements SelfNaming {
     /**
      * Index
      */
-    private int index = 1;
+    private long index = 1;
 
     /**
      * Stopped flag
@@ -137,7 +137,7 @@ public class LogEventPollingService implements SelfNaming {
         LogEventIndex data = dao.findById(LogEventIndex.class,configuration.getOrchestratorId());
         if (data == null) {
             // This is our first run, initialize the index from Yorc
-            Integer lastIndex = client.getLastIndex().blockingGet();
+            Long lastIndex = client.getLastIndex().blockingGet();
 
             data = new LogEventIndex();
             data.setId(configuration.getOrchestratorId());
