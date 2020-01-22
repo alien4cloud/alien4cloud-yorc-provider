@@ -11,5 +11,5 @@ import java.util.List;
 @Setter
 public class LogEventDTO {
     private List<LogEvent> logs;
-    private int last_index;
+    private long last_index;
 }
