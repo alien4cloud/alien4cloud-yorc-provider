@@ -199,6 +199,8 @@ node_types:
 
   yorc.nodes.openstack.ServerGroup:
     derived_from: tosca.nodes.Root
+    metadata:
+      icon: /images/openstack.png
     properties:
       name:
         type: string
@@ -231,6 +233,8 @@ node_types:
   # Abstract resources used for auto-config
   ##############################################
   yorc.nodes.openstack.Image:
+    metadata:
+      icon: /images/openstack.png
     abstract: true
     derived_from: tosca.nodes.Root
     properties:
@@ -241,6 +245,8 @@ node_types:
         type: tosca.capabilities.OperatingSystem
 
   yorc.nodes.openstack.Flavor:
+    metadata:
+      icon: /images/openstack.png
     abstract: true
     derived_from: tosca.nodes.Root
     properties:

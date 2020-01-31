@@ -17,5 +17,5 @@ public class LogEventIndex {
     private String id;
 
     @NumberField(index = IndexType.not_analyzed)
-    private Integer index;
+    private Long index;
 }

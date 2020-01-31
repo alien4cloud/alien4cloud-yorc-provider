@@ -50,7 +50,7 @@ public class EventPollingService implements SelfNaming {
     /**
      * Index
      */
-    private int index = 1;
+    private long index = 1;
 
     /**
      * Stopped flag
@@ -143,7 +143,7 @@ public class EventPollingService implements SelfNaming {
         EventIndex data = dao.findById(EventIndex.class,configuration.getOrchestratorId());
         if (data == null) {
             // This is our first run, initialize the index from Yorc
-            Integer lastIndex = client.getLastIndex().blockingGet();
+            Long lastIndex = client.getLastIndex().blockingGet();
 
             data = new EventIndex();
             data.setId(configuration.getOrchestratorId());

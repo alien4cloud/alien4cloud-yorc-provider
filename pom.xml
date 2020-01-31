@@ -1,4 +1,5 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
   <parent>
@@ -19,12 +20,17 @@
 
     <!-- Embedded TOSCA types versions -->
     <yorc.types.version>1.1.0</yorc.types.version>
-    <yorc.aws.types.version>1.0.0</yorc.aws.types.version>
+    <yorc.aws.types.version>1.1.0</yorc.aws.types.version>
     <yorc.google.types.version>1.0.0</yorc.google.types.version>
     <yorc.hp.types.version>1.0.0</yorc.hp.types.version>
     <yorc.k8s.types.version>${project.version}</yorc.k8s.types.version>
     <yorc.os.types.version>${project.version}</yorc.os.types.version>
     <yorc.slurm.types.version>${project.version}</yorc.slurm.types.version>
+
+    <!-- Tests -->
+    <mockito.version>1.10.19</mockito.version>
+    <springockito.version>1.0.9</springockito.version>
+
   </properties>
 
   <dependencies>
@@ -60,6 +66,18 @@
       <groupId>junit</groupId>
       <artifactId>junit</artifactId>
       <version>${junit.version}</version>
+      <scope>test</scope>
+    </dependency>
+        <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-all</artifactId>
+      <version>${mockito.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.kubek2k</groupId>
+      <artifactId>springockito</artifactId>
+      <version>${springockito.version}</version>
       <scope>test</scope>
     </dependency>
     <dependency>

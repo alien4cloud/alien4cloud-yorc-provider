@@ -12,5 +12,5 @@ import java.util.List;
 public class EventDTO {
 
     private List<Event> events;
-    private int last_index;
+    private long last_index;
 }

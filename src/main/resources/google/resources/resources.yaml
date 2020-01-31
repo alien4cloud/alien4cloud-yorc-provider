@@ -354,6 +354,8 @@ node_types:
 
   yorc.nodes.google.Address:
     derived_from: tosca.nodes.Root
+    metadata:
+      icon: /images/google.Address.png
     properties:
     # See https://www.terraform.io/docs/providers/google/r/compute_address.html
       addresses:
@@ -506,6 +508,8 @@ node_types:
   ##############################################
 
   yorc.nodes.google.Image:
+    metadata:
+      icon: /images/google.Image.png
     abstract: true
     derived_from: tosca.nodes.Root
     description: >
@@ -519,6 +523,8 @@ node_types:
         type: tosca.capabilities.OperatingSystem
 
   yorc.nodes.google.MachineType:
+    metadata:
+      icon: /images/google.MachineType.png
     abstract: true
     derived_from: tosca.nodes.Root
     description: >

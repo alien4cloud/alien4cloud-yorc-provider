@@ -12,16 +12,16 @@ import org.springframework.stereotype.Component;
 @Component
 public class LogEventClient extends AbstractClient {
 
-    public Single<ResponseEntity<LogEventDTO>> get(int index) {
+    public Single<ResponseEntity<LogEventDTO>> get(long index) {
         String url = getYorcUrl() + "/logs?index=" + index;
         return sendRequest(url, HttpMethod.GET, LogEventDTO.class, buildHttpEntityWithDefaultHeader());
     }
 
-    public Single<Integer> getLastIndex() {
+    public Single<Long> getLastIndex() {
         String url = getYorcUrl() + "/logs";
 
         return sendRequest(url,HttpMethod.GET,String.class,buildHttpEntityWithDefaultHeader())
                 .map(RestUtil.extractHeader("X-yorc-Index"))
-                .map(Integer::parseInt);
+                .map(Long::parseLong);
     }
 }

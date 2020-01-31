@@ -18,5 +18,5 @@ public class EventIndex {
     private String id;
 
     @NumberField(index = IndexType.not_analyzed)
-    private Integer index;
+    private Long index;
 }

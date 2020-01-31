@@ -1,5 +1,23 @@
 package alien4cloud.paas.yorc.context.service.fsm;
 
+import java.io.IOException;
+import java.util.Date;
+import java.util.Iterator;
+
+import javax.annotation.Resource;
+import javax.inject.Inject;
+
+import com.fasterxml.jackson.databind.JsonNode;
+
+import org.alien4cloud.tosca.normative.constants.NormativeWorkflowNameConstants;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.Message;
+import org.springframework.statemachine.StateContext;
+import org.springframework.statemachine.action.Action;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
+
 import alien4cloud.paas.IPaaSCallback;
 import alien4cloud.paas.model.PaaSDeploymentLog;
 import alien4cloud.paas.model.PaaSDeploymentLogLevel;
@@ -15,23 +33,8 @@ import alien4cloud.paas.yorc.context.service.InstanceInformationService;
 import alien4cloud.paas.yorc.context.service.LogEventService;
 import alien4cloud.paas.yorc.service.ZipBuilder;
 import alien4cloud.paas.yorc.util.RestUtil;
-import com.fasterxml.jackson.databind.JsonNode;
 import io.jsonwebtoken.lang.Collections;
 import lombok.extern.slf4j.Slf4j;
-import org.alien4cloud.tosca.normative.constants.NormativeWorkflowNameConstants;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.messaging.Message;
-import org.springframework.statemachine.StateContext;
-import org.springframework.statemachine.action.Action;
-import org.springframework.stereotype.Service;
-import org.springframework.web.client.HttpClientErrorException;
-
-import javax.annotation.Resource;
-import javax.inject.Inject;
-import java.io.IOException;
-import java.util.Date;
-import java.util.Iterator;
 
 @Slf4j
 @Service
@@ -127,7 +130,7 @@ public class FsmActions {
 					return;
 				}
 
-				deploymentClient.sendTopology(context.getDeploymentPaaSId(), bytes).subscribe(this::onHttpOk, this::onHttpKo);
+				deploymentClient.sendTopology(context.getDeploymentPaaSId(), bytes, false).subscribe(this::onHttpOk, this::onHttpKo);
 			}
 		};
 	}
@@ -411,7 +414,7 @@ public class FsmActions {
 					return;
 				}
 
-				deploymentClient.sendTopology(context.getDeploymentPaaSId(), bytes).subscribe(this::onHttpOk, this::onHttpKo);
+				deploymentClient.sendTopology(context.getDeploymentPaaSId(), bytes, true).subscribe(this::onHttpOk, this::onHttpKo);
 			}
 		};
 	}
