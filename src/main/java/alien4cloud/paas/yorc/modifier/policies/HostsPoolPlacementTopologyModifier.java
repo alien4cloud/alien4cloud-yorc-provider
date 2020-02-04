@@ -67,12 +67,12 @@ public class HostsPoolPlacementTopologyModifier extends AbstractPolicyTopologyMo
     private void check(final PolicyTemplate policy, final Topology topology, final FlowExecutionContext context) {
         PolicyType policyType = toscaTypeSearchService.findMostRecent(PolicyType.class, policy.getType());
         Set<NodeTemplate> validTargets = getValidTargets(policy, topology, policyType.getTargets(),
-                invalidName -> context.log().warn("Monitoring policy <{}>: will ignore target <{}> as it IS NOT an instance of <{}>.", policy.getName(),
+                invalidName -> context.log().warn("Placement policy <{}>: will ignore target <{}> as it IS NOT an instance of <{}>.", policy.getName(),
                         invalidName, policyType.getTargets().toString()));
 
-        // Don't allow monitoring policies without defining any targets
+        // Don't allow placement policies without defining any targets
         if (validTargets.isEmpty()) {
-            context.log().error("Found policy <{}> without no valid target: at least one valid target must be set for applying a monitoring policy.", policy.getName());
+            context.log().error("Found policy <{}> without no valid target: at least one valid target must be set for applying a placement policy.", policy.getName());
         }
     }
 }
