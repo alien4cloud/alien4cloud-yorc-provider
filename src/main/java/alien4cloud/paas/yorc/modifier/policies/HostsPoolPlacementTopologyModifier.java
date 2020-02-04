@@ -38,7 +38,7 @@ import static alien4cloud.utils.AlienUtils.safe;
 @Component(value = HostsPoolPlacementTopologyModifier.YORC_HP_PLACEMENT_TOPOLOGY_MODIFIER)
 public class HostsPoolPlacementTopologyModifier extends AbstractPolicyTopologyModifier {
     public static final String YORC_HP_PLACEMENT_TOPOLOGY_MODIFIER = "yorc-hostspool-placement-modifier";
-    private static final String HP_ROUND_ROBIN_PLACEMENT = "yorc.policies.hostspool.RoundRobinPlacement";
+    private static final String HP_WEIGHT_BALANCED_PLACEMENT = "yorc.policies.hostspool.WeightBalancedPlacement";
     private static final String HP_BIN_PACKING_PLACEMENT = "yorc.policies.hostspool.BinPackingPlacement";
 
 
@@ -52,7 +52,7 @@ public class HostsPoolPlacementTopologyModifier extends AbstractPolicyTopologyMo
         try {
             WorkflowValidator.disableValidationThreadLocal.set(true);
             List<PolicyTemplate> policies = safe(topology.getPolicies()).values().stream()
-                    .filter(policyTemplate -> Objects.equals(HP_ROUND_ROBIN_PLACEMENT, policyTemplate.getType()) || Objects.equals(HP_BIN_PACKING_PLACEMENT, policyTemplate.getType())).collect(Collectors.toList());
+                    .filter(policyTemplate -> Objects.equals(HP_WEIGHT_BALANCED_PLACEMENT, policyTemplate.getType()) || Objects.equals(HP_BIN_PACKING_PLACEMENT, policyTemplate.getType())).collect(Collectors.toList());
 
             if (!hasDuplicatedTargetsIntoPolicies(policies, context)) {
                 safe(policies).forEach(policyTemplate -> check(policyTemplate, topology, context));
