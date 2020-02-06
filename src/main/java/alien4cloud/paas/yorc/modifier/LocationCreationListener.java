@@ -4,6 +4,7 @@ import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import javax.inject.Inject;
 
+import alien4cloud.paas.yorc.modifier.policies.HostsPoolPlacementTopologyModifier;
 import org.alien4cloud.alm.deployment.configuration.flow.modifiers.FlowPhases;
 import org.springframework.context.ApplicationListener;
 import org.springframework.stereotype.Component;
@@ -45,6 +46,7 @@ public class LocationCreationListener implements ApplicationListener<AfterLocati
     private LocationModifierReference googlePrivateNetworkModifierRef;
     private LocationModifierReference dockerToSingularityModifierRef;
     private LocationModifierReference yorcLocationModifierRef;
+    private LocationModifierReference hostsPoolPlacementPolicyModifierRef;
 
     @PostConstruct
     public synchronized void init() {
@@ -98,6 +100,11 @@ public class LocationCreationListener implements ApplicationListener<AfterLocati
         yorcLocationModifierRef.setPluginId(selfContext.getPlugin().getId());
         yorcLocationModifierRef.setBeanName(YorcLocationModifier.YORC_LOCATION_MODIFIER_TAG);
         yorcLocationModifierRef.setPhase(FlowPhases.POST_MATCHED_NODE_SETUP);
+
+        hostsPoolPlacementPolicyModifierRef = new LocationModifierReference();
+        hostsPoolPlacementPolicyModifierRef.setPluginId(selfContext.getPlugin().getId());
+        hostsPoolPlacementPolicyModifierRef.setBeanName(HostsPoolPlacementTopologyModifier.YORC_HP_PLACEMENT_TOPOLOGY_MODIFIER);
+        hostsPoolPlacementPolicyModifierRef.setPhase(FlowPhases.POST_NODE_MATCH);
     }
 
 
@@ -118,6 +125,8 @@ public class LocationCreationListener implements ApplicationListener<AfterLocati
                 locationModifierService.add(event.getLocation(), googlePrivateNetworkModifierRef);
             } else if (YorcPluginFactory.SLURM.equals(event.getLocation().getInfrastructureType())) {
                 locationModifierService.add(event.getLocation(), dockerToSingularityModifierRef);
+            } else if (YorcPluginFactory.HOSTS_POOL.equals(event.getLocation().getInfrastructureType())) {
+                locationModifierService.add(event.getLocation(), hostsPoolPlacementPolicyModifierRef);
             }
             locationModifierService.add(event.getLocation(), wfOperationHostModifierRef);
             locationModifierService.add(event.getLocation(), serviceTopologyModifierRef);

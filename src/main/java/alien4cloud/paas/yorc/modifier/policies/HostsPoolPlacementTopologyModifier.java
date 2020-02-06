@@ -35,11 +35,12 @@ import java.util.stream.Collectors;
 import static alien4cloud.utils.AlienUtils.safe;
 
 @Slf4j
-@Component(value = MonitoringTopologyModifier.YORC_MONITORING_TOPOLOGY_MODIFIER)
-public class MonitoringTopologyModifier extends AbstractPolicyTopologyModifier {
-    protected static final String YORC_MONITORING_TOPOLOGY_MODIFIER = "yorc-monitoring-modifier";
-    private static final String HTTP_MONITORING_POLICY = "yorc.policies.monitoring.HTTPMonitoring";
-    private static final String TCP_MONITORING_POLICY = "yorc.policies.monitoring.TCPMonitoring";
+@Component(value = HostsPoolPlacementTopologyModifier.YORC_HP_PLACEMENT_TOPOLOGY_MODIFIER)
+public class HostsPoolPlacementTopologyModifier extends AbstractPolicyTopologyModifier {
+    public static final String YORC_HP_PLACEMENT_TOPOLOGY_MODIFIER = "yorc-hostspool-placement-modifier";
+    private static final String HP_WEIGHT_BALANCED_PLACEMENT = "yorc.policies.hostspool.WeightBalancedPlacement";
+    private static final String HP_BIN_PACKING_PLACEMENT = "yorc.policies.hostspool.BinPackingPlacement";
+
 
     @Inject
     private IToscaTypeSearchService toscaTypeSearchService;
@@ -47,11 +48,11 @@ public class MonitoringTopologyModifier extends AbstractPolicyTopologyModifier {
     @Override
     @ToscaContextual
     public void process(final Topology topology, final FlowExecutionContext context) {
-        log.debug("Processing Monitoring Policies modifier for topology " + topology.getId());
+        log.debug("Processing Placement Policies modifier for topology " + topology.getId());
         try {
             WorkflowValidator.disableValidationThreadLocal.set(true);
             List<PolicyTemplate> policies = safe(topology.getPolicies()).values().stream()
-                    .filter(policyTemplate -> Objects.equals(TCP_MONITORING_POLICY, policyTemplate.getType()) || Objects.equals(HTTP_MONITORING_POLICY, policyTemplate.getType())).collect(Collectors.toList());
+                    .filter(policyTemplate -> Objects.equals(HP_WEIGHT_BALANCED_PLACEMENT, policyTemplate.getType()) || Objects.equals(HP_BIN_PACKING_PLACEMENT, policyTemplate.getType())).collect(Collectors.toList());
 
             if (!hasDuplicatedTargetsIntoPolicies(policies, context)) {
                 safe(policies).forEach(policyTemplate -> check(policyTemplate, topology, context));
@@ -66,12 +67,12 @@ public class MonitoringTopologyModifier extends AbstractPolicyTopologyModifier {
     private void check(final PolicyTemplate policy, final Topology topology, final FlowExecutionContext context) {
         PolicyType policyType = toscaTypeSearchService.findMostRecent(PolicyType.class, policy.getType());
         Set<NodeTemplate> validTargets = getValidTargets(policy, topology, policyType.getTargets(),
-                invalidName -> context.log().warn("Monitoring policy <{}>: will ignore target <{}> as it IS NOT an instance of <{}>.", policy.getName(),
+                invalidName -> context.log().warn("Placement policy <{}>: will ignore target <{}> as it IS NOT an instance of <{}>.", policy.getName(),
                         invalidName, policyType.getTargets().toString()));
 
-        // Don't allow monitoring policies without defining any targets
+        // Don't allow placement policies without defining any targets
         if (validTargets.isEmpty()) {
-            context.log().error("Found policy <{}> without no valid target: at least one valid target must be set for applying a monitoring policy.", policy.getName());
+            context.log().error("Found policy <{}> without no valid target: at least one valid target must be set for applying a placement policy.", policy.getName());
         }
     }
 }
