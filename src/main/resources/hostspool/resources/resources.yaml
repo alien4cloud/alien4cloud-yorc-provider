@@ -99,6 +99,7 @@ data_types:
           The number of generic resource required.  Either ids or number must be filled to define the resource need.
       no_consumable:
         type: boolean
+        required: false
         default: false
         description: >
           By default, the generic resource is consumable. It means a resource can be only used by a single compute.
