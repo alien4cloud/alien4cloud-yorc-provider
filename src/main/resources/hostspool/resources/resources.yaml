@@ -44,12 +44,12 @@ policy_types:
   yorc.policies.hostspool.Placement:
     abstract: true
     derived_from: tosca.policies.Placement
-    description: The yorc hostpool TOSCA Policy Placement.
+    description: The yorc hosts pool TOSCA Policy Placement.
 
   yorc.policies.hostspool.WeightBalancedPlacement:
     derived_from: yorc.policies.hostspool.Placement
     description: >
-      The yorc hostpool TOSCA Policy placement which allows to allocate a host with a weight-balanced algorithm.
+      The yorc hosts pool TOSCA Policy placement which allows to allocate a host with a weight-balanced algorithm.
       It means the host the less allocated will be elect preferentially.
     metadata:
       # pluginId:pluginBean:phase
@@ -59,7 +59,7 @@ policy_types:
   yorc.policies.hostspool.BinPackingPlacement:
     derived_from: yorc.policies.hostspool.Placement
     description: >
-      The yorc hostpool TOSCA Policy placement which allows to allocate a host with a bin packing algorithm.
+      The yorc hosts pool TOSCA Policy placement which allows to allocate a host with a bin packing algorithm.
       It means the host the more allocated will be elect preferentially.
     metadata:
       # pluginId:pluginBean:phase
