@@ -22,8 +22,8 @@ component_descriptors:
   - bean_name: docker-to-singularity-modifier
     name: Yorc modifier for transforming Docker Jobs into Singularity/Slurm Jobs
     description: Yorc modifier for transforming Docker Jobs into Singularity/Slurm Jobs
-  - bean_name: static-relationship-resolver-modifier
-    name: Static Relationship Resolver Modifier
-    description: A modifier that resolve variables when connecting to static endpoints
+  - bean_name: gangja-resolver-modifier
+    name: Gangja config file resolver modifier
+    description: A modifier that help resolve variables when a node connects to to static endpoints and has Gangja config file artefacts
 dependencies:
   - alien4cloud-kubernetes-plugin

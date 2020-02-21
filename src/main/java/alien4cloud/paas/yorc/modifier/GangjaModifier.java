@@ -14,6 +14,7 @@ import org.alien4cloud.alm.deployment.configuration.flow.TopologyModifierSupport
 import org.alien4cloud.tosca.model.definitions.*;
 import org.alien4cloud.tosca.model.templates.NodeTemplate;
 import org.alien4cloud.tosca.model.templates.RelationshipTemplate;
+import org.alien4cloud.tosca.model.templates.ServiceNodeTemplate;
 import org.alien4cloud.tosca.model.templates.Topology;
 import org.alien4cloud.tosca.model.types.AbstractToscaType;
 import org.alien4cloud.tosca.model.types.NodeType;
@@ -26,8 +27,8 @@ import java.util.Map;
 import java.util.Set;
 
 @Slf4j
-@Component("static-relationship-resolver-modifier")
-public class StaticRelationshipResolverModifier extends TopologyModifierSupport {
+@Component("gangja-resolver-modifier")
+public class GangjaModifier extends TopologyModifierSupport {
 
     /**
      * The base type of datastore clients.
@@ -98,10 +99,11 @@ public class StaticRelationshipResolverModifier extends TopologyModifierSupport 
         Set<NodeTemplate> nodes = TopologyNavigationUtil.getNodesOfType(topology, NODE_TYPE_TO_EXPORE, true, false);
         nodes.stream().forEach(nodeTemplate -> {
             NodeType nodeType = ToscaContext.get(NodeType.class, nodeTemplate.getType());
+            // TODO: check if node has org.alien4cloud.artifacts.GangjaConfig artefacts
             PropertyDefinition varValuesPropertyDefinition = nodeType.getProperties().get(VAR_VALUES_PROPERTY);
             if (varValuesPropertyDefinition != null
                     && varValuesPropertyDefinition.getType().equals("map")
-                    && varValuesPropertyDefinition.getEntrySchema().equals("string")) {
+                    /*&& varValuesPropertyDefinition.getEntrySchema().equals("string")*/) {
                 processNode(topology, nodeTemplate);
             }
         });
@@ -155,9 +157,15 @@ public class StaticRelationshipResolverModifier extends TopologyModifierSupport 
             if (value == null) {
                 value = nodeTemplate.getAttributes().get(propertyName);
                 if (value == null) {
-                    value = nodeTemplate.getAttributes().get("attributes." + capabilityName + "." + propertyName);
+                    value = nodeTemplate.getAttributes().get("capabilities." + capabilityName + "." + propertyName);
                     if (value == null) {
                         value = nodeTemplate.getCapabilities().get(capabilityName).getProperties().get(propertyName);
+                        if (value == null && nodeTemplate instanceof ServiceNodeTemplate) {
+                            String attValue = ((ServiceNodeTemplate)nodeTemplate).getAttributeValues().get("capabilities." + capabilityName + "." + propertyName);
+                            if (attValue != null) {
+                                value = new ScalarPropertyValue(attValue);
+                            }
+                        }
                     }
                 }
             }

@@ -114,7 +114,8 @@ public class YorcPluginFactory implements IOrchestratorPluginFactory<YorcOrchest
                 "yorc.artifacts.Deployment.SlurmJob",
                 // FIXME: temporally added but should probably be defined @ location instance level
                 "alien.artifacts.AnsiblePlaybook",
-                "org.alien4cloud.artifacts.AnsiblePlaybook"
+                "org.alien4cloud.artifacts.AnsiblePlaybook",
+                "org.alien4cloud.artifacts.GangjaConfig"
             });
     }
 
