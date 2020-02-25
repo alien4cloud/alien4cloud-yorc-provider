@@ -14,12 +14,12 @@ imports:
   - tosca-normative-types:${tosca.normative.types.version}
 
 
-artifact_types:
-  tosca.artifacts.Implementation.Ansible:
-    derived_from: tosca.artifacts.Implementation
-    description: This artifact type represents a Ansible playbook type that contains Ansible commands that can be executed.
-    mime_type: application/x-yaml
-    file_ext: [ yml, yaml ]
+#artifact_types:
+#  tosca.artifacts.Implementation.Ansible:
+#    derived_from: tosca.artifacts.Implementation
+#    description: This artifact type represents a Ansible playbook type that contains Ansible commands that can be executed.
+#    mime_type: application/x-yaml
+#    file_ext: [ yml, yaml ]
 
 data_types:
   yorc.datatypes.ProvisioningCredential:
