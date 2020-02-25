@@ -87,7 +87,7 @@ public class ZipBuilder {
                     final String importSource = csar.getImportSource();
                     // importSource is null when this is a reference to a Service
                     // provided by another deployment
-                    if (importSource == null || (CSARSource.ORCHESTRATOR != CSARSource.valueOf(importSource) && CSARSource.PLUGIN != CSARSource.valueOf(importSource))) {
+                    if (importSource == null || CSARSource.ORCHESTRATOR != CSARSource.valueOf(importSource) || !(CSARSource.PLUGIN == CSARSource.valueOf(importSource) && csar.getTemplateAuthor().equals("YorcPlugin"))) {
                         try {
                             csar2zip(zos, csar);
                         } catch (Exception e) {

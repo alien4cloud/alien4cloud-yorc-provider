@@ -130,7 +130,7 @@ public class ToscaTopologyExporter {
                     final String importSource = csar.getImportSource();
                     // importSource is null when this is a reference to a Service
                     // provided by another deployment
-                    if (importSource != null && (CSARSource.valueOf(importSource) == CSARSource.ORCHESTRATOR || CSARSource.valueOf(importSource) == CSARSource.PLUGIN)) {
+                    if (importSource != null && (CSARSource.valueOf(importSource) == CSARSource.ORCHESTRATOR || (CSARSource.valueOf(importSource) == CSARSource.PLUGIN && csar.getTemplateAuthor().equals("YorcPlugin")))) {
                         sb.append("<").append(d.getName()).append(".yml>");
                     } else {
                         sb.append(d.getName()).append("/").append(d.getVersion()).append("/").append(csar.getYamlFilePath());
