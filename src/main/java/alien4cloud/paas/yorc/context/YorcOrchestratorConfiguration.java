@@ -94,8 +94,4 @@ public class YorcOrchestratorConfiguration {
         return Schedulers.from(executorService());
     }
 
-    @PreDestroy
-    private void term() {
-        executorService().shutdown();
-    }
 }
