@@ -2,11 +2,13 @@ package alien4cloud.paas.yorc;
 
 import alien4cloud.model.orchestrators.ArtifactSupport;
 import alien4cloud.model.orchestrators.locations.LocationSupport;
+import alien4cloud.orchestrators.plugin.ILocationConfiguratorPlugin;
 import alien4cloud.orchestrators.plugin.IOrchestratorPluginFactory;
 import alien4cloud.paas.yorc.configuration.ProviderConfiguration;
 import alien4cloud.paas.yorc.context.YorcOrchestrator;
 import alien4cloud.paas.yorc.context.YorcOrchestratorConfiguration;
 import alien4cloud.paas.yorc.dao.YorcESDao;
+import alien4cloud.paas.yorc.location.AbstractLocationConfigurerFactory;
 import alien4cloud.paas.yorc.model.EventIndex;
 import alien4cloud.paas.yorc.model.LogEventIndex;
 import alien4cloud.utils.ClassLoaderUtil;
@@ -45,6 +47,9 @@ public class YorcPluginFactory implements IOrchestratorPluginFactory<YorcOrchest
 
     @Inject
     private YorcESDao dao;
+
+    @Inject
+    private AbstractLocationConfigurerFactory yorcLocationConfigurerFactory;
 
     /**
      * Deployment properties
@@ -149,5 +154,10 @@ public class YorcPluginFactory implements IOrchestratorPluginFactory<YorcOrchest
     public void delete(String id) {
         dao.delete(LogEventIndex.class,id);
         dao.delete(EventIndex.class,id);
+    }
+
+    @Override
+    public ILocationConfiguratorPlugin getConfigurator(String locationType) {
+        return yorcLocationConfigurerFactory.newInstance(locationType);
     }
 }

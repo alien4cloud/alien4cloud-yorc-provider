@@ -78,11 +78,6 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
     private final List<AbstractMonitorEvent> pendingEvents = Lists.newArrayList();
 
     @Override
-    public ILocationConfiguratorPlugin getConfigurator(String locationType) {
-        return yorcLocationConfigurerFactory.newInstance(locationType);
-    }
-
-    @Override
     public List<PluginArchive> pluginArchives() {
         List<PluginArchive> archives = Lists.newArrayList();
         archives.add(archiveService.parsePluginArchives("commons/resources"));
