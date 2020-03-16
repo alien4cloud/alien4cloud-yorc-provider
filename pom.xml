@@ -15,7 +15,8 @@
   <properties>
     <alien4cloud.dsl.version>alien_dsl_2_0_0</alien4cloud.dsl.version>
     <tosca.normative.types.version>1.0.0-ALIEN20</tosca.normative.types.version>
-    <alien4cloud.kubernetes.api.version>3.0</alien4cloud.kubernetes.api.version>
+    <alien4cloud.kubernetes.api.version>3.0.0</alien4cloud.kubernetes.api.version>
+    <alien4cloud.extended.types.version>3.0.0</alien4cloud.extended.types.version>
     <spring.fsm.version>2.0.3.RELEASE</spring.fsm.version>
 
     <!-- Embedded TOSCA types versions -->
@@ -23,9 +24,9 @@
     <yorc.aws.types.version>1.1.0</yorc.aws.types.version>
     <yorc.google.types.version>1.0.0</yorc.google.types.version>
     <yorc.hp.types.version>1.0.0</yorc.hp.types.version>
-    <yorc.k8s.types.version>${project.version}</yorc.k8s.types.version>
-    <yorc.os.types.version>${project.version}</yorc.os.types.version>
-    <yorc.slurm.types.version>${project.version}</yorc.slurm.types.version>
+    <yorc.k8s.types.version>3.0.0</yorc.k8s.types.version>
+    <yorc.os.types.version>3.0.0</yorc.os.types.version>
+    <yorc.slurm.types.version>3.0.0</yorc.slurm.types.version>
 
     <!-- Tests -->
     <mockito.version>1.10.19</mockito.version>
