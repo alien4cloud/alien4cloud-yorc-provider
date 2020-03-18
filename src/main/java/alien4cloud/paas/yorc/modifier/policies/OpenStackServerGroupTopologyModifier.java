@@ -15,10 +15,18 @@
  */
 package alien4cloud.paas.yorc.modifier.policies;
 
-import alien4cloud.paas.wf.validation.WorkflowValidator;
-import alien4cloud.tosca.context.ToscaContextual;
-import lombok.AllArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import static alien4cloud.utils.AlienUtils.safe;
+
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import javax.inject.Inject;
+
 import org.alien4cloud.alm.deployment.configuration.flow.FlowExecutionContext;
 import org.alien4cloud.tosca.catalog.index.IToscaTypeSearchService;
 import org.alien4cloud.tosca.model.Csar;
@@ -32,11 +40,10 @@ import org.alien4cloud.tosca.model.types.NodeType;
 import org.alien4cloud.tosca.model.types.PolicyType;
 import org.springframework.stereotype.Component;
 
-import javax.inject.Inject;
-import java.util.*;
-import java.util.stream.Collectors;
-
-import static alien4cloud.utils.AlienUtils.safe;
+import alien4cloud.paas.wf.validation.WorkflowValidator;
+import alien4cloud.tosca.context.ToscaContextual;
+import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 
 @Slf4j
@@ -145,7 +152,7 @@ public class OpenStackServerGroupTopologyModifier extends AbstractPolicyTopology
 
         // Creating a new Server group associated to the policy
         String name = policy.getName() + "_sg";
-        NodeTemplate serverGroupNodeTemplate = addNodeTemplate(
+        NodeTemplate serverGroupNodeTemplate = addNodeTemplate(context,
                 csar,
                 topology,
                 name,

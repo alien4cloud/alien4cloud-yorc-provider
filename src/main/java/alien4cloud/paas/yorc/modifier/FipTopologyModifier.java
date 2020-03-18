@@ -1,9 +1,14 @@
 package alien4cloud.paas.yorc.modifier;
 
-import alien4cloud.paas.wf.validation.WorkflowValidator;
-import alien4cloud.tosca.context.ToscaContextual;
-import lombok.AllArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import javax.inject.Inject;
+
 import org.alien4cloud.alm.deployment.configuration.flow.FlowExecutionContext;
 import org.alien4cloud.alm.deployment.configuration.flow.TopologyModifierSupport;
 import org.alien4cloud.tosca.catalog.index.IToscaTypeSearchService;
@@ -14,11 +19,12 @@ import org.alien4cloud.tosca.model.templates.NodeTemplate;
 import org.alien4cloud.tosca.model.templates.Topology;
 import org.alien4cloud.tosca.model.types.NodeType;
 import org.alien4cloud.tosca.normative.constants.NormativeRelationshipConstants;
-import org.alien4cloud.tosca.utils.TopologyNavigationUtil;
 import org.springframework.stereotype.Component;
 
-import javax.inject.Inject;
-import java.util.*;
+import alien4cloud.paas.wf.validation.WorkflowValidator;
+import alien4cloud.tosca.context.ToscaContextual;
+import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Modifies an OpenStack topology to add a new Floating IP Node template
@@ -50,7 +56,7 @@ public class FipTopologyModifier extends TopologyModifierSupport {
 
         Csar csar = new Csar(topology.getArchiveName(), topology.getArchiveVersion());
 
-        Set<NodeTemplate> publicNetworksNodes = TopologyNavigationUtil.getNodesOfType(topology, "yorc.nodes.openstack.PublicNetwork", false);
+        Set<NodeTemplate> publicNetworksNodes = this.getNodesOfType(context, topology, "yorc.nodes.openstack.PublicNetwork", false);
 
         String fipConnectivityCap = "yorc.capabilities.openstack.FIPConnectivity";
         String fipNodeType = "yorc.nodes.openstack.FloatingIP";
@@ -61,7 +67,7 @@ public class FipTopologyModifier extends TopologyModifierSupport {
         publicNetworksNodes.forEach(networkNodeTemplate -> {
             final AbstractPropertyValue networkName = networkNodeTemplate.getProperties().get("floating_network_name");
 
-            // For each Node Template requiring a connection to this Public 
+            // For each Node Template requiring a connection to this Public
             // Network, creating a new Floating IP Node Template
             for (NodeTemplate nodeTemplate : new ArrayList<>(topology.getNodeTemplates().values())) {
 
@@ -73,7 +79,7 @@ public class FipTopologyModifier extends TopologyModifierSupport {
 
                         Map<String, AbstractPropertyValue> properties = new LinkedHashMap<>();
                         properties.put("floating_network_name", networkName);
-                        
+
                         Map<String, Capability> capabilities = new LinkedHashMap<>();
                         Capability connectionCap = new Capability();
                         connectionCap.setType(fipConnectivityCap);
@@ -86,10 +92,10 @@ public class FipTopologyModifier extends TopologyModifierSupport {
                         }
 
                         // Creating a new Floating IP Node Template that will be
-                        // associated to this Node Template requiring a 
+                        // associated to this Node Template requiring a
                         // connection to the Public Network
                         String fipName = "FIP" + nodeTemplate.getName();
-                        NodeTemplate fipNodeTemplate = addNodeTemplate(
+                        NodeTemplate fipNodeTemplate = addNodeTemplate(context,
                             csar,
                             topology,
                             fipName,
@@ -131,12 +137,12 @@ public class FipTopologyModifier extends TopologyModifierSupport {
                 networkNodeTemplate.getName());
         });
 
-        // Removing Public Network nodes for which a new Floating IP Node 
+        // Removing Public Network nodes for which a new Floating IP Node
         // template was created
-        nodesToRemove.forEach(pnn -> removeNode(topology, pnn));
+        nodesToRemove.forEach(pnn -> removeNode(context, topology, pnn));
 
         // Creating a relationship between each new Floating IP Node Template
-        // and the Source Node Template having a connectivity requirement  
+        // and the Source Node Template having a connectivity requirement
         relationshipsToAdd.forEach( rel -> addRelationshipTemplate(
             csar,
             topology,

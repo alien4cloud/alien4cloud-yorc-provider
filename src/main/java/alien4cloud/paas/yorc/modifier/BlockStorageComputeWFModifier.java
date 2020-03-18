@@ -1,8 +1,13 @@
 package alien4cloud.paas.yorc.modifier;
 
-import alien4cloud.paas.wf.validation.WorkflowValidator;
-import alien4cloud.tosca.context.ToscaContextual;
-import lombok.extern.slf4j.Slf4j;
+import static alien4cloud.utils.AlienUtils.safe;
+
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+
+import javax.annotation.Resource;
+
 import org.alien4cloud.alm.deployment.configuration.flow.FlowExecutionContext;
 import org.alien4cloud.alm.deployment.configuration.flow.TopologyModifierSupport;
 import org.alien4cloud.tosca.editor.operations.workflow.ConnectStepFromOperation;
@@ -14,15 +19,11 @@ import org.alien4cloud.tosca.model.templates.NodeTemplate;
 import org.alien4cloud.tosca.model.templates.Topology;
 import org.alien4cloud.tosca.model.workflow.Workflow;
 import org.alien4cloud.tosca.model.workflow.WorkflowStep;
-import org.alien4cloud.tosca.utils.TopologyNavigationUtil;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.Resource;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-
-import static alien4cloud.utils.AlienUtils.safe;
+import alien4cloud.paas.wf.validation.WorkflowValidator;
+import alien4cloud.tosca.context.ToscaContextual;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * A {@code BlockStorageComputeWFModifier} is a Topology modifier that explore a {@link Topology} to swap Compute and BlockStorage
@@ -60,7 +61,7 @@ public class BlockStorageComputeWFModifier extends TopologyModifierSupport {
         Workflow installWF = topology.getWorkflows().get("install");
         Workflow uninstallWF = topology.getWorkflows().get("uninstall");
 
-        Set<NodeTemplate> bsSet = TopologyNavigationUtil.getNodesOfType(topology, TOSCA_NODES_BLOCK_STORAGE, true);
+        Set<NodeTemplate> bsSet = this.getNodesOfType(context, topology, TOSCA_NODES_BLOCK_STORAGE, true);
 
         // Let's process all BS
         bsSet.forEach(bs -> safe(bs.getRelationships()).forEach((rn, rt) -> {

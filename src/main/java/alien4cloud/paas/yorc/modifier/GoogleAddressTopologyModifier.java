@@ -1,9 +1,14 @@
 package alien4cloud.paas.yorc.modifier;
 
-import alien4cloud.paas.wf.validation.WorkflowValidator;
-import alien4cloud.tosca.context.ToscaContextual;
-import lombok.AllArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+import javax.inject.Inject;
+
 import org.alien4cloud.alm.deployment.configuration.flow.FlowExecutionContext;
 import org.alien4cloud.alm.deployment.configuration.flow.TopologyModifierSupport;
 import org.alien4cloud.tosca.catalog.index.IToscaTypeSearchService;
@@ -14,11 +19,12 @@ import org.alien4cloud.tosca.model.templates.Capability;
 import org.alien4cloud.tosca.model.templates.NodeTemplate;
 import org.alien4cloud.tosca.model.templates.Topology;
 import org.alien4cloud.tosca.model.types.NodeType;
-import org.alien4cloud.tosca.utils.TopologyNavigationUtil;
 import org.springframework.stereotype.Component;
 
-import javax.inject.Inject;
-import java.util.*;
+import alien4cloud.paas.wf.validation.WorkflowValidator;
+import alien4cloud.tosca.context.ToscaContextual;
+import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Component(value = GoogleAddressTopologyModifier.YORC_GOOGLE_ADDRESS_MODIFIER_TAG)
@@ -44,7 +50,7 @@ public class GoogleAddressTopologyModifier extends TopologyModifierSupport {
     private void doProcess(Topology topology, FlowExecutionContext context) {
         Csar csar = new Csar(topology.getArchiveName(), topology.getArchiveVersion());
 
-        Set<NodeTemplate> publicNetworksNodes = TopologyNavigationUtil.getNodesOfType(topology, "yorc.nodes.google.PublicNetwork", false);
+        Set<NodeTemplate> publicNetworksNodes = this.getNodesOfType(context, topology, "yorc.nodes.google.PublicNetwork", false);
         String assignableCap = "yorc.capabilities.Assignable";
 
         String addressTypeName = "yorc.nodes.google.Address";
@@ -97,7 +103,7 @@ public class GoogleAddressTopologyModifier extends TopologyModifierSupport {
                         // Creating a new Address Node Template that will be
                         // associated to this Node Template requiring an assignment
                         String name = nodeTemplate.getName() + "_address";
-                        NodeTemplate addressNodeTemplate = addNodeTemplate(
+                        NodeTemplate addressNodeTemplate = addNodeTemplate(context,
                                 csar,
                                 topology,
                                 name,
@@ -133,7 +139,7 @@ public class GoogleAddressTopologyModifier extends TopologyModifierSupport {
 
         // Removing Public Network nodes for which a new Address Node
         // template was created
-        nodesToRemove.forEach(pnn -> removeNode(topology, pnn));
+        nodesToRemove.forEach(pnn -> removeNode(context, topology, pnn));
 
         // Creating a relationship between each new Google Address Node Template
         // and the Source Node Template having an assignment requirement

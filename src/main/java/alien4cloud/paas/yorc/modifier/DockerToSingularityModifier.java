@@ -101,27 +101,27 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
 
         // replace all yorc.nodes.slurm.ContainerJobUnit by
         // yorc.nodes.slurm.SingularityJob
-        Set<NodeTemplate> containerJobUnitNodes = TopologyNavigationUtil.getNodesOfType(topology,
+        Set<NodeTemplate> containerJobUnitNodes = this.getNodesOfType(context, topology,
                 SLURM_TYPES_CONTAINER_JOB_UNIT, false);
         containerJobUnitNodes.forEach(nodeTemplate -> transformContainerJobUnit(csar, topology, context, nodeTemplate));
 
         // replace all yorc.nodes.slurm.ContainerJobUnit by
         // yorc.nodes.slurm.SingularityJob if not already hosted on a ContainerJobUnit
-        Set<NodeTemplate> containerRuntimeNodes = TopologyNavigationUtil.getNodesOfType(topology,
+        Set<NodeTemplate> containerRuntimeNodes = this.getNodesOfType(context, topology,
                 SLURM_TYPES_CONTAINER_RUNTIME, false);
         containerRuntimeNodes.forEach(nodeTemplate -> transformContainerRuntime(csar, topology, context, nodeTemplate));
 
         // replace all tosca.nodes.Container.Application.DockerContainer by
         // yorc.nodes.slurm.SingularityJob if hosted on a ContainerRuntime transformed
         // into a yorc.nodes.slurm.SingularityJob
-        Set<NodeTemplate> containerNodes = TopologyNavigationUtil.getNodesOfType(topology,
+        Set<NodeTemplate> containerNodes = this.getNodesOfType(context, topology,
                 A4C_TYPES_APPLICATION_DOCKER_CONTAINER, true);
         containerNodes.forEach(
                 nodeTemplate -> transformContainer(csar, topology, context, functionEvaluatorContext, nodeTemplate));
 
         // for each volume node, populate the 'volumes' property of the corresponding
         // deployment resource
-        Set<NodeTemplate> volumeNodes = TopologyNavigationUtil.getNodesOfType(topology,
+        Set<NodeTemplate> volumeNodes = this.getNodesOfType(context, topology,
                 SLURM_TYPES_HOST_TO_CONTAINER_VOLUME, true);
         volumeNodes.forEach(nodeTemplate -> transformContainerVolume(csar, topology, context, nodeTemplate));
 
@@ -171,7 +171,7 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
      */
     protected void transformContainerJobUnit(Csar csar, Topology topology, FlowExecutionContext context,
             NodeTemplate nodeTemplate) {
-        NodeTemplate singularityNode = addNodeTemplate(csar, topology, nodeTemplate.getName() + "_Singularity",
+        NodeTemplate singularityNode = addNodeTemplate(context, csar, topology, nodeTemplate.getName() + "_Singularity",
                 getTargetJobType(), getTargetJobTypeVersion());
         addToReplacementMap(context, nodeTemplate, singularityNode);
         setNodeTagValue(singularityNode, A4C_D2S_MODIFIER_TAG + "_created_from", nodeTemplate.getName());

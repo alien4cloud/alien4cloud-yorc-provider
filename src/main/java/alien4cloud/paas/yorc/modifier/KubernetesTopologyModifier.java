@@ -12,7 +12,6 @@ import org.alien4cloud.alm.deployment.configuration.flow.TopologyModifierSupport
 import org.alien4cloud.tosca.model.Csar;
 import org.alien4cloud.tosca.model.templates.NodeTemplate;
 import org.alien4cloud.tosca.model.templates.Topology;
-import org.alien4cloud.tosca.utils.TopologyNavigationUtil;
 import org.springframework.stereotype.Component;
 
 import alien4cloud.component.ICSARRepositorySearchService;
@@ -98,15 +97,15 @@ public class KubernetesTopologyModifier extends TopologyModifierSupport {
         // Insure that Yorc kubernetes types archive added as dependency to the topology
         //
         // Treat deployment resource types
-        transformKubernetesResourceTypes(topology,  csar, "deployment", yorcKubernetesTypesArchiveVersion);
+        transformKubernetesResourceTypes(context, topology,  csar, "deployment", yorcKubernetesTypesArchiveVersion);
         // Treat job resource types
-        transformKubernetesResourceTypes(topology,  csar, "job", yorcKubernetesTypesArchiveVersion);
+        transformKubernetesResourceTypes(context, topology,  csar, "job", yorcKubernetesTypesArchiveVersion);
         // Treat service resource types
-        transformKubernetesResourceTypes(topology,  csar, "service", yorcKubernetesTypesArchiveVersion);
+        transformKubernetesResourceTypes(context, topology,  csar, "service", yorcKubernetesTypesArchiveVersion);
         // Treat statefulset resource types
-        transformKubernetesResourceTypes(topology,  csar, "statefulSet", yorcKubernetesTypesArchiveVersion);
+        transformKubernetesResourceTypes(context, topology,  csar, "statefulSet", yorcKubernetesTypesArchiveVersion);
         // Treat simple resource types
-        transformKubernetesResourceTypes(topology,  csar, "simple", yorcKubernetesTypesArchiveVersion);
+        transformKubernetesResourceTypes(context, topology,  csar, "simple", yorcKubernetesTypesArchiveVersion);
     }
 
     /**
@@ -117,7 +116,7 @@ public class KubernetesTopologyModifier extends TopologyModifierSupport {
      * @param resourceType the desired Yorc type
      * @param resourceArchiveVersion the desired Yorc version
      */
-    private void transformKubernetesResourceTypes(Topology topology, Csar csar, String resourceType, String resourceArchiveVersion) {
+    private void transformKubernetesResourceTypes(FlowExecutionContext context, Topology topology, Csar csar, String resourceType, String resourceArchiveVersion) {
         String sourceResourceType = null;
         String targetResourceType = null;
 
@@ -154,7 +153,7 @@ public class KubernetesTopologyModifier extends TopologyModifierSupport {
 
         final String effectiveTargetResourceType = targetResourceType;
 
-        Set<NodeTemplate> serviceNodes = TopologyNavigationUtil.getNodesOfType(topology, sourceResourceType, false);
+        Set<NodeTemplate> serviceNodes = this.getNodesOfType(context, topology, sourceResourceType, false);
 
         serviceNodes.forEach(serviceNodeTemplate -> {
 
