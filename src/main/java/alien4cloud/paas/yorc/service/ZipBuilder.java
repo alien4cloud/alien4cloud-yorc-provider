@@ -268,8 +268,12 @@ public class ZipBuilder {
                 recursivelyCopyArtifact(filePath, targetName + file,zos);
             }
         } else {
+            File file = artifactPath.toFile();
+            targetName += "/";
             createZipEntries(targetName,zos);
-            copy(artifactPath.toFile(),zos);
+            targetName += file.getName();
+            createZipEntries(targetName,zos);
+            copy(file,zos);
         }
 
         return targetName;
