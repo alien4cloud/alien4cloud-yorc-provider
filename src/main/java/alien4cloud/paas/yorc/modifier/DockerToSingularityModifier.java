@@ -131,15 +131,30 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
         safe(replacementMap.keySet()).forEach(nodeName -> removeNode(csar, topology, nodeName));
     }
 
-    protected void linkDependsOn(Csar csar, FlowExecutionContext context, Topology topology,
+    protected void linkDependsOn(Csar csar, FlowExecutionContext context,
+            Topology topology,
             Map<String, Set<String>> containersDependencies, Map<String, NodeTemplate> replacementMap) {
         containersDependencies.forEach((source, targets) -> {
+            boolean sourceReplaced = true;
+            boolean targetReplaced = true;
             NodeTemplate sourceNode = replacementMap.get(source);
-            safe(targets).forEach(target -> {
+            if (sourceNode == null) {
+                // not replaced in this modifier
+                sourceReplaced = false;
+                sourceNode = topology.getNodeTemplates().get(source);
+            }
+            for (String target : targets) {
                 NodeTemplate targetNode = replacementMap.get(target);
-                addRelationshipTemplate(csar, topology, sourceNode, targetNode.getName(),
+                if (targetNode == null) {
+                    // not replaced in this modifier
+                    targetReplaced = false;
+                    targetNode = topology.getNodeTemplates().get(target);
+                }
+                if (sourceReplaced || targetReplaced) {
+                    addRelationshipTemplate(csar, topology, sourceNode, targetNode.getName(),
                         NormativeRelationshipConstants.DEPENDS_ON, "dependency", "feature");
-            });
+                }
+            }
         });
     }
 
@@ -340,13 +355,12 @@ public class DockerToSingularityModifier extends TopologyModifierSupport {
         Set<NodeTemplate> dependents = TopologyNavigationUtil.getSourceNodesByRelationshipType(topology, nodeTemplate,
                 NormativeRelationshipConstants.DEPENDS_ON);
         dependents.forEach(sourceNode -> {
-            Set<String> d = containersDependencies.get(sourceNode.getName());
-            if (d == null) {
-                d = Sets.newHashSet();
-                containersDependencies.put(sourceNode.getName(), d);
-            }
-            d.add(nodeTemplate.getName());
+            containersDependencies.computeIfAbsent(sourceNode.getName(), k-> Sets.newHashSet()).add(nodeTemplate.getName());
         });
+        Set<NodeTemplate> dependsOn =TopologyNavigationUtil.getTargetNodes(topology, nodeTemplate, "dependency");
+        for (NodeTemplate targetNode : dependsOn) {
+            containersDependencies.computeIfAbsent(nodeTemplate.getName(), k-> Sets.newHashSet()).add(targetNode.getName());
+        }
     }
 
     protected void transformContainerOperation(Csar csar, FlowExecutionContext context,
