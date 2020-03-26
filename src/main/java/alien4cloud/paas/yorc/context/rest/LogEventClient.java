@@ -20,7 +20,7 @@ public class LogEventClient extends AbstractClient {
     public Single<Long> getLastIndex() {
         String url = getYorcUrl() + "/logs";
 
-        return sendRequest(url,HttpMethod.GET,String.class,buildHttpEntityWithDefaultHeader())
+        return sendRequest(url,HttpMethod.HEAD,String.class,buildHttpEntityWithDefaultHeader())
                 .map(RestUtil.extractHeader("X-yorc-Index"))
                 .map(Long::parseLong);
     }
