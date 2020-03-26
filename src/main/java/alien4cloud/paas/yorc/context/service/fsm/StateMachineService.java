@@ -65,6 +65,7 @@ public class StateMachineService implements SelfNaming {
 			.put(FsmStates.UPDATED, DeploymentStatus.UPDATED)
 			.put(FsmStates.UPDATE_FAILED, DeploymentStatus.UPDATE_FAILURE)
 			.put(FsmStates.FAILED, DeploymentStatus.FAILURE)
+			.put(FsmStates.UNKOWN, DeploymentStatus.DEPLOYMENT_IN_PROGRESS)
 			.build();
 
 	@Inject

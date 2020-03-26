@@ -3,6 +3,7 @@ package alien4cloud.paas.yorc.context.service.fsm;
 public enum FsmStates {
 	UNDEPLOYED,
 	DEPLOYMENT_INIT,
+	UNKOWN,
 	DEPLOYMENT_IN_PROGRESS,
 	DEPLOYED,
 	CANCELLATION_REQUESTED,
