@@ -26,7 +26,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 @Slf4j
 @Service
-@ManagedResource
+//@ManagedResource
 public class EventPollingService implements SelfNaming {
 
     @Inject
