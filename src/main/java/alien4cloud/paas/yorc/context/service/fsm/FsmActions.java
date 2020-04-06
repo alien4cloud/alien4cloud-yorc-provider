@@ -112,11 +112,7 @@ public class FsmActions {
 					return;
 				}
 
-				// send manually an event to alien
-				stateMachineService.sendEventToAlien(context.getDeploymentPaaSId(), FsmStates.FAILED);
-
-				Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.FAILURE, context);
-				busService.publish(message);
+				doFail();
 			}
 
 			@Override
@@ -132,10 +128,23 @@ public class FsmActions {
 					bytes = zipBuilder.build(context);
 				} catch (IOException e) {
 					callback.onFailure(e);
+					doFail();
+					return;
+				} catch (RuntimeException e) {
+					callback.onFailure(e);
+					doFail();
 					return;
 				}
 
 				deploymentClient.sendTopology(context.getDeploymentPaaSId(), bytes, false).subscribe(this::onHttpOk, this::onHttpKo);
+			}
+
+			private void doFail() {
+				// send manually an event to alien
+				stateMachineService.sendEventToAlien(context.getDeploymentPaaSId(), FsmStates.FAILED);
+
+				Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.FAILURE, context);
+				busService.publish(message);
 			}
 		};
 	}
