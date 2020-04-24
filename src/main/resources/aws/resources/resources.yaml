@@ -76,17 +76,6 @@ data_types:
         type: yorc.datatypes.aws.SecurityRuleType
         required: true
 
-relationship_types:
-  yorc.relationships.aws.Network:
-    derived_from: tosca.relationships.Network
-    properties:
-      subnet_id: 
-        type: string
-        required: true
-      security_group:
-        type: string
-        required: true
-
 node_types:
   yorc.nodes.aws.Compute:
     derived_from: yorc.nodes.Compute
@@ -106,7 +95,7 @@ node_types:
         type: string
         description: >
           Coma separated list of security groups to add to the Compute
-        required: true
+        required: false
       subnet_id:
         type: string
         description: >
@@ -270,19 +259,15 @@ node_types:
       subnets:
         type: list
         description: Subnetworks in this VPC
-        required: true
+        required: false
         entry_schema:
           type: yorc.datatypes.aws.SubnetType
-          constraints:
-            - greater_or_equal: 1
       security_groups:
         type: list
         description: SecurityGroups in this VPC
-        required: true
+        required: false
         entry_schema:
           type: yorc.datatypes.aws.SecurityGroupType
-          constraints:
-            - greater_or_equal: 1
 
 
 
