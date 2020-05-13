@@ -92,6 +92,14 @@ public class WorkflowsUtils {
                 wfs.getOnSuccess().remove(stepName);
             }
         });
+
+        step.getOnSuccess().forEach(s -> {
+            WorkflowStep wfs = workflow.getSteps().get(s);
+            if (wfs != null) {
+                wfs.getPrecedingSteps().remove(stepName);
+            }
+        });
+
         workflow.getSteps().remove(stepName);
     }
 
@@ -151,17 +159,27 @@ public class WorkflowsUtils {
         }
     }
 
-    private static void linkToStep(Workflow workflow, Set<String> fromSteps, String toStep) {
-        fromSteps.forEach(s -> {
-            WorkflowStep wf = workflow.getSteps().get(s);
-            if (wf != null) {
-                wf.addFollowing(toStep);
+    private static void linkToStep(Workflow workflow, Set<String> fromStepNames, String toStepName) {
+        fromStepNames.forEach(name -> {
+            WorkflowStep s = workflow.getSteps().get(name);
+            if (s != null) {
+                s.addFollowing(toStepName);
             }
         });
+
+        WorkflowStep s = workflow.getSteps().get(toStepName);
+        s.addAllPrecedings(fromStepNames);
     }
 
-    private static void linkFromStep(Workflow workflow, String fromStep, Set<String> toSteps) {
-        workflow.getSteps().get(fromStep).addAllFollowings(toSteps);
+    private static void linkFromStep(Workflow workflow, String fromStepName, Set<String> toStepNames) {
+        workflow.getSteps().get(fromStepName).addAllFollowings(toStepNames);
+
+        toStepNames.forEach(name -> {
+           WorkflowStep s = workflow.getSteps().get(name);
+           if (s != null) {
+               s.addPreceding(fromStepName);
+           }
+        });
     }
 
     private static boolean isOperationImplemented(NodeTemplate nodeTemplate, String interfaceName, String operationName) {
