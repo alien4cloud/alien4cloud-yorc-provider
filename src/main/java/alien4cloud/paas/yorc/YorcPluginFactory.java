@@ -10,6 +10,7 @@ import alien4cloud.paas.yorc.dao.YorcESDao;
 import alien4cloud.paas.yorc.model.EventIndex;
 import alien4cloud.paas.yorc.model.LogEventIndex;
 import alien4cloud.utils.ClassLoaderUtil;
+import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import lombok.extern.slf4j.Slf4j;
 import org.alien4cloud.tosca.model.definitions.PropertyDefinition;
@@ -18,8 +19,10 @@ import org.alien4cloud.tosca.normative.types.ToscaTypes;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
+import javax.annotation.PreDestroy;
 import javax.annotation.Resource;
 import javax.inject.Inject;
+import java.util.List;
 import java.util.Map;
 
 @Slf4j
@@ -36,6 +39,9 @@ public class YorcPluginFactory implements IOrchestratorPluginFactory<YorcOrchest
     public static final String HOSTS_POOL = "HostsPool";
 
     public static final String MONITORING_TIME_INTERVAL = "monitoring_time_interval";
+
+    // Living instances
+    private List<YorcOrchestrator> instances = Lists.newArrayList();
 
     /**
      * Plugin Context
@@ -70,11 +76,20 @@ public class YorcPluginFactory implements IOrchestratorPluginFactory<YorcOrchest
 
         YorcOrchestrator orchestrator = (YorcOrchestrator) orchestratorContext.getBean(YorcOrchestrator.class);
 
+        // Register the instance
+        instances.add(orchestrator);
+
         return orchestrator;
     }
 
     @Override
     public void destroy(YorcOrchestrator instance) {
+        doDestroy(instance);
+
+        instances.remove(instance);
+    }
+
+    private void doDestroy(YorcOrchestrator instance) {
         // Terminate the instance
         instance.term();
 
@@ -149,5 +164,11 @@ public class YorcPluginFactory implements IOrchestratorPluginFactory<YorcOrchest
     public void delete(String id) {
         dao.delete(LogEventIndex.class,id);
         dao.delete(EventIndex.class,id);
+    }
+
+    @PreDestroy
+    private void preDestroy() {
+        // Destroy orchestrators contexts
+        instances.forEach(this::doDestroy);
     }
 }

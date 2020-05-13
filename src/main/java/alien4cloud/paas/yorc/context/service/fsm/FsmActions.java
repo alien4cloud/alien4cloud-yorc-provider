@@ -1,23 +1,5 @@
 package alien4cloud.paas.yorc.context.service.fsm;
 
-import java.io.IOException;
-import java.util.Date;
-import java.util.Iterator;
-
-import javax.annotation.Resource;
-import javax.inject.Inject;
-
-import com.fasterxml.jackson.databind.JsonNode;
-
-import org.alien4cloud.tosca.normative.constants.NormativeWorkflowNameConstants;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.messaging.Message;
-import org.springframework.statemachine.StateContext;
-import org.springframework.statemachine.action.Action;
-import org.springframework.stereotype.Service;
-import org.springframework.web.client.HttpClientErrorException;
-
 import alien4cloud.paas.IPaaSCallback;
 import alien4cloud.paas.model.PaaSDeploymentLog;
 import alien4cloud.paas.model.PaaSDeploymentLogLevel;
@@ -33,8 +15,24 @@ import alien4cloud.paas.yorc.context.service.InstanceInformationService;
 import alien4cloud.paas.yorc.context.service.LogEventService;
 import alien4cloud.paas.yorc.service.ZipBuilder;
 import alien4cloud.paas.yorc.util.RestUtil;
+import com.fasterxml.jackson.databind.JsonNode;
 import io.jsonwebtoken.lang.Collections;
 import lombok.extern.slf4j.Slf4j;
+import org.alien4cloud.tosca.normative.constants.NormativeWorkflowNameConstants;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.messaging.Message;
+import org.springframework.statemachine.StateContext;
+import org.springframework.statemachine.action.Action;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
+
+import javax.annotation.Resource;
+import javax.inject.Inject;
+import java.io.IOException;
+import java.util.Date;
+import java.util.Iterator;
 
 @Slf4j
 @Service
@@ -107,11 +105,14 @@ public class FsmActions {
 					return;
 				}
 
-				// send manually an event to alien
-				stateMachineService.sendEventToAlien(context.getDeploymentPaaSId(), FsmStates.FAILED);
+				if (t instanceof HttpServerErrorException && ((HttpServerErrorException) t).getStatusCode().equals(HttpStatus.GATEWAY_TIMEOUT)) {
+					log.warn("504 (Gateway Timeout) error while sending deployment to Yorc, ignoring");
+					Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.GATEWAY_TIMEOUT, context);
+					busService.publish(message);
+					return;
+				}
 
-				Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.FAILURE, context);
-				busService.publish(message);
+				doFail();
 			}
 
 			@Override
@@ -127,10 +128,23 @@ public class FsmActions {
 					bytes = zipBuilder.build(context);
 				} catch (IOException e) {
 					callback.onFailure(e);
+					doFail();
+					return;
+				} catch (RuntimeException e) {
+					callback.onFailure(e);
+					doFail();
 					return;
 				}
 
 				deploymentClient.sendTopology(context.getDeploymentPaaSId(), bytes, false).subscribe(this::onHttpOk, this::onHttpKo);
+			}
+
+			private void doFail() {
+				// send manually an event to alien
+				stateMachineService.sendEventToAlien(context.getDeploymentPaaSId(), FsmStates.FAILED);
+
+				Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.FAILURE, context);
+				busService.publish(message);
 			}
 		};
 	}

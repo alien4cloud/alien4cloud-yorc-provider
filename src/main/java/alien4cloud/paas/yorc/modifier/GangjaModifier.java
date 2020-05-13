@@ -122,7 +122,9 @@ public class GangjaModifier extends TopologyModifierSupport {
     }
 
     protected void doProcess(Topology topology, FlowExecutionContext context) {
-        log.info("ARM processing topology");
+        if (log.isDebugEnabled()) {
+            log.debug("ARM processing topology");
+        }
 
         Set<NodeTemplate> nodes = this.getNodesOfType(context, topology, NODE_TYPE_TO_EXPORE, true, false);
         nodes.stream().forEach(nodeTemplate -> {
@@ -152,11 +154,15 @@ public class GangjaModifier extends TopologyModifierSupport {
     }
 
     private void processNode(Topology topology, NodeTemplate nodeTemplate, FlowExecutionContext context) {
-        log.info("Processing node {}", nodeTemplate.getName());
+        if (log.isDebugEnabled()) {
+            log.debug("Processing node {}", nodeTemplate.getName());
+        }
         Set<RelationshipTemplate> relationships = TopologyNavigationUtil.getRelationshipsFromType(nodeTemplate, RELATIONSHIP_TYPE_TO_EXPORE);
         Map<String, Object> varValues = Maps.newHashMap();
         relationships.stream().forEach(relationshipTemplate -> {
-            log.info("Processing relationship {}", relationshipTemplate.getName());
+            if (log.isDebugEnabled()) {
+                log.debug("Processing relationship {}", relationshipTemplate.getName());
+            }
 
             NodeTemplate targetNode = topology.getNodeTemplates().get(relationshipTemplate.getTarget());
             String targetCapability = relationshipTemplate.getTargetedCapabilityName();

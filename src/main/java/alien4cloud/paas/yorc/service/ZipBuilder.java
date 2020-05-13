@@ -20,6 +20,7 @@ import java.util.zip.ZipOutputStream;
 import javax.annotation.Resource;
 import javax.inject.Inject;
 
+import alien4cloud.paas.yorc.exception.YorcDeploymentException;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
@@ -127,7 +128,7 @@ public class ZipBuilder {
      * Get csar and add entries in zip file for it
      * @return relative path to the yml, ex: welcome-types/3.0-SNAPSHOT/welcome-types.yaml
      */
-    private String csar2zip(ZipOutputStream zos, Csar csar) throws IOException, ParsingException {
+    private String csar2zip(ZipOutputStream zos, Csar csar) throws IOException, ParsingException, YorcDeploymentException {
         // Get path directory to the needed info:
         // should be something like: ...../runtime/csar/<module>/<version>/expanded
         // We should have a yml or a yaml here
@@ -170,7 +171,7 @@ public class ZipBuilder {
                                 }
                             }
                             if (hasFatalError) {
-                                continue;
+                                throw new YorcDeploymentException("Invalid Deployment");
                             }
                         }
                         ArchiveRoot root = parsingResult.getResult();
@@ -268,8 +269,12 @@ public class ZipBuilder {
                 recursivelyCopyArtifact(filePath, targetName + file,zos);
             }
         } else {
+            File file = artifactPath.toFile();
+            targetName += "/";
             createZipEntries(targetName,zos);
-            copy(artifactPath.toFile(),zos);
+            targetName += file.getName();
+            createZipEntries(targetName,zos);
+            copy(file,zos);
         }
 
         return targetName;
