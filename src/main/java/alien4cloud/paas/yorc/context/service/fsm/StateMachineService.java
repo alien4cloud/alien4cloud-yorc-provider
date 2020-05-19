@@ -7,6 +7,7 @@ import alien4cloud.paas.model.PaaSDeploymentStatusMonitorEvent;
 import alien4cloud.paas.yorc.configuration.ProviderConfiguration;
 import alien4cloud.paas.yorc.context.YorcOrchestrator;
 import alien4cloud.paas.yorc.context.service.*;
+import alien4cloud.utils.jackson.MapEntry;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Maps;
 import lombok.extern.slf4j.Slf4j;
@@ -47,6 +48,7 @@ public class StateMachineService implements SelfNaming {
 	public static final String YORC_DEPLOYMENT_ID = "yorcDeploymentId";
 	public static final String CALLBACK = "callback";
 	public static final String TASK_URL = "taskURL";
+	public static final String FORCE = "force";
 
 	private Map<String, StateMachine<FsmStates, FsmEvents>> cache = Maps.newConcurrentMap();
 
@@ -66,6 +68,7 @@ public class StateMachineService implements SelfNaming {
 			.put(FsmStates.UPDATE_FAILED, DeploymentStatus.UPDATE_FAILURE)
 			.put(FsmStates.FAILED, DeploymentStatus.FAILURE)
 			.put(FsmStates.UNKOWN, DeploymentStatus.DEPLOYMENT_IN_PROGRESS)
+			.put(FsmStates.UNDEPLOYMENT_FAILED, DeploymentStatus.UNDEPLOYMENT_FAILURE)
 			.build();
 
 	@Inject
@@ -228,6 +231,26 @@ public class StateMachineService implements SelfNaming {
 				.setHeader(StateMachineService.DEPLOYMENT_CONTEXT, deploymentContext)
 				.setHeader(StateMachineService.YORC_DEPLOYMENT_ID, deploymentContext.getDeploymentPaaSId())
 				.build();
+	}
+
+	/**
+	 * Create a fsm message with deployment id and context as well as alien callback
+	 * @param event FsmEvents
+	 * @param deploymentContext Deployment context
+	 * @param callback Alien callback
+	 * @return New created message
+	 */
+	public Message<FsmEvents> createMessage(FsmEvents event, PaaSDeploymentContext deploymentContext, IPaaSCallback<?> callback,Map<String,Object> map) {
+		MessageBuilder<FsmEvents> builder = MessageBuilder.withPayload(event)
+				.setHeader(StateMachineService.CALLBACK, callback)
+				.setHeader(StateMachineService.DEPLOYMENT_CONTEXT, deploymentContext)
+				.setHeader(StateMachineService.YORC_DEPLOYMENT_ID, deploymentContext.getDeploymentPaaSId());
+
+		for (Map.Entry<String,Object> e : map.entrySet()) {
+			builder = builder.setHeader(e.getKey(),e.getValue());
+		}
+
+		return builder.build();
 	}
 
 	/**
