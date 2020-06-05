@@ -45,6 +45,7 @@ public class LocationCreationListener implements ApplicationListener<AfterLocati
     private LocationModifierReference googlePrivateNetworkModifierRef;
     private LocationModifierReference dockerToSingularityModifierRef;
     private LocationModifierReference yorcLocationModifierRef;
+    private LocationModifierReference wfSimplifierModifierRef;
 
     @PostConstruct
     public synchronized void init() {
@@ -98,6 +99,11 @@ public class LocationCreationListener implements ApplicationListener<AfterLocati
         yorcLocationModifierRef.setPluginId(selfContext.getPlugin().getId());
         yorcLocationModifierRef.setBeanName(YorcLocationModifier.YORC_LOCATION_MODIFIER_TAG);
         yorcLocationModifierRef.setPhase(FlowPhases.POST_MATCHED_NODE_SETUP);
+
+        wfSimplifierModifierRef = new LocationModifierReference();
+        wfSimplifierModifierRef.setPluginId(selfContext.getPlugin().getId());
+        wfSimplifierModifierRef.setBeanName(SimplifierModifier.YORC_WF_SIMPLIFIER_TAG);
+        wfSimplifierModifierRef.setPhase(FlowPhases.POST_MATCHED_NODE_SETUP);
     }
 
 
@@ -119,6 +125,7 @@ public class LocationCreationListener implements ApplicationListener<AfterLocati
             } else if (YorcPluginFactory.SLURM.equals(event.getLocation().getInfrastructureType())) {
                 locationModifierService.add(event.getLocation(), dockerToSingularityModifierRef);
             }
+            locationModifierService.add(event.getLocation(), wfSimplifierModifierRef);
             locationModifierService.add(event.getLocation(), wfOperationHostModifierRef);
             locationModifierService.add(event.getLocation(), serviceTopologyModifierRef);
             locationModifierService.add(event.getLocation(), blockStorageWFModifierRef);

@@ -25,5 +25,8 @@ component_descriptors:
   - bean_name: gangja-resolver-modifier
     name: Gangja config file resolver modifier
     description: A modifier that help resolve variables when a node connects to to static endpoints and has Gangja config file artefacts
+  - bean_name: yorc-wf-simplifier-modifier
+    name: Workflow Simplifier Modifier
+    description: A modifier that simplify workflows
 dependencies:
   - alien4cloud-kubernetes-plugin
