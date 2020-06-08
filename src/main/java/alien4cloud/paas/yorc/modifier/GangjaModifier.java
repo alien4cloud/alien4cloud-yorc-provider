@@ -87,25 +87,6 @@ public class GangjaModifier extends TopologyModifierSupport {
         try {
             WorkflowValidator.disableValidationThreadLocal.set(true);
             doProcess(topology, context);
-
-            TopologyContext topologyContext = workflowBuilderService.buildCachedTopologyContext(new TopologyContext() {
-                @Override
-                public String getDSLVersion() {
-                    return ToscaParser.LATEST_DSL;
-                }
-
-                @Override
-                public Topology getTopology() {
-                    return topology;
-                }
-
-                @Override
-                public <T extends AbstractToscaType> T findElement(Class<T> clazz, String elementId) {
-                    return ToscaContext.get(clazz, elementId);
-                }
-            });
-
-            workflowSimplifyService.reentrantSimplifyWorklow(topologyContext, topology.getWorkflows().keySet());
         } catch (Exception e) {
             log.warn("Can't process k8s-spark-jobs modifier:", e);
         } finally {
