@@ -53,7 +53,7 @@ public class SimplifierModifier extends TopologyModifierSupport {
                     return ToscaContext.get(clazz, elementId);
                 }
             });
-            workflowSimplifyService.simplifyWorkflow(topologyContext, topology.getWorkflows().keySet());
+            workflowBuilderService.refreshTopologyWorkflows(topologyContext);
         } catch (Exception e) {
             context.getLog().error("Could not simplify workflow");
             log.warn("Could not simplify workflow", e);
