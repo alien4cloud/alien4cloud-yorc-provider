@@ -154,6 +154,20 @@ public class ProviderConfiguration implements IPaaSProviderConfiguration {
     )
     private Boolean undeployStopOnError = Boolean.FALSE;
 
+    @FormPropertyDefinition(
+            type = "integer",
+            defaultValue = "100",
+            description = "logBufferCount: the maxium log events counts in a buffer flush."
+    )
+    private Integer logBufferCount = 100;
+
+    @FormPropertyDefinition(
+            type = "integer",
+            defaultValue = "250",
+            description = "logBufferDelay: in milliseconds, the maximum duration between log event flushes."
+    )
+    private Integer logBufferDelay = 250;
+
     private String orchestratorName;
     private String orchestratorId;
 

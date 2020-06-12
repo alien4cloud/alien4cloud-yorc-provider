@@ -98,7 +98,7 @@ public class LogEventPollingService implements SelfNaming {
         if (log.isDebugEnabled()) {
             log.debug("A batch of <{}> logs have been received for orch <{}> (from {})", response.getLogs().size(), configuration.getOrchestratorId(), response.getLast_index());
         }
-        // FIXME: Let's build a bulk request with this batch for ES storage !
+
         for (LogEvent logEvent : response.getLogs()) {
 
             if (log.isTraceEnabled()) {
