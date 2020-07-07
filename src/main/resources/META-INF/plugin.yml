@@ -28,5 +28,8 @@ component_descriptors:
   - bean_name: yorc-wf-simplifier-modifier
     name: Workflow Simplifier Modifier
     description: A modifier that simplify workflows
+  - bean_name: yorc-metapropscheck-modifier
+    name: Meta-Properties checker
+    description: A modifier that checks that application mandatory metaproperties are set
 dependencies:
   - alien4cloud-kubernetes-plugin
