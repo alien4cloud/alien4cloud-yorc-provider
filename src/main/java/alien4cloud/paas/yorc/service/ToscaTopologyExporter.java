@@ -94,7 +94,7 @@ public class ToscaTopologyExporter {
         Thread.currentThread().setContextClassLoader(this.getClass().getClassLoader());
         try {
             StringWriter writer = new StringWriter();
-            VelocityUtil.generate("alien4cloud/paas/yorc/tosca/topology-alien_dsl_2_0_0.yml.vm", writer, velocityCtx);
+            VelocityUtil.generate("alien4cloud/paas/yorc/tosca/topology-alien_dsl_3_0_0.yml.vm", writer, velocityCtx);
             return writer.toString();
         } catch (Exception e) {
             log.error("Exception while templating YAML for topology " + topology.getId(), e);

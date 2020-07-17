@@ -199,7 +199,7 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
         if (log.isDebugEnabled()) {
             log.debug(String.format("Launching workflow %s for deployment %s", workflowName, deploymentContext.getDeploymentPaaSId()));
         }
-        deploymentClient.executeWorkflow(deploymentContext.getDeploymentPaaSId(), workflowName, false).subscribe(s -> {
+        deploymentClient.executeWorkflow(deploymentContext.getDeploymentPaaSId(), workflowName, inputs,false).subscribe(s -> {
             if (log.isDebugEnabled()) {
                 log.debug("Workflow {} launched for deployment {} : {}", workflowName, deploymentContext.getDeploymentPaaSId(), s);
             }

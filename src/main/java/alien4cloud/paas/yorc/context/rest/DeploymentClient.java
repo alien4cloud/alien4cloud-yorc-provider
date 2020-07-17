@@ -1,5 +1,7 @@
 package alien4cloud.paas.yorc.context.rest;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.google.common.collect.Maps;
 import org.json.JSONObject;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -16,6 +18,8 @@ import io.reactivex.Completable;
 import io.reactivex.Observable;
 import io.reactivex.Single;
 import lombok.extern.slf4j.Slf4j;
+
+import java.util.Map;
 
 @Slf4j
 @Component
@@ -128,13 +132,21 @@ public class DeploymentClient extends AbstractClient {
                 .toObservable();
     }
 
-    public Single<String> executeWorkflow(String deploymentId, String workflowName, boolean continueOnError) {
+    public Single<String> executeWorkflow(String deploymentId, String workflowName, Map<String,Object> inputs, boolean continueOnError) {
         String url = getYorcUrl() + "/deployments/" + deploymentId + "/workflows/" + workflowName;
         if (continueOnError) {
             url += "?continueOnError";
         }
-        return sendRequest(url, HttpMethod.POST, String.class, buildHttpEntityWithDefaultHeader())
-                .map(RestUtil.extractHeader("Location"));
+
+        try {
+            Map<String,Object> request = Maps.newHashMap();
+            request.put("inputs",inputs);
+
+            return sendRequest(url, HttpMethod.POST, String.class, buildHttpEntityWithDefaultHeader(request))
+                    .map(RestUtil.extractHeader("Location"));
+        } catch(JsonProcessingException e) {
+            return Single.error(e);
+        }
     }
 
     public Single<String> scale(String deploymentId,String nodeName,int delta) {
