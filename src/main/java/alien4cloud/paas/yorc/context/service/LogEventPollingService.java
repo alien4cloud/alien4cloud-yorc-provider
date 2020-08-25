@@ -95,6 +95,9 @@ public class LogEventPollingService implements SelfNaming {
      */
     private void processEvents(ResponseEntity<LogEventDTO> entity) {
         LogEventDTO response = entity.getBody();
+        if (log.isDebugEnabled()) {
+            log.debug("A batch of <{}> logs have been received for orch <{}> (from {})", response.getLogs().size(), configuration.getOrchestratorId(), response.getLast_index());
+        }
 
         for (LogEvent logEvent : response.getLogs()) {
 
