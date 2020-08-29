@@ -281,6 +281,8 @@ public class InstanceInformationService {
             case "finished":
             case "done":
             case "executed":
+            case "created":
+            case "configured":
                 return InstanceStatus.SUCCESS;
             case "deleted":
                 return null;

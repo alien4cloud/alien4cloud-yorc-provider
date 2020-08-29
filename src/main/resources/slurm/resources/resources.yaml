@@ -11,9 +11,9 @@ description: "Defines resources for the Yorc plugin, slurm configuration."
 #       versions (our type not snapshot referencing a snapshot version)
 imports:
   - tosca-normative-types:${tosca.normative.types.version}
-  - alien-base-types:${project.version}
+  - alien-base-types:${alien4cloud.extended.types.version}
   - yorc-types:${yorc.types.version}
-  - docker-types:${project.version}
+  - docker-types:${alien4cloud.extended.types.version}
 
 
 artifact_types:

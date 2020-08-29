@@ -10,7 +10,7 @@ template_version: ${yorc.os.types.version}
 #       versions (our type not snapshot referencing a snapshot version)
 imports:
   - tosca-normative-types:${tosca.normative.types.version}
-  - alien-base-types:${project.version}
+  - alien-base-types:${alien4cloud.extended.types.version}
   - yorc-types:${yorc.types.version}
 
 data_types:

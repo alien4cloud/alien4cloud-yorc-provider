@@ -1,6 +1,7 @@
 package alien4cloud.paas.yorc.context.service;
 
 import alien4cloud.paas.model.PaaSDeploymentLog;
+import alien4cloud.paas.yorc.configuration.ProviderConfiguration;
 import alien4cloud.paas.yorc.context.rest.response.Event;
 import alien4cloud.paas.yorc.context.rest.response.LogEvent;
 import alien4cloud.paas.yorc.context.service.fsm.FsmEvents;
@@ -15,12 +16,18 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.Message;
 import org.springframework.stereotype.Service;
 
+import javax.annotation.Resource;
 import javax.inject.Inject;
+import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Service
 public class BusService {
+
+    @Resource
+    private ProviderConfiguration configuration;
 
     @Inject
     private Scheduler scheduler;
@@ -59,8 +66,8 @@ public class BusService {
         eventBuses.get(deploymentId).events.subscribe(callback);
     }
 
-    public void subscribeLogs(Consumer<PaaSDeploymentLog> callback) {
-        logs.subscribe(callback);
+    public void subscribeLogs(Consumer<List<PaaSDeploymentLog>> callback) {
+        logs.buffer(configuration.getLogBufferDelay(), TimeUnit.MILLISECONDS,scheduler,configuration.getLogBufferCount()).subscribe(callback);
     }
 
     public void unsubscribeEvents(String deploymentId) {

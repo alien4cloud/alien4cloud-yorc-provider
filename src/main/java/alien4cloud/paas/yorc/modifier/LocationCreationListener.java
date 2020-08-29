@@ -46,6 +46,7 @@ public class LocationCreationListener implements ApplicationListener<AfterLocati
     private LocationModifierReference googlePrivateNetworkModifierRef;
     private LocationModifierReference dockerToSingularityModifierRef;
     private LocationModifierReference yorcLocationModifierRef;
+    private LocationModifierReference wfSimplifierModifierRef;
     private LocationModifierReference hostsPoolPlacementPolicyModifierRef;
 
     @PostConstruct
@@ -101,6 +102,10 @@ public class LocationCreationListener implements ApplicationListener<AfterLocati
         yorcLocationModifierRef.setBeanName(YorcLocationModifier.YORC_LOCATION_MODIFIER_TAG);
         yorcLocationModifierRef.setPhase(FlowPhases.POST_MATCHED_NODE_SETUP);
 
+        wfSimplifierModifierRef = new LocationModifierReference();
+        wfSimplifierModifierRef.setPluginId(selfContext.getPlugin().getId());
+        wfSimplifierModifierRef.setBeanName(SimplifierModifier.YORC_WF_SIMPLIFIER_TAG);
+        wfSimplifierModifierRef.setPhase(FlowPhases.POST_MATCHED_NODE_SETUP);
         hostsPoolPlacementPolicyModifierRef = new LocationModifierReference();
         hostsPoolPlacementPolicyModifierRef.setPluginId(selfContext.getPlugin().getId());
         hostsPoolPlacementPolicyModifierRef.setBeanName(HostsPoolPlacementTopologyModifier.YORC_HP_PLACEMENT_TOPOLOGY_MODIFIER);
@@ -128,6 +133,7 @@ public class LocationCreationListener implements ApplicationListener<AfterLocati
             } else if (YorcPluginFactory.HOSTS_POOL.equals(event.getLocation().getInfrastructureType())) {
                 locationModifierService.add(event.getLocation(), hostsPoolPlacementPolicyModifierRef);
             }
+            locationModifierService.add(event.getLocation(), wfSimplifierModifierRef);
             locationModifierService.add(event.getLocation(), wfOperationHostModifierRef);
             locationModifierService.add(event.getLocation(), serviceTopologyModifierRef);
             locationModifierService.add(event.getLocation(), blockStorageWFModifierRef);

@@ -14,6 +14,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.EnableMBeanExport;
+import org.springframework.jmx.support.RegistrationPolicy;
 
 import javax.annotation.PreDestroy;
 import javax.annotation.Resource;
@@ -27,8 +28,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 @ComponentScan(basePackages = {
         "alien4cloud.paas.yorc.context"
 })
-@EnableMBeanExport
-
+@EnableMBeanExport(registration = RegistrationPolicy.REPLACE_EXISTING)
 public class YorcOrchestratorConfiguration {
 
     /**
@@ -94,8 +94,4 @@ public class YorcOrchestratorConfiguration {
         return Schedulers.from(executorService());
     }
 
-    @PreDestroy
-    private void term() {
-        executorService().shutdown();
-    }
 }

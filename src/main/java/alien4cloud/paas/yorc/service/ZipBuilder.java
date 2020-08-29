@@ -20,6 +20,7 @@ import java.util.zip.ZipOutputStream;
 import javax.annotation.Resource;
 import javax.inject.Inject;
 
+import alien4cloud.paas.yorc.exception.YorcDeploymentException;
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
@@ -84,10 +85,13 @@ public class ZipBuilder {
             context.getDeploymentTopology().getDependencies().forEach(d -> {
                 if (!"tosca-normative-types".equals(d.getName())) {
                     Csar csar = csarRepoSearchService.getArchive(d.getName(), d.getVersion());
+                    if (csar == null) {
+                        throw new RuntimeException(String.format("Did not find needed archive %s version %s", d.getName(), d.getVersion()));
+                    }
                     final String importSource = csar.getImportSource();
                     // importSource is null when this is a reference to a Service
                     // provided by another deployment
-                    if (importSource == null || CSARSource.ORCHESTRATOR != CSARSource.valueOf(importSource)) {
+                    if (importSource == null || CSARSource.ORCHESTRATOR != CSARSource.valueOf(importSource) || !(CSARSource.PLUGIN == CSARSource.valueOf(importSource) && csar.getTemplateAuthor().equals("YorcPlugin"))) {
                         try {
                             csar2zip(zos, csar);
                         } catch (Exception e) {
@@ -127,7 +131,7 @@ public class ZipBuilder {
      * Get csar and add entries in zip file for it
      * @return relative path to the yml, ex: welcome-types/3.0-SNAPSHOT/welcome-types.yaml
      */
-    private String csar2zip(ZipOutputStream zos, Csar csar) throws IOException, ParsingException {
+    private String csar2zip(ZipOutputStream zos, Csar csar) throws IOException, ParsingException, YorcDeploymentException {
         // Get path directory to the needed info:
         // should be something like: ...../runtime/csar/<module>/<version>/expanded
         // We should have a yml or a yaml here
@@ -170,7 +174,7 @@ public class ZipBuilder {
                                 }
                             }
                             if (hasFatalError) {
-                                continue;
+                                throw new YorcDeploymentException("Invalid Deployment");
                             }
                         }
                         ArchiveRoot root = parsingResult.getResult();
@@ -268,8 +272,12 @@ public class ZipBuilder {
                 recursivelyCopyArtifact(filePath, targetName + file,zos);
             }
         } else {
+            File file = artifactPath.toFile();
+            targetName += "/";
             createZipEntries(targetName,zos);
-            copy(artifactPath.toFile(),zos);
+            targetName += file.getName();
+            createZipEntries(targetName,zos);
+            copy(file,zos);
         }
 
         return targetName;

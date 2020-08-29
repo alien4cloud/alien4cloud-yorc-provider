@@ -178,8 +178,11 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
     }
 
     @Override
-    public void undeploy(PaaSDeploymentContext deploymentContext, IPaaSCallback<?> callback) {
-        Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.UNDEPLOYMENT_STARTED, deploymentContext, callback);
+    public void undeploy(PaaSDeploymentContext deploymentContext, IPaaSCallback<?> callback,boolean force) {
+        Map<String,Object> params = Maps.newHashMap();
+        params.put(StateMachineService.FORCE,force);
+
+        Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.UNDEPLOYMENT_STARTED, deploymentContext, callback,params);
         busService.publish(message);
     }
 
@@ -300,8 +303,9 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
             case "INITIAL":
                 return DeploymentStatus.INIT_DEPLOYMENT;
             case "DEPLOYMENT_FAILED":
-            case "UNDEPLOYMENT_FAILED":
                 return DeploymentStatus.FAILURE;
+            case "UNDEPLOYMENT_FAILED":
+                return DeploymentStatus.UNDEPLOYMENT_FAILURE;
             case "UPDATE_IN_PROGRESS":
                 return DeploymentStatus.UPDATE_IN_PROGRESS;
             case "UPDATED":
