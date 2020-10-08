@@ -85,6 +85,9 @@ public class ZipBuilder {
             context.getDeploymentTopology().getDependencies().forEach(d -> {
                 if (!"tosca-normative-types".equals(d.getName())) {
                     Csar csar = csarRepoSearchService.getArchive(d.getName(), d.getVersion());
+                    if (csar == null) {
+                        throw new RuntimeException(String.format("Did not find needed archive %s version %s", d.getName(), d.getVersion()));
+                    }
                     final String importSource = csar.getImportSource();
                     // importSource is null when this is a reference to a Service
                     // provided by another deployment

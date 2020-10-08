@@ -32,6 +32,7 @@ import org.springframework.web.client.HttpServerErrorException;
 import javax.annotation.Resource;
 import javax.inject.Inject;
 import java.io.IOException;
+import java.net.SocketTimeoutException;
 import java.util.Date;
 import java.util.Iterator;
 
@@ -108,6 +109,13 @@ public class FsmActions {
 
 				if (t instanceof HttpServerErrorException && ((HttpServerErrorException) t).getStatusCode().equals(HttpStatus.GATEWAY_TIMEOUT)) {
 					log.warn("504 (Gateway Timeout) error while sending deployment to Yorc, ignoring");
+					Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.GATEWAY_TIMEOUT, context);
+					busService.publish(message);
+					return;
+				}
+
+				if (t instanceof SocketTimeoutException) {
+					log.warn("Socket timeout while sending deployment to Yorc, ignoring");
 					Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.GATEWAY_TIMEOUT, context);
 					busService.publish(message);
 					return;
