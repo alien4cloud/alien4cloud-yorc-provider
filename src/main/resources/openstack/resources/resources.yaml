@@ -156,6 +156,12 @@ node_types:
         description: >
           Coma separated list of security groups to add to the Compute
         required: false
+      metadata:
+        type: map
+        description: Metadata key/value pairs to make available from within the instance
+        entry_schema:
+          type: string
+        required: false
     requirements:
       - group:
           capability: yorc.capabilities.Group
