@@ -282,7 +282,7 @@ ${artifactUtils.formatArtifact($artifactEntry.value, 5)}
 #end## constraint iteration
 #end## if constraints not empty
 #if($inputEntry.value.description)
-      description: ${utils.renderDescription($inputEntry.value.description, "        ")}
+          description: ${utils.renderDescription($inputEntry.value.description, "            ")}
 #end## if description defined
 #end
 #end
