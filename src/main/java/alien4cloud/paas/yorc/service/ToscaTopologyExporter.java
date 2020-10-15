@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.alien4cloud.tosca.catalog.ArchiveDelegateType;
 import org.alien4cloud.tosca.model.CSARDependency;
 import org.alien4cloud.tosca.model.Csar;
+import org.alien4cloud.tosca.model.definitions.AbstractPropertyValue;
 import org.alien4cloud.tosca.model.templates.Topology;
 import org.alien4cloud.tosca.model.workflow.Workflow;
 import org.apache.commons.lang.exception.ExceptionUtils;
@@ -44,8 +45,8 @@ public class ToscaTopologyExporter {
      *
      * @return The TOSCA yaml file that describe the topology.
      */
-    public String getYaml(Csar csar, Topology topology, boolean generateWorkflow) {
-        return getYaml(csar,topology,generateWorkflow, Maps.newHashMap());
+    public String getYaml(Csar csar, Topology topology, boolean generateWorkflow, Map<String, AbstractPropertyValue> inputProperties) {
+        return getYaml(csar,topology,generateWorkflow, Maps.newHashMap(), inputProperties);
     }
 
     /**
@@ -58,11 +59,12 @@ public class ToscaTopologyExporter {
      *
      * @return The TOSCA yaml file that describe the topology.
      */
-    public String getYaml(Csar csar, Topology topology, boolean generateWorkflow,Map<String,String> artifactMap) {
+    public String getYaml(Csar csar, Topology topology, boolean generateWorkflow, Map<String,String> artifactMap, Map<String, AbstractPropertyValue> inputProperties) {
         Map<String, Object> velocityCtx = new HashMap<>();
         velocityCtx.put("topology", topology);
         velocityCtx.put("template_name", csar.getName());
         velocityCtx.put("template_version", csar.getVersion());
+        velocityCtx.put("inputProperties", inputProperties);
         velocityCtx.put("hasCustomWorkflows", hasCustomWorkflows(topology));
         velocityCtx.put("generateWorkflow", generateWorkflow);
         if (csar.getDescription() == null) {
