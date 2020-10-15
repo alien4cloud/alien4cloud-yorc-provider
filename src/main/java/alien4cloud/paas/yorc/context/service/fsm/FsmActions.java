@@ -16,6 +16,7 @@ import alien4cloud.paas.yorc.context.service.LogEventService;
 import alien4cloud.paas.yorc.service.ZipBuilder;
 import alien4cloud.paas.yorc.util.RestUtil;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.google.common.collect.Maps;
 import io.jsonwebtoken.lang.Collections;
 import lombok.extern.slf4j.Slf4j;
 import org.alien4cloud.tosca.normative.constants.NormativeWorkflowNameConstants;
@@ -367,7 +368,7 @@ public class FsmActions {
 				if (log.isInfoEnabled()) {
 					log.info("Launching pre_update workflow for deployment {}", yorcDeploymentId);
 				}
-				deploymentClient.executeWorkflow(yorcDeploymentId, NormativeWorkflowNameConstants.PRE_UPDATE, false).subscribe(this::onHttpOk, this::onHttpKo);
+				deploymentClient.executeWorkflow(yorcDeploymentId, NormativeWorkflowNameConstants.PRE_UPDATE, Maps.newHashMap(), false).subscribe(this::onHttpOk, this::onHttpKo);
 			}
 
 		};
@@ -504,7 +505,7 @@ public class FsmActions {
 				if (log.isInfoEnabled()) {
 					log.info("Launching post_update workflow for deployment {}", yorcDeploymentId);
 				}
-				deploymentClient.executeWorkflow(yorcDeploymentId, NormativeWorkflowNameConstants.POST_UPDATE, false).subscribe(this::onHttpOk, this::onHttpKo);
+				deploymentClient.executeWorkflow(yorcDeploymentId, NormativeWorkflowNameConstants.POST_UPDATE, Maps.newHashMap(),false).subscribe(this::onHttpOk, this::onHttpKo);
 			}
 
 		};

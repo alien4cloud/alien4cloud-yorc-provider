@@ -93,7 +93,7 @@ public class ZipBuilder {
                     // provided by another deployment
                     if (importSource == null || CSARSource.ORCHESTRATOR != CSARSource.valueOf(importSource) || !(CSARSource.PLUGIN == CSARSource.valueOf(importSource) && csar.getTemplateAuthor().equals("YorcPlugin"))) {
                         try {
-                            csar2zip(zos, csar);
+                            csar2zip(zos, csar, context);
                         } catch (Exception e) {
                             throw new RuntimeException(e);
                         }
@@ -119,7 +119,7 @@ public class ZipBuilder {
             DeploymentTopology dtopo = context.getDeploymentTopology();
             Csar myCsar = new Csar(dtopo.getArchiveName(), dtopo.getArchiveVersion());
             myCsar.setToscaDefinitionsVersion(ToscaParser.LATEST_DSL);
-            String yaml = toscaTopologyExporter.getYaml(myCsar, dtopo, true, artifactMap);
+            String yaml = toscaTopologyExporter.getYaml(myCsar, dtopo, true, artifactMap, context.getDeploymentTopology().getAllInputProperties());
             zos.write(yaml.getBytes(Charset.forName("UTF-8")));
             zos.closeEntry();
         }
@@ -131,7 +131,7 @@ public class ZipBuilder {
      * Get csar and add entries in zip file for it
      * @return relative path to the yml, ex: welcome-types/3.0-SNAPSHOT/welcome-types.yaml
      */
-    private String csar2zip(ZipOutputStream zos, Csar csar) throws IOException, ParsingException, YorcDeploymentException {
+    private String csar2zip(ZipOutputStream zos, Csar csar, PaaSTopologyDeploymentContext context) throws IOException, ParsingException, YorcDeploymentException {
         // Get path directory to the needed info:
         // should be something like: ...../runtime/csar/<module>/<version>/expanded
         // We should have a yml or a yaml here
@@ -181,7 +181,7 @@ public class ZipBuilder {
                         String yaml;
                         if (root.hasToscaTopologyTemplate()) {
                             log.debug("File has topology template : " + name);
-                            yaml = toscaTopologyExporter.getYaml(csar, root.getTopology(), false);
+                            yaml = toscaTopologyExporter.getYaml(csar, root.getTopology(), false, context.getDeploymentTopology().getAllInputProperties());
                         } else {
                             yaml = toscaComponentExporter.getYaml(root);
                         }

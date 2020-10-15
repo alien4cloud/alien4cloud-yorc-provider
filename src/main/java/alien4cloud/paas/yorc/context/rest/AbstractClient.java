@@ -1,6 +1,8 @@
 package alien4cloud.paas.yorc.context.rest;
 
 import alien4cloud.paas.yorc.configuration.ProviderConfiguration;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import io.reactivex.Single;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.*;
@@ -9,6 +11,7 @@ import org.springframework.util.concurrent.ListenableFutureCallback;
 
 import javax.annotation.Resource;
 import javax.inject.Inject;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 @Slf4j
@@ -19,6 +22,8 @@ public abstract class AbstractClient {
 
     @Resource
     private ProviderConfiguration configuration;
+
+    private final ObjectMapper mapper = new ObjectMapper();
 
     /**
      * @return Yorc Url from configuration
@@ -32,10 +37,11 @@ public abstract class AbstractClient {
      * @param body
      * @return HttpEntity
      */
-    protected final <T> HttpEntity<T> buildHttpEntityWithDefaultHeader(T body) {
+    protected final HttpEntity<String> buildHttpEntityWithDefaultHeader(Map<String,Object> body) throws JsonProcessingException {
         HttpHeaders headers = new HttpHeaders();
         headers.add(HttpHeaders.ACCEPT, MediaType.APPLICATION_JSON_VALUE);
-        return new HttpEntity<>(body, headers);
+        headers.add(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
+        return new HttpEntity(mapper.writeValueAsString(body),headers);
     }
 
     /**
