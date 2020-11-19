@@ -16,6 +16,7 @@ import alien4cloud.paas.yorc.context.service.fsm.FsmEvents;
 import alien4cloud.paas.yorc.context.service.fsm.FsmMapper;
 import alien4cloud.paas.yorc.context.service.fsm.FsmStates;
 import alien4cloud.paas.yorc.context.service.fsm.StateMachineService;
+import alien4cloud.paas.yorc.exception.YorcInvalidStateException;
 import alien4cloud.paas.yorc.location.AbstractLocationConfigurerFactory;
 import alien4cloud.paas.yorc.service.PluginArchiveService;
 import com.google.common.collect.Lists;
@@ -199,6 +200,16 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
         if (log.isDebugEnabled()) {
             log.debug(String.format("Launching workflow %s for deployment %s", workflowName, deploymentContext.getDeploymentPaaSId()));
         }
+
+        DeploymentStatus status = stateMachineService.getState(deploymentContext.getDeploymentPaaSId());
+        switch(status) {
+            case UNDEPLOYMENT_IN_PROGRESS:
+            case DEPLOYMENT_IN_PROGRESS:
+                callback.onFailure(new YorcInvalidStateException("Cannot start workflow while a deployment/undeployment is in progress"));
+                return;
+            default:
+        }
+
         deploymentClient.executeWorkflow(deploymentContext.getDeploymentPaaSId(), workflowName, inputs,false).subscribe(s -> {
             if (log.isDebugEnabled()) {
                 log.debug("Workflow {} launched for deployment {} : {}", workflowName, deploymentContext.getDeploymentPaaSId(), s);
