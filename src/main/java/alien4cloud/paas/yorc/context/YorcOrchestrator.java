@@ -10,6 +10,7 @@ import alien4cloud.paas.exception.PluginConfigurationException;
 import alien4cloud.paas.model.*;
 import alien4cloud.paas.yorc.configuration.ProviderConfiguration;
 import alien4cloud.paas.yorc.context.rest.DeploymentClient;
+import alien4cloud.paas.yorc.context.rest.ServerClient;
 import alien4cloud.paas.yorc.context.rest.TemplateManager;
 import alien4cloud.paas.yorc.context.service.*;
 import alien4cloud.paas.yorc.context.service.fsm.FsmEvents;
@@ -61,6 +62,9 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
     @Inject
     private DeploymentClient deploymentClient;
 
+    @Inject
+    private ServerClient serverClient;
+
 	@Inject
 	private BusService busService;
 
@@ -77,6 +81,8 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
     private ProviderConfiguration configuration;
 
     private final List<AbstractMonitorEvent> pendingEvents = Lists.newArrayList();
+
+    private String yorcVersion;
 
     @Override
     public ILocationConfiguratorPlugin getConfigurator(String locationType) {
@@ -98,7 +104,12 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
     @Override
     public Set<String> init(Map<String, String> activeDeployments) {
         if (log.isInfoEnabled())
-            log.info("Init Yorc plugin for " + activeDeployments.size() + " active deployments");
+            log.info("Init Yorc plugin for {} active deployments", activeDeployments.size());
+
+        yorcVersion = serverClient.getVersion().blockingGet();
+
+        if (log.isInfoEnabled())
+            log.info("Yorc Version is {}", yorcVersion);
 
         // Blocking REST call to build map
         // - Query all deployments
