@@ -3,7 +3,6 @@ package alien4cloud.paas.yorc.context.service;
 import alien4cloud.paas.model.PaaSDeploymentLog;
 import alien4cloud.paas.yorc.configuration.ProviderConfiguration;
 import alien4cloud.paas.yorc.context.rest.response.Event;
-import alien4cloud.paas.yorc.context.rest.response.LogEvent;
 import alien4cloud.paas.yorc.context.service.fsm.FsmEvents;
 import alien4cloud.paas.yorc.context.service.fsm.FsmMapper;
 import alien4cloud.paas.yorc.context.service.fsm.StateMachineService;
@@ -32,8 +31,22 @@ public class BusService {
     @Inject
     private Scheduler scheduler;
 
+    /**
+     *      Per deployment we have:
+     *      - One event bus
+     *      - One log bus
+     *      - One FSM Messages bus
+     *
+     *      The event bus and log bus are connected to the FSM Message bus.
+     *
+     *      There is a global log bus that is used for logs serialization in ES
+     */
     private static class Buses {
-        private Subject<Event> events = PublishSubject.create();
+        // Event Bus
+        private Subject<Event> evts = PublishSubject.create();
+
+        // Log Bus
+        private Subject<PaaSDeploymentLog> logs = PublishSubject.create();
 
         // Synchronize this one because onNext can be called by multiple threads
         private Subject<Message<FsmEvents>> messages = PublishSubject.<Message<FsmEvents>>create().toSerialized();
@@ -48,9 +61,9 @@ public class BusService {
             Buses b = new Buses();
             eventBuses.put(id, b);
 
-            //  - We also filter the event stream and link it to the messages stream
-            //    It is subscribed on the task pool
-            b.events.filter(FsmMapper::shouldMap).map(FsmMapper::map).observeOn(scheduler).subscribe(b.messages);
+            // Connect buses to the FSM Message Bus
+            b.evts.filter(FsmMapper::shouldMap).map(FsmMapper::map).observeOn(scheduler).subscribe(b.messages);
+            b.logs.filter(FsmMapper::shouldMap).map(FsmMapper::map).observeOn(scheduler).subscribe(b.messages);
         }
     }
 
@@ -63,7 +76,7 @@ public class BusService {
     }
 
     public void subscribeEvents(String deploymentId, Consumer<Event> callback) {
-        eventBuses.get(deploymentId).events.subscribe(callback);
+        eventBuses.get(deploymentId).evts.subscribe(callback);
     }
 
     public void subscribeLogs(Consumer<List<PaaSDeploymentLog>> callback) {
@@ -73,18 +86,22 @@ public class BusService {
     public void unsubscribeEvents(String deploymentId) {
         Buses b = eventBuses.get(deploymentId);
         if (b != null) {
-            b.events = null;
+            b.evts = null;
         }
     }
 
     public void publish(Event event) {
         Buses b = eventBuses.get(event.getDeploymentId());
-        if (b != null && b.events != null) {
-            b.events.onNext(event);
+        if (b != null && b.evts != null) {
+            b.evts.onNext(event);
         }
     }
 
     public void publish(PaaSDeploymentLog logEvent) {
+        Buses b = eventBuses.get(logEvent.getDeploymentPaaSId());
+        if (b != null && b.logs != null) {
+            b.logs.onNext(logEvent);
+        }
         logs.onNext(logEvent);
     }
 
