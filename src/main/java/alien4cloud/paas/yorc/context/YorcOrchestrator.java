@@ -104,12 +104,12 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
     @Override
     public Set<String> init(Map<String, String> activeDeployments) {
         if (log.isInfoEnabled())
-            log.info("Init Yorc plugin for {} active deployments", activeDeployments.size());
+            log.info("Initizing Yorc[{}] with {} active deployments", configuration.getOrchestratorName(),activeDeployments.size());
 
         yorcVersion = serverClient.getVersion().blockingGet();
 
         if (log.isInfoEnabled())
-            log.info("Yorc Version is {}", yorcVersion);
+            log.info("Yorc[{}] Version is {}", configuration.getOrchestratorName(),yorcVersion);
 
         // Blocking REST call to build map
         // - Query all deployments

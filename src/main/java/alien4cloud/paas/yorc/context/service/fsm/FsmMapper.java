@@ -110,6 +110,8 @@ public class FsmMapper {
             case "UNDEPLOYMENT_FAILED":
             case "UPDATE_FAILURE":
                 return FsmEvents.FAILURE;
+            case "PURGE_FAILED":
+                return FsmEvents.PURGE_FAILED;
             default:
                 throw new Exception(String.format("Unknown status from Yorc: %s", status));
         }
@@ -188,6 +190,8 @@ public class FsmMapper {
                 return FsmStates.UPDATED;
             case "UPDATE_FAILURE":
                 return FsmStates.UPDATE_FAILED;
+            case "PURGE_FAILED":
+                return FsmStates.PURGE_FAILED;
             default:
                 throw new Exception(String.format("Unknown status from Yorc: %s", status));
 

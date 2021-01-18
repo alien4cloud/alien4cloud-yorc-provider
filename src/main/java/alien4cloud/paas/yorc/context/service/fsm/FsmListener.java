@@ -18,7 +18,7 @@ public class FsmListener extends StateMachineListenerAdapter<FsmStates, FsmEvent
 	}
 
 	@Override
-	public void transition(Transition<FsmStates,FsmEvents> transition) {
+	public void transitionStarted(Transition<FsmStates,FsmEvents> transition) {
 		if (log.isDebugEnabled()) {
 			log.debug(String.format("FSM[%s] (%s) -- %s --> (%s)",id,transition.getSource().getId(),transition.getTrigger().getEvent().name(),transition.getTarget().getId()));
 		}

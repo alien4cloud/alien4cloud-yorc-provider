@@ -33,6 +33,13 @@ public class RestUtil {
         };
     }
 
+    public static <T> Function<String,T> mapperFor(Class<T> clazz) {
+        final ObjectMapper mapper = new ObjectMapper();
+        return (String value) -> {
+            return mapper.readValue(value,clazz);
+        };
+    }
+
     public static Function<JsonNode,String> jsonAsText(final String path) {
         return (JsonNode node) -> {
             return node.path(path).asText();

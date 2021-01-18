@@ -7,8 +7,10 @@ import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
 import alien4cloud.paas.yorc.configuration.ProviderConfiguration;
 import alien4cloud.paas.yorc.context.rest.DeploymentClient;
 import alien4cloud.paas.yorc.context.rest.response.DeploymentDTO;
+import alien4cloud.paas.yorc.context.rest.response.Error;
 import alien4cloud.paas.yorc.context.rest.response.Event;
 import alien4cloud.paas.yorc.context.rest.response.Link;
+import alien4cloud.paas.yorc.context.rest.response.PurgeDTO;
 import alien4cloud.paas.yorc.context.service.BusService;
 import alien4cloud.paas.yorc.context.service.DeploymentRegistry;
 import alien4cloud.paas.yorc.context.service.InstanceInformationService;
@@ -18,6 +20,7 @@ import alien4cloud.paas.yorc.util.RestUtil;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.google.common.collect.Maps;
 import io.jsonwebtoken.lang.Collections;
+import io.reactivex.functions.Function;
 import lombok.extern.slf4j.Slf4j;
 import org.alien4cloud.tosca.normative.constants.NormativeWorkflowNameConstants;
 import org.springframework.http.HttpStatus;
@@ -35,6 +38,8 @@ import java.io.IOException;
 import java.net.SocketTimeoutException;
 import java.util.Date;
 import java.util.Iterator;
+
+import static alien4cloud.utils.AlienUtils.safe;
 
 @Slf4j
 @Service
@@ -556,6 +561,61 @@ public class FsmActions {
 		};
 	}
 
+	protected Action<FsmStates, FsmEvents> syncPurge() {
+		final Function<String, PurgeDTO> mapper = RestUtil.mapperFor(PurgeDTO.class);
+
+		return new Action<FsmStates, FsmEvents>() {
+			private String yorcDeploymentId;
+			private IPaaSCallback<?> callback;
+
+			@Override
+			public void execute(StateContext<FsmStates, FsmEvents> stateContext) {
+				yorcDeploymentId = (String) stateContext.getExtendedState().getVariables().get(StateMachineService.YORC_DEPLOYMENT_ID);
+				callback = (IPaaSCallback<?>) stateContext.getExtendedState().getVariables().get(StateMachineService.CALLBACK);
+
+				if (log.isInfoEnabled())
+					log.info("Purging(v2) " + yorcDeploymentId);
+
+				deploymentClient.syncPurge(yorcDeploymentId, false).subscribe(this::onHttpOk, this::onHttpKo);
+			}
+
+			private void onHttpOk(PurgeDTO dto) {
+				log.info("Environment {} purged",yorcDeploymentId);
+				Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.DEPLOYMENT_PURGED, yorcDeploymentId);
+				busService.publish(message);
+			}
+
+			private void onHttpKo(Throwable t) {
+				if (t instanceof HttpServerErrorException) {
+					HttpServerErrorException httpError = (HttpServerErrorException) t;
+
+					log.error("Purge for deployment {} returned error {}", yorcDeploymentId, httpError.getStatusCode());
+
+					try {
+						PurgeDTO dto = mapper.apply(httpError.getResponseBodyAsString());
+
+						for (Error error : safe(dto.getErrors())) {
+							log.error("Purge Error deployment=<{}> code=<{}> title=<{}> detail=<{}> :",
+									yorcDeploymentId,
+									error.getStatus(),
+									error.getTitle(),
+									error.getDetail()
+							);
+
+							sendHttpErrorToAlienLogs(yorcDeploymentId,error.getTitle(),error.getDetail());
+						}
+
+						callback.onFailure(t);
+					} catch (Exception e) {
+						log.error("Cannot parse purge error detail", e);
+					}
+				} else {
+					log.error("Unexpected purge exception: {}", t);
+				}
+			}
+		};
+	}
+	
 	protected Action<FsmStates, FsmEvents> purge() {
 		return new Action<FsmStates, FsmEvents>() {
 			private String yorcDeploymentId;
