@@ -109,9 +109,8 @@ public class FsmMapper {
             case "DEPLOYMENT_FAILED":
             case "UNDEPLOYMENT_FAILED":
             case "UPDATE_FAILURE":
-                return FsmEvents.FAILURE;
             case "PURGE_FAILED":
-                return FsmEvents.PURGE_FAILED;
+                return FsmEvents.FAILURE;
             default:
                 throw new Exception(String.format("Unknown status from Yorc: %s", status));
         }

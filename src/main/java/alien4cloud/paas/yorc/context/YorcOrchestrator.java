@@ -334,6 +334,8 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
                 return DeploymentStatus.UPDATED;
             case "UPDATE_FAILURE":
                 return DeploymentStatus.UPDATE_FAILURE;
+            case "PURGE_FAILED":
+                return DeploymentStatus.PURGE_FAILURE;
             default:
                 return DeploymentStatus.UNKNOWN;
         }
