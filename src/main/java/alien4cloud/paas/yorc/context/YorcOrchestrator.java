@@ -199,7 +199,7 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
     }
 
     @Override
-    public void purge(PaaSDeploymentContext deploymentContext, IPaaSCallback<?> callback, boolean force) {
+    public void purge(PaaSDeploymentContext deploymentContext, IPaaSCallback<?> callback) {
         // TODO: WIP
     }
 
