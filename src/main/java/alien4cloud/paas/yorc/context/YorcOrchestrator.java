@@ -199,6 +199,11 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
     }
 
     @Override
+    public void purge(PaaSDeploymentContext deploymentContext, IPaaSCallback<?> callback, boolean force) {
+        // TODO: WIP
+    }
+
+    @Override
     public void scale(PaaSDeploymentContext deploymentContext, String nodeTemplateId, int instances, IPaaSCallback<?> callback) {
         deploymentClient.scale(deploymentContext.getDeploymentPaaSId(),nodeTemplateId,instances).subscribe(s -> {
             log.info("Scaling Task: {}",s);
