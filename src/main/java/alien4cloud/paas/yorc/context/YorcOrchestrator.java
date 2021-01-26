@@ -200,7 +200,8 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
 
     @Override
     public void purge(PaaSDeploymentContext deploymentContext, IPaaSCallback<?> callback) {
-        // TODO: WIP
+        Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.PURGE_STARTED, deploymentContext, callback);
+        busService.publish(message);
     }
 
     @Override

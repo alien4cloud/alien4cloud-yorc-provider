@@ -561,7 +561,15 @@ public class FsmActions {
 		};
 	}
 
-	protected Action<FsmStates, FsmEvents> syncPurge() {
+	protected Action<FsmStates,FsmEvents> syncForcedPurge() {
+		return syncPurge(true);
+	}
+
+	protected Action<FsmStates,FsmEvents> syncPurge() {
+		return syncPurge(false);
+	}
+
+	protected Action<FsmStates, FsmEvents> syncPurge(final boolean force) {
 		final Function<String, PurgeDTO> mapper = RestUtil.mapperFor(PurgeDTO.class);
 
 		return new Action<FsmStates, FsmEvents>() {
@@ -576,7 +584,7 @@ public class FsmActions {
 				if (log.isInfoEnabled())
 					log.info("Purging(v2) " + yorcDeploymentId);
 
-				deploymentClient.syncPurge(yorcDeploymentId, false).subscribe(this::onHttpOk, this::onHttpKo);
+				deploymentClient.syncPurge(yorcDeploymentId, force).subscribe(this::onHttpOk, this::onHttpKo);
 			}
 
 			private void onHttpOk(PurgeDTO dto) {
