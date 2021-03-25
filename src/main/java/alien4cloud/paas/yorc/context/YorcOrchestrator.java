@@ -10,6 +10,7 @@ import alien4cloud.paas.exception.PluginConfigurationException;
 import alien4cloud.paas.model.*;
 import alien4cloud.paas.yorc.configuration.ProviderConfiguration;
 import alien4cloud.paas.yorc.context.rest.DeploymentClient;
+import alien4cloud.paas.yorc.context.rest.ServerClient;
 import alien4cloud.paas.yorc.context.rest.TemplateManager;
 import alien4cloud.paas.yorc.context.service.*;
 import alien4cloud.paas.yorc.context.service.fsm.FsmEvents;
@@ -61,6 +62,9 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
     @Inject
     private DeploymentClient deploymentClient;
 
+    @Inject
+    private ServerClient serverClient;
+
 	@Inject
 	private BusService busService;
 
@@ -77,6 +81,8 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
     private ProviderConfiguration configuration;
 
     private final List<AbstractMonitorEvent> pendingEvents = Lists.newArrayList();
+
+    private String yorcVersion;
 
     @Override
     public ILocationConfiguratorPlugin getConfigurator(String locationType) {
@@ -98,7 +104,12 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
     @Override
     public Set<String> init(Map<String, String> activeDeployments) {
         if (log.isInfoEnabled())
-            log.info("Init Yorc plugin for " + activeDeployments.size() + " active deployments");
+            log.info("Initizing Yorc[{}] with {} active deployments", configuration.getOrchestratorName(),activeDeployments.size());
+
+        yorcVersion = serverClient.getVersion().blockingGet();
+
+        if (log.isInfoEnabled())
+            log.info("Yorc[{}] Version is {}", configuration.getOrchestratorName(),yorcVersion);
 
         // Blocking REST call to build map
         // - Query all deployments
@@ -184,6 +195,12 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
         params.put(StateMachineService.FORCE,force);
 
         Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.UNDEPLOYMENT_STARTED, deploymentContext, callback,params);
+        busService.publish(message);
+    }
+
+    @Override
+    public void purge(PaaSDeploymentContext deploymentContext, IPaaSCallback<?> callback) {
+        Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.PURGE_STARTED, deploymentContext, callback);
         busService.publish(message);
     }
 
@@ -323,6 +340,8 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
                 return DeploymentStatus.UPDATED;
             case "UPDATE_FAILURE":
                 return DeploymentStatus.UPDATE_FAILURE;
+            case "PURGE_FAILED":
+                return DeploymentStatus.PURGE_FAILURE;
             default:
                 return DeploymentStatus.UNKNOWN;
         }

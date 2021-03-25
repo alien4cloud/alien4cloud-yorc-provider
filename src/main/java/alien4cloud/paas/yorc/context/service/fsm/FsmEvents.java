@@ -25,5 +25,7 @@ public enum FsmEvents {
     POST_UPDATE_CANCELED,
     FAILURE,
     GATEWAY_TIMEOUT,
-    EVICTION
+    EVICTION,
+    LAST_LOG_RECEIVED,
+    PURGE_STARTED
 }

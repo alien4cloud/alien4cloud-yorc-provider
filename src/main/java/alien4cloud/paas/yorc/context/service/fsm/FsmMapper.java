@@ -1,5 +1,6 @@
 package alien4cloud.paas.yorc.context.service.fsm;
 
+import alien4cloud.paas.model.PaaSDeploymentLog;
 import alien4cloud.paas.yorc.context.rest.response.Event;
 import lombok.extern.slf4j.Slf4j;
 import org.alien4cloud.tosca.normative.constants.NormativeWorkflowNameConstants;
@@ -9,7 +10,33 @@ import org.springframework.messaging.support.MessageBuilder;
 @Slf4j
 public class FsmMapper {
 
+    private static final String LOGS_MARK_BGN = "Status for deployment \"";
+    private static final String LOGS_MARK_END = "\" changed to \"undeployed\"";
+
     private FsmMapper() {
+    }
+
+    /**
+     * When changing this, you should also consider changing {@link #map(PaaSDeploymentLog)}.
+     */
+    public static boolean shouldMap(PaaSDeploymentLog logEvent) {
+        if (logEvent.getWorkflowId() == null || !logEvent.getWorkflowId().equals("uninstall")) return false;
+        if (logEvent.getContent()== null) return false;
+        if (!logEvent.getContent().startsWith(LOGS_MARK_BGN)) return false;
+        if (!logEvent.getContent().endsWith(LOGS_MARK_END)) return false;
+        return true;
+    }
+
+    /**
+     * When changing this, you should also consider changing {@link #shouldMap(PaaSDeploymentLog)}.
+     */
+    public static Message<FsmEvents>  map(PaaSDeploymentLog logEvent) throws Exception {
+        FsmEvents payload = FsmEvents.LAST_LOG_RECEIVED;
+
+        return MessageBuilder
+                .withPayload(payload)
+                .setHeader(StateMachineService.YORC_DEPLOYMENT_ID, logEvent.getDeploymentPaaSId())
+                .build();
     }
 
     /**
@@ -82,6 +109,7 @@ public class FsmMapper {
             case "DEPLOYMENT_FAILED":
             case "UNDEPLOYMENT_FAILED":
             case "UPDATE_FAILURE":
+            case "PURGE_FAILED":
                 return FsmEvents.FAILURE;
             default:
                 throw new Exception(String.format("Unknown status from Yorc: %s", status));
@@ -161,6 +189,8 @@ public class FsmMapper {
                 return FsmStates.UPDATED;
             case "UPDATE_FAILURE":
                 return FsmStates.UPDATE_FAILED;
+            case "PURGE_FAILED":
+                return FsmStates.PURGE_FAILED;
             default:
                 throw new Exception(String.format("Unknown status from Yorc: %s", status));
 

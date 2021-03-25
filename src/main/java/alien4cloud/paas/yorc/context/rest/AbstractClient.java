@@ -55,9 +55,11 @@ public abstract class AbstractClient {
     }
 
     public <T> Single<ResponseEntity<T>> sendRequest(String url, HttpMethod method, Class<T> responseType, HttpEntity entity) {
-        if (log.isTraceEnabled()) {
-            log.trace("Yorc Request({},{}",method,url);
+        if (log.isDebugEnabled()) {
+            log.debug("Yorc Request({},{}",method,url);
+        }
 
+        if (log.isTraceEnabled()) {
             if (entity.getHeaders() != null) {
                 log.trace("Headers: {}",entity.getHeaders());
             }

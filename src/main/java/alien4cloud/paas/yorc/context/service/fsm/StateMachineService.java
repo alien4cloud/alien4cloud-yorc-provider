@@ -60,6 +60,8 @@ public class StateMachineService implements SelfNaming {
             .put(FsmStates.CANCELLATION_REQUESTED, DeploymentStatus.DEPLOYMENT_IN_PROGRESS)
 			.put(FsmStates.TASK_CANCELLING, DeploymentStatus.UNDEPLOYMENT_IN_PROGRESS)
 			.put(FsmStates.UNDEPLOYMENT_IN_PROGRESS, DeploymentStatus.UNDEPLOYMENT_IN_PROGRESS)
+			.put(FsmStates.UNDEPLOYMENT_WAITING_EVENTS, DeploymentStatus.UNDEPLOYMENT_IN_PROGRESS)
+			.put(FsmStates.UNDEPLOYMENT_WAITING_LOGS, DeploymentStatus.UNDEPLOYMENT_IN_PROGRESS)
 			.put(FsmStates.UNDEPLOYMENT_PURGING, DeploymentStatus.UNDEPLOYMENT_IN_PROGRESS)
 			.put(FsmStates.UPDATE_IN_PROGRESS, DeploymentStatus.UPDATE_IN_PROGRESS)
 			.put(FsmStates.POST_UPDATE_IN_PROGRESS, DeploymentStatus.UPDATE_IN_PROGRESS)
@@ -69,6 +71,7 @@ public class StateMachineService implements SelfNaming {
 			.put(FsmStates.FAILED, DeploymentStatus.FAILURE)
 			.put(FsmStates.UNKOWN, DeploymentStatus.DEPLOYMENT_IN_PROGRESS)
 			.put(FsmStates.UNDEPLOYMENT_FAILED, DeploymentStatus.UNDEPLOYMENT_FAILURE)
+			.put(FsmStates.PURGE_FAILED,DeploymentStatus.PURGE_FAILURE)
 			.build();
 
 	@Inject
@@ -155,7 +158,6 @@ public class StateMachineService implements SelfNaming {
 			if (callback != null)
 				fsm.getExtendedState().getVariables().put(CALLBACK, callback);
 			fsm.getExtendedState().getVariables().put(YORC_DEPLOYMENT_ID, deploymentId);
-
 			fsm.sendEvent(message);
 		} else {
 			if (log.isErrorEnabled()) {

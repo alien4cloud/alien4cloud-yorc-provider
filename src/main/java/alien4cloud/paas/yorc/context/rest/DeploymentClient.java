@@ -1,5 +1,6 @@
 package alien4cloud.paas.yorc.context.rest;
 
+import alien4cloud.paas.yorc.context.rest.response.PurgeDTO;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.collect.Maps;
 import org.json.JSONObject;
@@ -114,6 +115,16 @@ public class DeploymentClient extends AbstractClient {
             .map(RestUtil.extractHeader("Location"));
     }
 
+    public Single<PurgeDTO> syncPurge(String deploymentId, boolean force) {
+        String url = getYorcUrl() + "/deployments/" + deploymentId + "/purge";
+
+        if (force) {
+            url += "?force";
+        }
+
+
+        return sendRequest(url, HttpMethod.POST, PurgeDTO.class, buildHttpEntityWithDefaultHeader()).map(HttpEntity::getBody);
+    }
 
     public Completable cancelTask(String deploymentId, String taskId) {
         String taskUrl = String.format("/deployments/%s/tasks/%s",deploymentId,taskId);
