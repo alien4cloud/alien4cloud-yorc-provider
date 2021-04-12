@@ -2,9 +2,6 @@ package alien4cloud.paas.yorc.modifier;
 
 import static alien4cloud.utils.AlienUtils.safe;
 
-import java.util.Map;
-import java.util.Optional;
-
 import javax.annotation.Resource;
 
 import org.alien4cloud.alm.deployment.configuration.flow.FlowExecutionContext;
@@ -16,6 +13,7 @@ import org.springframework.stereotype.Component;
 import alien4cloud.common.MetaPropertiesService;
 import alien4cloud.model.common.MetaPropertyTarget;
 import alien4cloud.model.orchestrators.locations.Location;
+import alien4cloud.orchestrators.locations.services.LocationService;
 
 /**
  * YorcLocationModifier allow to set the location metadata on nodes to indicate
@@ -36,38 +34,38 @@ public class YorcLocationModifier extends TopologyModifierSupport {
     @Resource
     protected MetaPropertiesService metaPropertiesService;
 
+    @Resource
+    protected LocationService locationService;
+
     @Override
     public void process(Topology topology, FlowExecutionContext context) {
         String yorcLocation = getProvidedMetaproperty(context, YORC_LOCATION_METAPROP_NAME);
         if (yorcLocation != null && !"".equals(yorcLocation)) {
-            setYorcLocation(topology, yorcLocation);
+            setYorcLocation(topology, context, yorcLocation);
             return;
         }
 
         Location location = getLocation(context);
         if (location!= null) {
-            setYorcLocation(topology, location.getName());
+            setYorcLocation(topology, context, location.getName());
         }
 
     }
 
-    private void setYorcLocation(Topology topology, String yorcLocation) {
-        safe(topology.getNodeTemplates()).values().forEach(node -> {
+    private void setYorcLocation(Topology topology, FlowExecutionContext context, String yorcLocation) {
+        safe(this.getNodes(context, topology)).forEach(node -> {
             setNodeTagValue(node, YORC_LOCATION_TAG_NAME, yorcLocation);
         });
     }
 
     private Location getLocation(FlowExecutionContext context) {
-        Object deploymentLocations = context.getExecutionCache()
-                .get(FlowExecutionContext.DEPLOYMENT_LOCATIONS_MAP_CACHE_KEY);
-        if (deploymentLocations != null && deploymentLocations instanceof Map) {
-            Map<String, Location> locations = (Map<String, Location>) deploymentLocations;
-            Optional<Location> l = locations.values().stream().findFirst();
-            if (l.isPresent()) {
-                return l.get();
-            }
+        String locationId = (String) context.getExecutionCache()
+                .get(FlowExecutionContext.ORIGIN_LOCATION_FOR_MODIFIER);
+        if (locationId == null) {
+            context.log().error("A context location is expected for YorcLocationModifier, this modifier may be bind to the wrong phase");
+            return null;
         }
-        return null;
+        return locationService.getOrFail(locationId);
     }
 
     /**

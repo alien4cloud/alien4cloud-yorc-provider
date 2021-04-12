@@ -1,9 +1,14 @@
 package alien4cloud.paas.yorc.modifier;
 
-import alien4cloud.paas.wf.validation.WorkflowValidator;
-import alien4cloud.tosca.context.ToscaContextual;
-import lombok.AllArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+
+import javax.inject.Inject;
+
 import org.alien4cloud.alm.deployment.configuration.flow.FlowExecutionContext;
 import org.alien4cloud.alm.deployment.configuration.flow.TopologyModifierSupport;
 import org.alien4cloud.tosca.catalog.index.IToscaTypeSearchService;
@@ -14,11 +19,12 @@ import org.alien4cloud.tosca.model.definitions.ScalarPropertyValue;
 import org.alien4cloud.tosca.model.templates.NodeTemplate;
 import org.alien4cloud.tosca.model.templates.Topology;
 import org.alien4cloud.tosca.model.types.NodeType;
-import org.alien4cloud.tosca.utils.TopologyNavigationUtil;
 import org.springframework.stereotype.Component;
 
-import javax.inject.Inject;
-import java.util.*;
+import alien4cloud.paas.wf.validation.WorkflowValidator;
+import alien4cloud.tosca.context.ToscaContextual;
+import lombok.AllArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Component(value = GooglePrivateNetworkTopologyModifier.YORC_GOOGLE_PRIVATE_NETWORK_MODIFIER_TAG)
@@ -53,7 +59,7 @@ public class GooglePrivateNetworkTopologyModifier extends TopologyModifierSuppor
             return;
         }
 
-        Set<NodeTemplate> privateNetworksNodes = TopologyNavigationUtil.getNodesOfType(topology, "yorc.nodes.google.PrivateNetwork", false);
+        Set<NodeTemplate> privateNetworksNodes = this.getNodesOfType(context, topology, "yorc.nodes.google.PrivateNetwork", false);
         List<RelationshipCreation> relationshipsToAdd = new ArrayList<>();
         List<RelationshipRemoval> relationshipsToRemove = new ArrayList<>();
 
@@ -95,7 +101,7 @@ public class GooglePrivateNetworkTopologyModifier extends TopologyModifierSuppor
 
                                 // Otherwise check is this subnet has a node type
                                 String subnetNodeName = buildSubnetNodeName(privNetNodeTemplate.getName(), subnet);
-                                Optional<NodeTemplate> opt = findSubnetNodeByName(topology, subnetNodeName);
+                                Optional<NodeTemplate> opt = findSubnetNodeByName(context, topology, subnetNodeName);
                                 if (opt.isPresent()) {
                                     replaceNetworkRelationship(nodeTemplate, subnetNodeName, privNetNodeTemplate.getName(), relationshipTemplate.getName(), relationshipsToAdd, relationshipsToRemove, context);
                                     return;
@@ -113,7 +119,7 @@ public class GooglePrivateNetworkTopologyModifier extends TopologyModifierSuppor
 
                             // check secondly the optional default subnet which can be provided by cidr/cidr_region
                             String defaultSubnetNodeName = buildSubnetNodeName(privNetNodeTemplate.getName(), "default");
-                            Optional<NodeTemplate> opt = findSubnetNodeByName(topology, defaultSubnetNodeName);
+                            Optional<NodeTemplate> opt = findSubnetNodeByName(context, topology, defaultSubnetNodeName);
                             if (opt.isPresent()) {
                                 // Check if the region is matching
                                 String defaultRegion = ((ScalarPropertyValue) opt.get().getProperties().get("region")).getValue();
@@ -124,7 +130,7 @@ public class GooglePrivateNetworkTopologyModifier extends TopologyModifierSuppor
                             }
 
                             // check finally among all existing subnets and retrieve the first regional matching with the node zone
-                            opt = findFirstSubnetNodeByRegion(topology, region);
+                            opt = findFirstSubnetNodeByRegion(context, topology, region);
                             if (opt.isPresent()) {
                                 replaceNetworkRelationship(nodeTemplate, opt.get().getName(), privNetNodeTemplate.getName(), relationshipTemplate.getName(), relationshipsToAdd, relationshipsToRemove, context);
                                 return;
@@ -198,7 +204,7 @@ public class GooglePrivateNetworkTopologyModifier extends TopologyModifierSuppor
                 String subA4CName = buildSubnetNodeName(networkNode.getName(), name);
 
                 // Add subnet node template
-                NodeTemplate subnetNodeTemplate = addNodeTemplate(
+                NodeTemplate subnetNodeTemplate = addNodeTemplate(context,
                         csar,
                         topology,
                         subA4CName,
@@ -252,7 +258,7 @@ public class GooglePrivateNetworkTopologyModifier extends TopologyModifierSuppor
             }
 
             String subA4CName = buildSubnetNodeName(networkNode.getName(), "default");
-            NodeTemplate subnetNodeTemplate = addNodeTemplate(
+            NodeTemplate subnetNodeTemplate = addNodeTemplate(context,
                     csar,
                     topology,
                     subA4CName,
@@ -280,13 +286,13 @@ public class GooglePrivateNetworkTopologyModifier extends TopologyModifierSuppor
         }
     }
 
-    private Optional<NodeTemplate> findSubnetNodeByName(final Topology topology, final String subnetNodeName) {
-        Set<NodeTemplate> subnets = TopologyNavigationUtil.getNodesOfType(topology, "yorc.nodes.google.Subnetwork", false);
+    private Optional<NodeTemplate> findSubnetNodeByName(final FlowExecutionContext context,final Topology topology, final String subnetNodeName) {
+        Set<NodeTemplate> subnets = this.getNodesOfType(context, topology, "yorc.nodes.google.Subnetwork", false);
         return subnets.stream().filter(subnet -> subnet.getName().equals(subnetNodeName)).findAny();
     }
 
-    private Optional<NodeTemplate> findFirstSubnetNodeByRegion(final Topology topology, final String region) {
-        Set<NodeTemplate> subnets = TopologyNavigationUtil.getNodesOfType(topology, "yorc.nodes.google.Subnetwork", false);
+    private Optional<NodeTemplate> findFirstSubnetNodeByRegion(final FlowExecutionContext context, final Topology topology, final String region) {
+        Set<NodeTemplate> subnets = this.getNodesOfType(context, topology, "yorc.nodes.google.Subnetwork", false);
         return subnets.stream().filter(subnet -> ((ScalarPropertyValue) subnet.getProperties().get("region")).getValue().equals(region)).findFirst();
     }
 

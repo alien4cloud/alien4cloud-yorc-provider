@@ -1,20 +1,27 @@
 package alien4cloud.paas.yorc.modifier;
 
-import alien4cloud.deployment.ArtifactProcessorService;
-import alien4cloud.paas.wf.TopologyContext;
-import alien4cloud.paas.wf.WorkflowSimplifyService;
-import alien4cloud.paas.wf.WorkflowsBuilderService;
-import alien4cloud.paas.wf.validation.WorkflowValidator;
-import alien4cloud.tosca.context.ToscaContext;
-import alien4cloud.tosca.context.ToscaContextual;
-import alien4cloud.tosca.parser.ToscaParser;
-import alien4cloud.utils.CloneUtil;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
+import java.util.Map;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import javax.annotation.PostConstruct;
+import javax.inject.Inject;
+
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
-import lombok.extern.slf4j.Slf4j;
+
 import org.alien4cloud.alm.deployment.configuration.flow.FlowExecutionContext;
 import org.alien4cloud.alm.deployment.configuration.flow.TopologyModifierSupport;
-import org.alien4cloud.tosca.model.definitions.*;
+import org.alien4cloud.tosca.model.definitions.AbstractPropertyValue;
+import org.alien4cloud.tosca.model.definitions.ComplexPropertyValue;
+import org.alien4cloud.tosca.model.definitions.DeploymentArtifact;
+import org.alien4cloud.tosca.model.definitions.IValue;
+import org.alien4cloud.tosca.model.definitions.PropertyDefinition;
+import org.alien4cloud.tosca.model.definitions.ScalarPropertyValue;
 import org.alien4cloud.tosca.model.templates.NodeTemplate;
 import org.alien4cloud.tosca.model.templates.RelationshipTemplate;
 import org.alien4cloud.tosca.model.templates.ServiceNodeTemplate;
@@ -24,15 +31,16 @@ import org.alien4cloud.tosca.model.types.NodeType;
 import org.alien4cloud.tosca.utils.TopologyNavigationUtil;
 import org.springframework.stereotype.Component;
 
-import javax.annotation.PostConstruct;
-import javax.inject.Inject;
-import java.io.BufferedReader;
-import java.io.FileReader;
-import java.io.IOException;
-import java.util.Map;
-import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import alien4cloud.deployment.ArtifactProcessorService;
+import alien4cloud.paas.wf.TopologyContext;
+import alien4cloud.paas.wf.WorkflowSimplifyService;
+import alien4cloud.paas.wf.WorkflowsBuilderService;
+import alien4cloud.paas.wf.validation.WorkflowValidator;
+import alien4cloud.tosca.context.ToscaContext;
+import alien4cloud.tosca.context.ToscaContextual;
+import alien4cloud.tosca.parser.ToscaParser;
+import alien4cloud.utils.CloneUtil;
+import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 @Component("gangja-resolver-modifier")
@@ -99,7 +107,7 @@ public class GangjaModifier extends TopologyModifierSupport {
             log.debug("ARM processing topology");
         }
 
-        Set<NodeTemplate> nodes = TopologyNavigationUtil.getNodesOfType(topology, NODE_TYPE_TO_EXPORE, true, false);
+        Set<NodeTemplate> nodes = this.getNodesOfType(context, topology, NODE_TYPE_TO_EXPORE, true, false);
         nodes.stream().forEach(nodeTemplate -> {
             // check if node has org.alien4cloud.artifacts.GangjaConfig artefacts
             if (hasGangjaFile(nodeTemplate)) {
