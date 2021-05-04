@@ -37,6 +37,7 @@ public class YorcPluginFactory implements IOrchestratorPluginFactory<YorcOrchest
     public static final String AWS = "AWS";
     public static final String GOOGLE = "Google Cloud";
     public static final String HOSTS_POOL = "HostsPool";
+    public static final String MAAS = "MAAS";
 
     public static final String MONITORING_TIME_INTERVAL = "monitoring_time_interval";
 
@@ -116,7 +117,8 @@ public class YorcPluginFactory implements IOrchestratorPluginFactory<YorcOrchest
                 OPENSTACK,
                 SLURM,
                 KUBERNETES,
-                HOSTS_POOL
+                HOSTS_POOL,
+                MAAS
             });
     }
 

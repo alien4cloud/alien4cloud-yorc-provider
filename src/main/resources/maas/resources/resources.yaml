@@ -1,0 +1,46 @@
+tosca_definitions_version: ${alien4cloud.dsl.version}
+
+template_name: yorc-maas-types
+template_author: Yorc
+template_version: ${yorc.hp.types.version}
+
+
+# Note: If we reference a dependency using project.version then this component should
+#       be versioned as project.version too otherwise we will have issues on snapshots
+#       versions (our type not snapshot referencing a snapshot version)
+imports:
+  - tosca-normative-types:${tosca.normative.types.version}
+  - yorc-types:${yorc.types.version}
+
+node_types:
+  yorc.nodes.maas.Compute:
+    derived_from: yorc.nodes.Compute
+    properties:
+    capabilities:
+      host:
+        type: tosca.capabilities.Container
+
+  ##############################################
+  # Abstract resources used for auto-config
+  ##############################################
+  yorc.nodes.maas.Image:
+    abstract: true
+    derived_from: tosca.nodes.Root
+    description: MAAS OS image available
+    properties:
+      id:
+        type: string
+    capabilities:
+      os:
+        type: tosca.capabilities.OperatingSystem
+
+  yorc.nodes.maas.Machines:
+    abstract: true
+    derived_from: tosca.nodes.Root
+    description: MAAS machines description. (cpu_frequency is not handled by MAAS for now)
+    properties:
+      id:
+        type: string
+    capabilities:
+      host:
+        type: tosca.capabilities.Container
