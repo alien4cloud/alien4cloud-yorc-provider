@@ -25,7 +25,7 @@
     <yorc.google.types.version>1.0.0</yorc.google.types.version>
     <yorc.hp.types.version>1.1.0</yorc.hp.types.version>
     <yorc.k8s.types.version>3.1.0</yorc.k8s.types.version>
-    <yorc.os.types.version>3.0.0</yorc.os.types.version>
+    <yorc.os.types.version>3.1.0</yorc.os.types.version>
     <yorc.slurm.types.version>3.0.0</yorc.slurm.types.version>
 
     <!-- Tests -->
