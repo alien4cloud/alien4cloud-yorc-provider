@@ -166,6 +166,10 @@ node_types:
         entry_schema:
           type: string
         required: false
+      user_data:
+        type: string
+        description: User data to provide when launching the instance
+        required: false
     requirements:
       - group:
           capability: yorc.capabilities.Group
