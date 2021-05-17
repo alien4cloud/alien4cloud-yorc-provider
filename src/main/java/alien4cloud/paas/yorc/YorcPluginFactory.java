@@ -118,7 +118,7 @@ public class YorcPluginFactory implements IOrchestratorPluginFactory<YorcOrchest
                 SLURM,
                 KUBERNETES,
                 HOSTS_POOL,
-                MAAS
+                MAAS,
             });
     }
 

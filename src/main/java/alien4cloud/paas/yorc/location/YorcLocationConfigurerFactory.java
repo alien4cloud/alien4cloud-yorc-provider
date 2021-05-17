@@ -38,7 +38,7 @@ public class YorcLocationConfigurerFactory extends AbstractLocationConfigurerFac
                 configurer = applicationContext.getBean(YorcMaasLocationConfigurer.class);
                 break;
             default:
-                log.warn("The \"%s\" location type is not handled", locationType);
+                log.warn("The "+locationType+" location type is not handled");
         }
         return configurer;
     }
