@@ -1,6 +1,7 @@
 package alien4cloud.paas.yorc.context.rest;
 
 import alien4cloud.paas.yorc.context.rest.response.PurgeDTO;
+import alien4cloud.paas.yorc.context.rest.response.TaskDTO;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.google.common.collect.Maps;
 import org.json.JSONObject;
@@ -126,6 +127,16 @@ public class DeploymentClient extends AbstractClient {
         return sendRequest(url, HttpMethod.POST, PurgeDTO.class, buildHttpEntityWithDefaultHeader()).map(HttpEntity::getBody);
     }
 
+    public Single<TaskDTO> getTask(String taskUrl) {
+        String url = getYorcUrl() + taskUrl;
+        return sendRequest(url, HttpMethod.GET, TaskDTO.class, buildHttpEntityWithDefaultHeader()).map(HttpEntity::getBody);
+    }
+
+    public Completable resumeTask(String taskUrl) {
+        String url = getYorcUrl() + taskUrl;
+        return sendRequest(url,HttpMethod.PUT,String.class,buildHttpEntityWithDefaultHeader()).ignoreElement();
+    }
+
     public Completable cancelTask(String deploymentId, String taskId) {
         String taskUrl = String.format("/deployments/%s/tasks/%s",deploymentId,taskId);
         return cancelTask(taskUrl);
@@ -133,7 +144,6 @@ public class DeploymentClient extends AbstractClient {
 
     public Completable cancelTask(String taskUrl) {
         String url = getYorcUrl() + taskUrl;
-
         return sendRequest(url,HttpMethod.DELETE,String.class,buildHttpEntityWithDefaultHeader()).ignoreElement();
     }
 

@@ -27,5 +27,7 @@ public enum FsmEvents {
     GATEWAY_TIMEOUT,
     EVICTION,
     LAST_LOG_RECEIVED,
-    PURGE_STARTED
+    PURGE_STARTED,
+    RESUME,
+    PRE_RESUME
 }

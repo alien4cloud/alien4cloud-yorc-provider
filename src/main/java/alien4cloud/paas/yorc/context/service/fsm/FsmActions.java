@@ -1,16 +1,14 @@
 package alien4cloud.paas.yorc.context.service.fsm;
 
 import alien4cloud.paas.IPaaSCallback;
+import alien4cloud.paas.model.PaaSDeploymentContext;
 import alien4cloud.paas.model.PaaSDeploymentLog;
 import alien4cloud.paas.model.PaaSDeploymentLogLevel;
 import alien4cloud.paas.model.PaaSTopologyDeploymentContext;
 import alien4cloud.paas.yorc.configuration.ProviderConfiguration;
 import alien4cloud.paas.yorc.context.rest.DeploymentClient;
-import alien4cloud.paas.yorc.context.rest.response.DeploymentDTO;
+import alien4cloud.paas.yorc.context.rest.response.*;
 import alien4cloud.paas.yorc.context.rest.response.Error;
-import alien4cloud.paas.yorc.context.rest.response.Event;
-import alien4cloud.paas.yorc.context.rest.response.Link;
-import alien4cloud.paas.yorc.context.rest.response.PurgeDTO;
 import alien4cloud.paas.yorc.context.service.BusService;
 import alien4cloud.paas.yorc.context.service.DeploymentRegistry;
 import alien4cloud.paas.yorc.context.service.InstanceInformationService;
@@ -255,7 +253,12 @@ public class FsmActions {
 			private IPaaSCallback<?> callback;
 			private String yorcDeploymentId;
 
+			private PaaSDeploymentContext context;
+
 			private void onHttpOk(String value) {
+				// store the taskUrl (for eventually resuming)
+				stateMachineService.setTaskUrl(context.getDeploymentPaaSId(), value);
+
 				if (log.isDebugEnabled())
 					log.debug("HTTP Request OK : {}", value);
 			}
@@ -284,6 +287,8 @@ public class FsmActions {
 				boolean stopOnError = configuration.getUndeployStopOnError();
 				boolean force = false;
 
+				context = (PaaSDeploymentContext) stateContext.getExtendedState().getVariables().get(StateMachineService.DEPLOYMENT_CONTEXT);
+
 				if (stateContext.getMessageHeaders().containsKey(StateMachineService.FORCE)) {
 					force = (boolean) stateContext.getMessageHeader(StateMachineService.FORCE);
 				}
@@ -295,6 +300,115 @@ public class FsmActions {
 					log.info("Undeploying " + yorcDeploymentId);
 
 				deploymentClient.undeploy(yorcDeploymentId,stopOnError && !force).subscribe(this::onHttpOk, this::onHttpKo);
+			}
+		};
+	}
+
+	protected Action<FsmStates, FsmEvents> preResume() {
+		return new Action<FsmStates, FsmEvents>() {
+
+			private IPaaSCallback<?> callback;
+
+			private PaaSDeploymentContext context;
+
+			private String expectedTaskType;
+
+			private String taskUrl;
+
+			private void onHttpOk(TaskDTO task) {
+				String yorcDeploymentId = context.getDeploymentPaaSId();
+
+				if (!task.getType().equals(expectedTaskType)) {
+					sendHttpErrorToAlienLogs(yorcDeploymentId, "Error while querying task from Yorc","invalid task type");
+
+					// A Failure occurs
+					Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.FAILURE, yorcDeploymentId);
+					busService.publish(message);
+
+					return;
+				}
+
+				// store the verified taskUrl
+				stateMachineService.setTaskUrl(context.getDeploymentPaaSId(), taskUrl);
+
+				Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.RESUME, context,callback);
+				busService.publish(message);
+			}
+
+			private void onHttpKo(Throwable t) {
+				String yorcDeploymentId = context.getDeploymentPaaSId();
+
+				sendHttpErrorToAlienLogs(yorcDeploymentId, "Error while querying task from Yorc", t.getMessage());
+				if (callback != null) {
+					callback.onFailure(t);
+				}
+
+				// A Failure occurs
+				Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.FAILURE, yorcDeploymentId);
+				busService.publish(message);
+			}
+
+			@Override
+			public void execute(StateContext<FsmStates, FsmEvents> stateContext) {
+				context = (PaaSDeploymentContext) stateContext.getExtendedState().getVariables().get(StateMachineService.DEPLOYMENT_CONTEXT);
+				callback = (IPaaSCallback<?>) stateContext.getExtendedState().getVariables().get(StateMachineService.CALLBACK);
+
+				switch(stateContext.getTransition().getTarget().getId()) {
+					case PRE_RESUME_DEPLOY:
+						expectedTaskType = "Deploy";
+						break;
+					case PRE_RESUME_UNDEPLOY:
+						expectedTaskType = "UnDeploy";
+						break;
+					default:
+				}
+
+				taskUrl = (String) stateContext.getMessageHeader(StateMachineService.TASK_URL);
+
+				deploymentClient.getTask(taskUrl).subscribe(this::onHttpOk,this::onHttpKo);
+			}
+		};
+	}
+
+	protected Action<FsmStates, FsmEvents> resume() {
+		return new Action<FsmStates, FsmEvents>() {
+
+			private IPaaSCallback<?> callback;
+
+			private PaaSDeploymentContext context;
+
+			private void onHttpOk() {
+				String yorcDeploymentId = context.getDeploymentPaaSId();
+
+				Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.RESUME, yorcDeploymentId);
+				busService.publish(message);
+			}
+
+			private void onHttpKo(Throwable t) {
+				String yorcDeploymentId = context.getDeploymentPaaSId();
+
+				sendHttpErrorToAlienLogs(yorcDeploymentId, "Error while sending resume order to Yorc", t.getMessage());
+				if (callback != null) {
+					callback.onFailure(t);
+				}
+
+				// A Failure occurs
+				Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.FAILURE, yorcDeploymentId);
+				busService.publish(message);
+			}
+
+			@Override
+			public void execute(StateContext<FsmStates, FsmEvents> stateContext) {
+				context = (PaaSDeploymentContext) stateContext.getExtendedState().getVariables().get(StateMachineService.DEPLOYMENT_CONTEXT);
+				callback = (IPaaSCallback<?>) stateContext.getExtendedState().getVariables().get(StateMachineService.CALLBACK);
+
+				String taskUrl = stateMachineService.getTaskUrl(context.getDeploymentPaaSId());
+
+				if (log.isInfoEnabled()) {
+					log.info("Resuming " + taskUrl);
+				}
+
+				deploymentClient.resumeTask(taskUrl).subscribe(this::onHttpOk,this::onHttpKo);
 			}
 		};
 	}

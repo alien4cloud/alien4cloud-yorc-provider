@@ -205,6 +205,30 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
     }
 
     @Override
+    public void resume(PaaSDeploymentContext deploymentContext, String executionId, IPaaSCallback<?> callback) {
+        DeploymentStatus status = stateMachineService.getState(deploymentContext.getDeploymentPaaSId());
+        switch(status) {
+            case FAILURE:
+            case UNDEPLOYMENT_FAILURE:
+                String knownTaskUrl = stateMachineService.getTaskUrl(deploymentContext.getDeploymentPaaSId());
+                String expectedTaskUrl = String.format("/deployments/%s/tasks/%s",deploymentContext.getDeployment().getOrchestratorDeploymentId(),executionId);
+                if (expectedTaskUrl.equals(knownTaskUrl)) {
+                    Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.RESUME, deploymentContext, callback);
+                    busService.publish(message);
+                } else {
+                    // It doesn't match, maybe a4c has been restarted, let's reaquire task url
+
+                    Map<String,Object> params = Maps.newHashMap();
+                    params.put(StateMachineService.TASK_URL, expectedTaskUrl);
+
+                    Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.PRE_RESUME, deploymentContext, callback,params);
+                    busService.publish(message);
+                }
+            default:
+        }
+    }
+
+    @Override
     public void scale(PaaSDeploymentContext deploymentContext, String nodeTemplateId, int instances, IPaaSCallback<?> callback) {
         deploymentClient.scale(deploymentContext.getDeploymentPaaSId(),nodeTemplateId,instances).subscribe(s -> {
             log.info("Scaling Task: {}",s);
