@@ -34,8 +34,11 @@ public class YorcLocationConfigurerFactory extends AbstractLocationConfigurerFac
             case YorcPluginFactory.HOSTS_POOL:
                 configurer = applicationContext.getBean(YorcHostsPoolLocationConfigurer.class);
                 break;
+            case YorcPluginFactory.MAAS:
+                configurer = applicationContext.getBean(YorcMaasLocationConfigurer.class);
+                break;
             default:
-                log.warn("The \"%s\" location type is not handled", locationType);
+                log.warn("The "+locationType+" location type is not handled");
         }
         return configurer;
     }
