@@ -1,5 +1,6 @@
 package alien4cloud.paas.yorc.context;
 
+import alien4cloud.model.runtime.Execution;
 import alien4cloud.orchestrators.plugin.ILocationConfiguratorPlugin;
 import alien4cloud.orchestrators.plugin.IOrchestratorPlugin;
 import alien4cloud.orchestrators.plugin.model.PluginArchive;
@@ -205,25 +206,48 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
     }
 
     @Override
-    public void resume(PaaSDeploymentContext deploymentContext, String executionId, IPaaSCallback<?> callback) {
+    public void resume(PaaSDeploymentContext deploymentContext, Execution execution, IPaaSCallback<?> callback) {
         DeploymentStatus status = stateMachineService.getState(deploymentContext.getDeploymentPaaSId());
+
+        String taskUrl = String.format("/deployments/%s/tasks/%s",deploymentContext.getDeployment().getOrchestratorDeploymentId(),execution.getId());
+
         switch(status) {
             case FAILURE:
-            case UNDEPLOYMENT_FAILURE:
-                String knownTaskUrl = stateMachineService.getTaskUrl(deploymentContext.getDeploymentPaaSId());
-                String expectedTaskUrl = String.format("/deployments/%s/tasks/%s",deploymentContext.getDeployment().getOrchestratorDeploymentId(),executionId);
-                if (expectedTaskUrl.equals(knownTaskUrl)) {
-                    Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.RESUME, deploymentContext, callback);
+                if (execution.getWorkflowName().equals("install")) {
+                    Map<String,Object> params = Maps.newHashMap();
+                    params.put(StateMachineService.TASK_URL, taskUrl);
+
+                    Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.RESUME, deploymentContext, callback,params);
                     busService.publish(message);
                 } else {
-                    // It doesn't match, maybe a4c has been restarted, let's reaquire task url
-
-                    Map<String,Object> params = Maps.newHashMap();
-                    params.put(StateMachineService.TASK_URL, expectedTaskUrl);
-
-                    Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.PRE_RESUME, deploymentContext, callback,params);
-                    busService.publish(message);
+                    callback.onFailure(new YorcInvalidStateException("Can only resume install workflow in FAILURE state"));
                 }
+                break;
+            case UNDEPLOYMENT_FAILURE:
+                if (execution.getWorkflowName().equals("uninstall")) {
+                    Map<String,Object> params = Maps.newHashMap();
+                    params.put(StateMachineService.TASK_URL, taskUrl);
+
+                    Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.RESUME, deploymentContext, callback,params);
+                    busService.publish(message);
+                } else {
+                    callback.onFailure(new YorcInvalidStateException("Can only resume unsintall workflow in UNDEPLOYMENT_FAILURE state"));
+                }
+                break;
+            case DEPLOYED:
+            case UPDATED:
+
+                if (execution.getWorkflowName().equals("install") || execution.getWorkflowName().equals("uninstall") ) {
+                    callback.onFailure(new YorcInvalidStateException("Cannot resume worflow"));
+                } else {
+                    deploymentClient.resumeTask(taskUrl).subscribe(
+                            () -> {
+                                log.debug(String.format("Execution %s for deployment %s resumed", execution.getId(), deploymentContext.getDeployment().getOrchestratorDeploymentId()));
+                            }
+                            , callback::onFailure
+                    );
+                }
+                break;
             default:
         }
     }

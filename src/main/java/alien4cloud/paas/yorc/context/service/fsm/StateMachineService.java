@@ -71,8 +71,6 @@ public class StateMachineService implements SelfNaming {
 			.put(FsmStates.FAILED, DeploymentStatus.FAILURE)
 			.put(FsmStates.RESUME_DEPLOY, DeploymentStatus.DEPLOYMENT_IN_PROGRESS)
 			.put(FsmStates.RESUME_UNDEPLOY, DeploymentStatus.UNDEPLOYMENT_IN_PROGRESS)
-			.put(FsmStates.PRE_RESUME_DEPLOY, DeploymentStatus.DEPLOYMENT_IN_PROGRESS)
-			.put(FsmStates.PRE_RESUME_UNDEPLOY, DeploymentStatus.UNDEPLOYMENT_IN_PROGRESS)
 			.put(FsmStates.UNKOWN, DeploymentStatus.DEPLOYMENT_IN_PROGRESS)
 			.put(FsmStates.UNDEPLOYMENT_FAILED, DeploymentStatus.UNDEPLOYMENT_FAILURE)
 			.put(FsmStates.PURGE_FAILED,DeploymentStatus.PURGE_FAILURE)

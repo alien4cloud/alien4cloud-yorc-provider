@@ -304,72 +304,6 @@ public class FsmActions {
 		};
 	}
 
-	protected Action<FsmStates, FsmEvents> preResume() {
-		return new Action<FsmStates, FsmEvents>() {
-
-			private IPaaSCallback<?> callback;
-
-			private PaaSDeploymentContext context;
-
-			private String expectedTaskType;
-
-			private String taskUrl;
-
-			private void onHttpOk(TaskDTO task) {
-				String yorcDeploymentId = context.getDeploymentPaaSId();
-
-				if (!task.getType().equals(expectedTaskType)) {
-					sendHttpErrorToAlienLogs(yorcDeploymentId, "Error while querying task from Yorc","invalid task type");
-
-					// A Failure occurs
-					Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.FAILURE, yorcDeploymentId);
-					busService.publish(message);
-
-					return;
-				}
-
-				// store the verified taskUrl
-				stateMachineService.setTaskUrl(context.getDeploymentPaaSId(), taskUrl);
-
-				Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.RESUME, context,callback);
-				busService.publish(message);
-			}
-
-			private void onHttpKo(Throwable t) {
-				String yorcDeploymentId = context.getDeploymentPaaSId();
-
-				sendHttpErrorToAlienLogs(yorcDeploymentId, "Error while querying task from Yorc", t.getMessage());
-				if (callback != null) {
-					callback.onFailure(t);
-				}
-
-				// A Failure occurs
-				Message<FsmEvents> message = stateMachineService.createMessage(FsmEvents.FAILURE, yorcDeploymentId);
-				busService.publish(message);
-			}
-
-			@Override
-			public void execute(StateContext<FsmStates, FsmEvents> stateContext) {
-				context = (PaaSDeploymentContext) stateContext.getExtendedState().getVariables().get(StateMachineService.DEPLOYMENT_CONTEXT);
-				callback = (IPaaSCallback<?>) stateContext.getExtendedState().getVariables().get(StateMachineService.CALLBACK);
-
-				switch(stateContext.getTransition().getTarget().getId()) {
-					case PRE_RESUME_DEPLOY:
-						expectedTaskType = "Deploy";
-						break;
-					case PRE_RESUME_UNDEPLOY:
-						expectedTaskType = "UnDeploy";
-						break;
-					default:
-				}
-
-				taskUrl = (String) stateContext.getMessageHeader(StateMachineService.TASK_URL);
-
-				deploymentClient.getTask(taskUrl).subscribe(this::onHttpOk,this::onHttpKo);
-			}
-		};
-	}
-
 	protected Action<FsmStates, FsmEvents> resume() {
 		return new Action<FsmStates, FsmEvents>() {
 
@@ -402,7 +336,7 @@ public class FsmActions {
 				context = (PaaSDeploymentContext) stateContext.getExtendedState().getVariables().get(StateMachineService.DEPLOYMENT_CONTEXT);
 				callback = (IPaaSCallback<?>) stateContext.getExtendedState().getVariables().get(StateMachineService.CALLBACK);
 
-				String taskUrl = stateMachineService.getTaskUrl(context.getDeploymentPaaSId());
+				String taskUrl = (String) stateContext.getMessageHeader(StateMachineService.TASK_URL);
 
 				if (log.isInfoEnabled()) {
 					log.info("Resuming " + taskUrl);
