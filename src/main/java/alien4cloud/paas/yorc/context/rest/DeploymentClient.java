@@ -137,6 +137,23 @@ public class DeploymentClient extends AbstractClient {
         return sendRequest(url,HttpMethod.PUT,String.class,buildHttpEntityWithDefaultHeader()).ignoreElement();
     }
 
+    public Completable resetStep(String deploymentId, String executionId,String stepId, boolean done) {
+        try {
+            String url = String.format("%s/deployments/%s/tasks/%s/steps/%s",getYorcUrl(),deploymentId,executionId,stepId);
+
+            Map<String,Object> request = Maps.newHashMap();
+            if (done) {
+                request.put("status","DONE");
+            } else {
+                request.put("status","INITIAL");
+            }
+
+            return sendRequest(url,HttpMethod.PUT,String.class,buildHttpEntityWithDefaultHeader(request)).ignoreElement();
+        } catch(JsonProcessingException e) {
+            return Completable.error(e);
+        }
+    }
+
     public Completable cancelTask(String deploymentId, String taskId) {
         String taskUrl = String.format("/deployments/%s/tasks/%s",deploymentId,taskId);
         return cancelTask(taskUrl);

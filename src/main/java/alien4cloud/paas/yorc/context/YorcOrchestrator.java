@@ -253,6 +253,13 @@ public class YorcOrchestrator implements IOrchestratorPlugin<ProviderConfigurati
     }
 
     @Override
+    public void resetStep(PaaSDeploymentContext deploymentContext, Execution execution, String stepName, boolean done, IPaaSCallback<?> callback) {
+        deploymentClient.resetStep(deploymentContext.getDeploymentPaaSId(),execution.getId(),stepName,done).subscribe(() -> {
+            callback.onSuccess(null);
+        }, callback::onFailure);
+    }
+
+    @Override
     public void scale(PaaSDeploymentContext deploymentContext, String nodeTemplateId, int instances, IPaaSCallback<?> callback) {
         deploymentClient.scale(deploymentContext.getDeploymentPaaSId(),nodeTemplateId,instances).subscribe(s -> {
             log.info("Scaling Task: {}",s);
