@@ -57,7 +57,7 @@ public class OperationHostModifier extends TopologyModifierSupport {
 
     private void setOperationHostForNode(FlowExecutionContext context, Workflow workflow, NodeTemplate nodeTemplate) {
         safe(workflow.getSteps()).forEach((s, workflowStep) -> {
-            if (workflowStep.getTarget().equals(nodeTemplate.getName()) &&
+            if (workflowStep.getTarget() != null && workflowStep.getTarget().equals(nodeTemplate.getName()) &&
                     safe(workflowStep.getActivities()).stream()
                             .anyMatch(abstractWorkflowActivity -> abstractWorkflowActivity instanceof CallOperationWorkflowActivity)) {
                 workflowStep.setOperationHost("ORCHESTRATOR");
